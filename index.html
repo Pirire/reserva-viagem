@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reserva</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ6XoeSWUFGWFwPPgOQXZA1zfGpy1ECTg&libraries=places"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen bg-cover bg-center"
+      style="background-image: url('imagens/imagem-fundo.jpg');">
+
+  <div id="conteudoPrincipal" class="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-md w-full max-w-lg space-y-2 relative">
+    <h1 class="text-2xl font-extrabold text-center text-green-600 mb-4">Reservar Viagem</h1>
+
+    <h2 class="text-xl font-bold mb-2 text-center">SELECIONE A CATEGORIA</h2>
+    <div id="categoria" class="grid grid-cols-2 gap-2 border p-2 rounded-xl">
+      <button data-preco="0.55" data-nome="Confort" class="btn-cat uppercase">Confort</button>
+      <button data-preco="0.75" data-nome="Premium" class="btn-cat uppercase">Premium</button>
+      <button data-preco="1.00" data-nome="XL 7" class="btn-cat uppercase">XL 7</button>
+      <button data-preco="0.70" data-nome="Passeio" class="btn-cat uppercase">Passeio</button>
+    </div>
+
+    <label for="partida" class="font-bold text-gray-700 mt-2">Local de Partida</label>
+    <div class="flex items-center gap-2">
+      <input id="partida" type="text" class="input flex-1 campoObrigatorio">
+      <button id="btnLocalizacao" type="button" class="p-2 bg-green-500 text-white rounded-xl hover:bg-green-600">📍</button>
+    </div>
+
+    <label for="destino" class="font-bold text-gray-700 mt-2">Local de Destino</label>
+    <input id="destino" type="text" class="input campoObrigatorio">
+
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label for="datahora" class="font-bold text-gray-700">Selecione Data e Hora</label>
+        <input id="datahora" type="datetime-local" class="input campoObrigatorio">
+      </div>
+      <div>
+        <label for="nome" class="font-bold text-gray-700">Nome de Utilizador</label>
+        <input id="nome" type="text" class="input campoObrigatorio">
+      </div>
+    </div>
+
+    <label for="contato" class="font-bold text-gray-700 mt-2">Nº de Contato</label>
+    <input id="contato" type="text" class="input campoObrigatorio">
+
+    <label for="codigoReservaInd" class="font-bold text-gray-700">Nº Indicação/Reserva</label>
+    <input id="codigoReservaInd" type="text" class="input">
+
+    <!-- Google Maps -->
+    <div id="map" class="w-full h-64 mt-4 rounded-xl"></div>
+
+    <!-- Info de distância, tempo e valor -->
+    <div id="infoViagem" class="text-center font-bold mt-2"></div>
+
+    <!-- Botões -->
+    <div class="grid grid-cols-2 gap-2 mt-4">
+      <button id="OK" disabled class="mt-3 w-full py-2 rounded-2xl bg-gray-400 text-white font-bold">OK</button>
+      <button id="btn-cancelar" disabled class="mt-3 w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">Cancelar Reserva</button>
+    </div>
+  </div>
+
+  <!-- Pop-up resumo -->
+  <div id="popupResumo" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl p-6 w-96 shadow-lg space-y-4">
+      <h2 class="text-xl font-bold text-green-700 text-center">Resumo da Viagem</h2>
+      <p><strong>Nome:</strong> <span id="resNome"></span></p>
+      <p><strong>Categoria:</strong> <span id="resCategoria"></span></p>
+      <p><strong>Partida:</strong> <a id="resPartida" href="#" target="_blank" class="text-blue-600 underline"></a></p>
+      <p><strong>Destino:</strong> <a id="resDestino" href="#" target="_blank" class="text-blue-600 underline"></a></p>
+      <p><strong>Data:</strong> <span id="resData"></span></p>
+      <p><strong>Valor da Viagem:</strong> <span id="resValor" class="font-bold text-green-700"></span></p>
+      <p><strong>Código de Reserva/Indicação:</strong> <span id="resCodigo"></span></p>
+      <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">EFETUAR PAGAMENTO</button>
+    </div>
+  </div>
+
+  <!-- Pop-up Cancelar -->
+  <div id="popupCancelar" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl p-6 w-96 shadow-lg space-y-4">
+      <h2 class="text-xl font-bold text-red-600 text-center">ATENÇÃO!</h2>
+      <p>O CANCELAMENTO COM ATÉ 2Hs ANTES DA VIAGEM NÃO PAGA TAXA DE CANCELAMENTO DE 5€. DESEJA CONTINUAR?</p>
+      <div class="grid grid-cols-2 gap-2 mt-4">
+        <button id="simCancelar" class="py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">SIM!, CANCELAR</button>
+        <button id="continuarReserva" class="py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold">CONTINUAR COM A RESERVA</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const backendURL = "https://reserva-backend-uu52.onrender.com";
+    // A lógica do mapa, cálculo de rota, categorias, pop-ups, botões OK e cancelar
+    // deve permanecer a mesma do seu último index.html que você já tinha pronto
+  </script>
+
+  <style>
+    .input { @apply w-full p-2 rounded-xl border border-gray-300; }
+  </style>
+</body>
+</html>
