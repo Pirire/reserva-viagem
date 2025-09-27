@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Reservas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+
+  <h1 class="text-3xl font-bold text-center text-green-600 mb-6">Reservas Recentes</h1>
+
+  <div id="reservasContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    <!-- Cartões serão injetados aqui -->
+  </div>
+
+  <script>
+    const backendURL = "https://reserva-backend-uu52.onrender.com"; // ajuste se necessário
+
+    async function carregarReservas() {
+      try {
+        const response = await fetch(`${backendURL}/ver-reservas`);
+        const reservas = await response.json();
+
+        // Ordenar pela data da viagem mais recente
+        reservas.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        const container = document.getElementById("reservasContainer");
+        container.innerHTML = "";
+
+        reservas.forEach(reserva => {
+          const card = document.createElement("div");
+          card.className = "bg-white rounded-2xl p-4 shadow-lg flex flex-col justify-between hover:shadow-xl transition";
+
+          card.innerHTML = `
+            <p><strong>Nome:</strong> ${reserva.nome}</p>
+            <p><strong>Categoria:</strong> ${reserva.categoria || "-"}</p>
+            <p><strong>Partida:</strong> ${reserva.partida}</p>
+            <p><strong>Destino:</strong> ${reserva.destino}</p>
+            <p><strong>Data:</strong> ${new Date(reserva.data).toLocaleString()}</p>
+            <p><strong>Contato:</strong> ${reserva.email || reserva.contato || "-"}</p>
+            <p><strong>Status:</strong> ${reserva.status || "pendente"}</p>
+            <p><strong>Motorista:</strong> ${reserva.motorista || "-"}</p>
+            <button class="bg-blue-500 hover:bg-blue-600 text-white rounded-xl py-1 mt-2" onclick="enviarParaMotorista('${reserva._id}')">
+              Marcar como enviada
+            </button>
+          `;
+
+          container.appendChild(card);
+        });
+      } catch (err) {
+        console.error("Erro ao carregar reservas:", err);
+        document.getElementById("reservasContainer").innerHTML = "<p class='text-red-600'>Não foi possível carregar reservas.</p>";
+      }
+    }
+
+    async function enviarParaMotorista(id) {
+      const motorista = prompt("Digite o nome do motorista:");
+      if (!motorista) return;
+
+      try {
+        const response = await fetch(`${backendURL}/reserva/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "enviada", motorista })
+        });
+
+        if (response.ok) {
+          alert("Reserva marcada como enviada!");
+          carregarReservas(); // Recarrega a lista
+        } else {
+          alert("Falha ao atualizar reserva");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao atualizar reserva");
+      }
+    }
+
+    window.onload = carregarReservas;
+  </script>
+</body>
+</html>
