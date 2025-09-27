@@ -1,0 +1,28 @@
+{
+  "name": "reserva-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pirire/reserva-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Pirire/reserva-backend/issues"
+  },
+  "homepage": "https://github.com/Pirire/reserva-backend#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "mongodb": "^6.20.0",
+    "nodemailer": "^7.0.6",
+    "stripe": "^18.5.0"
+  }
+}
