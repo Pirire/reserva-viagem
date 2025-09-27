@@ -1,4 +1,3 @@
-// index.js
 import express from "express";
 import cors from "cors";
 import { MongoClient } from "mongodb";
@@ -14,22 +13,23 @@ const port = process.env.PORT || 4000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // para suportar dados de formulários
 
 // Caminho para a pasta public
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, "public")));
 
-// Middleware de autenticação simples para o admin
+// Middleware de autenticação básica para o admin
 app.use("/admin-reservas.html", (req, res, next) => {
   const auth = { login: process.env.ADMIN_USER, password: process.env.ADMIN_PASS };
 
-  // Cabeçalho de autenticação básica
+  // Verifica o cabeçalho Authorization
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
 
   if (login && password && login === auth.login && password === auth.password) {
-    return next();
+    return next(); // autorizado
   }
 
   // Solicita login
