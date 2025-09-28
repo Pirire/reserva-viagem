@@ -15,21 +15,13 @@ const port = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// Caminho para a pasta public
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, "public")));
-
-// Serve index.html na raiz
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
 
 // Middleware de autenticação simples para o admin
 app.use("/admin-reservas.html", (req, res, next) => {
   const auth = { login: process.env.ADMIN_USER, password: process.env.ADMIN_PASS };
 
-  // Cabeçalho de autenticação básica
   const b64auth = (req.headers.authorization || "").split(" ")[1] || "";
   const [login, password] = Buffer.from(b64auth, "base64").toString().split(":");
 
@@ -37,12 +29,19 @@ app.use("/admin-reservas.html", (req, res, next) => {
     return next();
   }
 
-  // Solicita login
   res.set("WWW-Authenticate", 'Basic realm="Admin Area"');
   res.status(401).send("Autorização necessária.");
 });
 
-// Verifica se MONGO_URI está definida
+// Serve arquivos estáticos da pasta public
+app.use(express.static(path.join(__dirname, "public")));
+
+// Serve index.html na raiz
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Verifica MONGO_URI
 if (!process.env.MONGO_URI) {
   console.error("❌ Erro: MONGO_URI não foi definida no ambiente!");
   process.exit(1);
@@ -65,7 +64,7 @@ async function conectarMongo() {
 }
 conectarMongo();
 
-// Rota da API para ver reservas
+// Rotas da API
 app.get("/ver-reservas", async (req, res) => {
   try {
     const reservas = await db.collection("reservas").find().toArray();
