@@ -18,25 +18,31 @@ app.use(express.json());
 // Caminho para a pasta public
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Middleware de autenticação para o admin
-app.get("/admin-reservas.html", (req, res, next) => {
-  const auth = { login: process.env.ADMIN_USER, password: process.env.ADMIN_PASS };
-  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
-  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
-
-  if (login && password && login === auth.login && password === auth.password) {
-    return res.sendFile(path.join(__dirname, "public", "admin-reservas.html"));
-  }
-
-  res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
-  res.status(401).send('Autorização necessária.');
-});
-
-// Servir arquivos públicos normalmente
 app.use(express.static(path.join(__dirname, "public")));
 
-// Conexão com o MongoDB
+// Serve index.html na raiz
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Middleware de autenticação simples para o admin
+app.use("/admin-reservas.html", (req, res, next) => {
+  const auth = { login: process.env.ADMIN_USER, password: process.env.ADMIN_PASS };
+
+  // Cabeçalho de autenticação básica
+  const b64auth = (req.headers.authorization || "").split(" ")[1] || "";
+  const [login, password] = Buffer.from(b64auth, "base64").toString().split(":");
+
+  if (login && password && login === auth.login && password === auth.password) {
+    return next();
+  }
+
+  // Solicita login
+  res.set("WWW-Authenticate", 'Basic realm="Admin Area"');
+  res.status(401).send("Autorização necessária.");
+});
+
+// Verifica se MONGO_URI está definida
 if (!process.env.MONGO_URI) {
   console.error("❌ Erro: MONGO_URI não foi definida no ambiente!");
   process.exit(1);
@@ -44,13 +50,14 @@ if (!process.env.MONGO_URI) {
   console.log("🔎 MONGO_URI carregada: OK (valor encontrado)");
 }
 
+// Conexão com o MongoDB
 const client = new MongoClient(process.env.MONGO_URI);
 let db;
 
 async function conectarMongo() {
   try {
     await client.connect();
-    db = client.db();
+    db = client.db(); // usa o banco definido na URI
     console.log("✅ Conectado ao MongoDB!");
   } catch (err) {
     console.error("Erro ao conectar ao MongoDB:", err);
@@ -58,7 +65,7 @@ async function conectarMongo() {
 }
 conectarMongo();
 
-// Rotas da API
+// Rota da API para ver reservas
 app.get("/ver-reservas", async (req, res) => {
   try {
     const reservas = await db.collection("reservas").find().toArray();
