@@ -1,3 +1,4 @@
+// index.js
 import express from "express";
 import cors from "cors";
 import { MongoClient } from "mongodb";
@@ -13,29 +14,27 @@ const port = process.env.PORT || 4000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // para suportar dados de formulários
 
 // Caminho para a pasta public
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, "public")));
 
-// Middleware de autenticação básica para o admin
-app.use("/admin-reservas.html", (req, res, next) => {
+// Middleware de autenticação para o admin
+app.get("/admin-reservas.html", (req, res, next) => {
   const auth = { login: process.env.ADMIN_USER, password: process.env.ADMIN_PASS };
-
-  // Verifica o cabeçalho Authorization
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
 
   if (login && password && login === auth.login && password === auth.password) {
-    return next(); // autorizado
+    return res.sendFile(path.join(__dirname, "public", "admin-reservas.html"));
   }
 
-  // Solicita login
   res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
   res.status(401).send('Autorização necessária.');
 });
+
+// Servir arquivos públicos normalmente
+app.use(express.static(path.join(__dirname, "public")));
 
 // Conexão com o MongoDB
 if (!process.env.MONGO_URI) {
@@ -51,7 +50,7 @@ let db;
 async function conectarMongo() {
   try {
     await client.connect();
-    db = client.db(); // usa o banco definido na URI
+    db = client.db();
     console.log("✅ Conectado ao MongoDB!");
   } catch (err) {
     console.error("Erro ao conectar ao MongoDB:", err);
