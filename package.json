@@ -1,30 +1,21 @@
 {
   "name": "reserva-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend para sistema de reservas de viagem",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Pirire/reserva-backend.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Pirire/reserva-backend/issues"
-  },
-  "homepage": "https://github.com/Pirire/reserva-backend#readme",
+  "keywords": ["reserva", "viagem", "backend"],
+  "author": "Seu Nome",
+  "license": "MIT",
   "dependencies": {
+    "express": "^4.18.2",
+    "mongodb": "^5.7.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "mongodb": "^6.20.0",
-    "nodemailer": "^7.0.6",
-    "stripe": "^18.5.0"
+    "stripe": "^12.10.0",
+    "body-parser": "^1.20.2"
   }
 }

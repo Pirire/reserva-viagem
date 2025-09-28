@@ -1,81 +1,122 @@
-// index.js
 import express from "express";
 import cors from "cors";
+import bodyParser from "body-parser";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
+import Stripe from "stripe";
 import path from "path";
 import { fileURLToPath } from "url";
 
 dotenv.config();
 
-const app = express();
-const port = process.env.PORT || 4000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Middleware de autenticação simples para o admin
-app.use("/admin-reservas.html", (req, res, next) => {
-  const auth = { login: process.env.ADMIN_USER, password: process.env.ADMIN_PASS };
+const app = express();
+const PORT = process.env.PORT || 4000;
 
-  const b64auth = (req.headers.authorization || "").split(" ")[1] || "";
-  const [login, password] = Buffer.from(b64auth, "base64").toString().split(":");
+// Variável de ambiente para MongoDB
+const MONGO_URI = process.env.MONGODB_URI;
+if (!MONGO_URI) {
+  console.error("❌ Erro: MONGODB_URI não foi definida no ambiente!");
+  process.exit(1);
+}
 
-  if (login && password && login === auth.login && password === auth.password) {
-    return next();
-  }
-
-  res.set("WWW-Authenticate", 'Basic realm="Admin Area"');
-  res.status(401).send("Autorização necessária.");
+// Inicializa Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2022-11-15",
 });
 
-// Serve arquivos estáticos da pasta public
-app.use(express.static(path.join(__dirname, "public")));
+// Middlewares
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public"))); // Serve frontend e assets
 
-// Serve index.html na raiz
-app.get("/", (req, res) => {
+let db;
+MongoClient.connect(MONGO_URI, { useUnifiedTopology: true })
+  .then((client) => {
+    db = client.db();
+    console.log("✅ Conectado ao MongoDB!");
+  })
+  .catch((err) => {
+    console.error("❌ Erro ao conectar ao MongoDB:", err);
+    process.exit(1);
+  });
+
+// Rota de checkout Stripe
+app.post("/checkout", async (req, res) => {
+  try {
+    const { valor, nome, email, partida, destino, data, codigo } = req.body;
+
+    if (!valor || !nome || !email) {
+      return res.status(400).json({ error: "Dados incompletos" });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "eur",
+            product_data: { name: `Reserva ${codigo}` },
+            unit_amount: Math.round(valor * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${req.headers.origin}/?success=true`,
+      cancel_url: `${req.headers.origin}/?canceled=true`,
+      customer_email: email,
+    });
+
+    // Salva reserva no MongoDB
+    const reservas = db.collection("reservas");
+    await reservas.insertOne({
+      codigo,
+      nome,
+      email,
+      partida,
+      destino,
+      data,
+      valor,
+      status: "pendente",
+      createdAt: new Date(),
+    });
+
+    res.json({ id: session.id, publicKey: process.env.STRIPE_PUBLIC_KEY });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao criar sessão de pagamento" });
+  }
+});
+
+// Rota de cancelamento
+app.delete("/cancelar/:codigo", async (req, res) => {
+  try {
+    const { codigo } = req.params;
+    const reservas = db.collection("reservas");
+    const result = await reservas.updateOne(
+      { codigo },
+      { $set: { status: "cancelado", canceledAt: new Date() } }
+    );
+
+    if (result.modifiedCount > 0) {
+      res.json({ message: `Reserva ${codigo} cancelada.` });
+    } else {
+      res.status(404).json({ error: "Reserva não encontrada." });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao cancelar reserva" });
+  }
+});
+
+// Serve frontend para qualquer rota desconhecida
+app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Verifica MONGO_URI
-if (!process.env.MONGO_URI) {
-  console.error("❌ Erro: MONGO_URI não foi definida no ambiente!");
-  process.exit(1);
-} else {
-  console.log("🔎 MONGO_URI carregada: OK (valor encontrado)");
-}
-
-// Conexão com o MongoDB
-const client = new MongoClient(process.env.MONGO_URI);
-let db;
-
-async function conectarMongo() {
-  try {
-    await client.connect();
-    db = client.db(); // usa o banco definido na URI
-    console.log("✅ Conectado ao MongoDB!");
-  } catch (err) {
-    console.error("Erro ao conectar ao MongoDB:", err);
-  }
-}
-conectarMongo();
-
-// Rotas da API
-app.get("/ver-reservas", async (req, res) => {
-  try {
-    const reservas = await db.collection("reservas").find().toArray();
-    res.json(reservas);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao buscar reservas" });
-  }
-});
-
-// Inicia o servidor
-app.listen(port, () => {
-  console.log(`🚀 Servidor rodando na porta ${port}`);
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
