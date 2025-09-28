@@ -90,13 +90,11 @@
 
   <script>
     const backendURL = "https://reserva-backend-uu52.onrender.com";
-
     const btns = document.querySelectorAll('.btn-cat');
     let precoCategoria = 0, categoriaSelecionada = "", ultimoCusto = 0, ultimaDistancia = 0, ultimoTempo = "";
     let codigoReservaAtual = "";
     let partidaPlace = null, destinoPlace = null;
 
-    // inicializar categorias
     btns.forEach(btn => {
       btn.className = "btn-cat w-full py-2 rounded-2xl bg-green-300 hover:bg-green-400 uppercase";
       btn.addEventListener('click', () => {
@@ -134,7 +132,6 @@
 
     function gerarCodigoReserva() { return "RM-" + Math.random().toString(36).substring(2, 6).toUpperCase(); }
 
-    // BOTÃO OK
     document.getElementById("OK").addEventListener("click", () => {
       camposObrig.forEach(c => c.style.borderColor = "red");
       codigoReservaAtual = gerarCodigoReserva();
@@ -156,7 +153,6 @@
       document.getElementById("popupResumo").classList.remove("hidden");
     });
 
-    // BOTÃO EFETUAR PAGAMENTO
     document.getElementById("confirmarPagamento").addEventListener("click", async () => {
       const nome = document.getElementById("nome").value.trim();
       const email = document.getElementById("contato").value.trim();
@@ -180,7 +176,6 @@
       }
     });
 
-    // BOTÃO CANCELAR
     document.getElementById("btn-cancelar").addEventListener("click", () => { document.getElementById("popupCancelar").classList.remove("hidden"); });
     document.getElementById("continuarReserva").addEventListener("click", () => { document.getElementById("popupCancelar").classList.add("hidden"); });
     document.getElementById("simCancelar").addEventListener("click", async () => {
@@ -196,7 +191,6 @@
       }
     });
 
-    // MAPA E AUTOCOMPLETE
     let map, directionsService, directionsRenderer;
     function initAutocomplete() {
       const partidaInput = document.getElementById('partida');
@@ -255,7 +249,6 @@
       });
     }
 
-    // BOTÃO LOCALIZAÇÃO
     document.getElementById("btnLocalizacao").addEventListener("click", () => {
       if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(pos => {
