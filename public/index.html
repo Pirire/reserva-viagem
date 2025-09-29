@@ -9,24 +9,23 @@
   <script src="https://js.stripe.com/v3/"></script>
   <style>
     body { background-image: url('imagens/imagem-fundo.jpg'); background-size: cover; background-position: center; }
-    .input { width: 100%; min-height: 2rem; padding: 0.25rem 0.5rem; border: 1px solid #D1D5DB; border-radius: 0.5rem; box-sizing: border-box; }
+    .input { width: 100%; min-height: 2rem; padding: 0.4rem; border: 1px solid #D1D5DB; border-radius: 0.75rem; box-sizing: border-box; }
     .linha-horizontal { display: flex; gap: 0.5rem; }
     #contato, #codigoReservaInd { flex: 1; }
-    #partida, #destino, #datahora, #nome { width: 100%; min-height: 2rem; }
-    .btn-cat { transition: all 0.2s ease; }
   </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-<div id="conteudoPrincipal" class="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-md w-full max-w-lg space-y-2 relative">
+<div id="conteudoPrincipal" class="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-md w-full max-w-lg space-y-2 relative">
 
+  <!-- GOOGLE TRANSLATE WIDGET -->
   <div class="absolute -top-2 right-4 transform scale-75">
     <div id="google_translate_element"></div>
   </div>
 
-  <h1 class="text-2xl font-extrabold text-center text-green-600 mb-4">Reservar Viagem</h1>
+  <h1 class="text-2xl font-extrabold text-center text-green-600 mb-2">Reservar Viagem</h1>
 
-  <h2 class="text-xl font-bold mb-2 text-center">SELECIONE A CATEGORIA</h2>
+  <h2 class="text-xl font-bold mb-1 text-center">SELECIONE A CATEGORIA</h2>
   <div id="categoria" class="grid grid-cols-2 gap-2 border p-2 rounded-xl">
     <button data-preco="0.55" data-nome="Confort" class="btn-cat uppercase">Confort</button>
     <button data-preco="0.75" data-nome="Premium" class="btn-cat uppercase">Premium</button>
@@ -34,16 +33,16 @@
     <button data-preco="0.70" data-nome="Passeio" class="btn-cat uppercase">Passeio</button>
   </div>
 
-  <label for="partida" class="font-bold text-gray-700 mt-2">Local de Partida</label>
+  <label for="partida" class="font-bold text-gray-700 mt-1">Local de Partida</label>
   <div class="flex items-center gap-2">
     <input id="partida" type="text" class="input flex-1 campoObrigatorio">
     <button id="btnLocalizacao" type="button" class="p-2 bg-green-500 text-white rounded-xl hover:bg-green-600">📍</button>
   </div>
 
-  <label for="destino" class="font-bold text-gray-700 mt-2">Local de Destino</label>
+  <label for="destino" class="font-bold text-gray-700 mt-1">Local de Destino</label>
   <input id="destino" type="text" class="input campoObrigatorio">
 
-  <div class="grid grid-cols-2 gap-2 mt-2">
+  <div class="grid grid-cols-2 gap-2 mt-1">
     <div>
       <label for="datahora" class="font-bold text-gray-700">Selecione Data e Hora</label>
       <input id="datahora" type="datetime-local" class="input campoObrigatorio">
@@ -54,7 +53,12 @@
     </div>
   </div>
 
-  <div class="linha-horizontal mt-2">
+  <div>
+    <label for="email" class="font-bold text-gray-700">Email</label>
+    <input id="email" type="email" class="input campoObrigatorio" placeholder="seu@email.com">
+  </div>
+
+  <div class="linha-horizontal mt-1">
     <div class="flex-1">
       <label for="contato" class="font-bold text-gray-700">Nº de Contato</label>
       <input id="contato" type="text" class="input campoObrigatorio">
@@ -65,41 +69,34 @@
     </div>
   </div>
 
-  <div id="map" class="w-full h-64 mt-4 rounded-xl"></div>
-  <div id="infoViagem" class="text-center font-bold mt-2"></div>
+  <!-- Google Maps -->
+  <div id="map" class="w-full h-64 mt-2 rounded-xl"></div>
 
-  <div class="grid grid-cols-2 gap-2 mt-4">
-    <button id="OK" disabled class="mt-3 w-full py-2 rounded-2xl bg-gray-400 text-white font-bold">OK</button>
-    <button id="btn-cancelar" disabled class="mt-3 w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">Cancelar Reserva</button>
+  <!-- Info de distância, tempo e valor -->
+  <div id="infoViagem" class="text-center font-bold mt-1"></div>
+
+  <!-- Botões -->
+  <div class="grid grid-cols-2 gap-2 mt-2">
+    <button id="OK" disabled class="mt-1 w-full py-2 rounded-2xl bg-gray-400 text-white font-bold">OK</button>
+    <button id="btn-cancelar" disabled class="mt-1 w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">Cancelar Reserva</button>
   </div>
-
 </div>
 
-<!-- Pop-ups e scripts mantidos, ajuste Stripe e rolagem automática -->
+<!-- Pop-up resumo -->
 <div id="popupResumo" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
-  <div class="bg-white rounded-2xl p-6 w-96 shadow-lg space-y-4">
+  <div class="bg-white rounded-2xl p-4 w-96 shadow-lg space-y-2">
     <h2 class="text-xl font-bold text-green-700 text-center">Resumo da Viagem</h2>
     <p><strong>Nome:</strong> <span id="resNome"></span></p>
     <p><strong>Categoria:</strong> <span id="resCategoria"></span></p>
     <p><strong>Partida:</strong> <a id="resPartida" href="#" target="_blank" class="text-blue-600 underline"></a></p>
     <p><strong>Destino:</strong> <a id="resDestino" href="#" target="_blank" class="text-blue-600 underline"></a></p>
     <p><strong>Data:</strong> <span id="resData"></span></p>
+    <p><strong>Email:</strong> <span id="resEmail"></span></p>
     <p><strong>Contato:</strong> <span id="resContato"></span></p>
     <p><strong>Valor da Viagem:</strong> <span id="resValor" class="font-bold text-green-700"></span></p>
     <p><strong>Código de Reserva/Indicação:</strong> <span id="resCodigo"></span></p>
-    <div id="popupStatus" class="text-center font-bold mt-2 text-green-700"></div>
+    <div id="popupStatus" class="text-center font-bold mt-1 text-green-700"></div>
     <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">EFETUAR PAGAMENTO</button>
-  </div>
-</div>
-
-<div id="popupCancelar" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
-  <div class="bg-white rounded-2xl p-6 w-96 shadow-lg space-y-4">
-    <h2 class="text-xl font-bold text-red-600 text-center">ATENÇÃO!</h2>
-    <p>O CANCELAMENTO EFETUADO 4Hs PARA O INICIO DA VIAGEM FICA ISENTO DA TAXA DE CANCELAMENTO</p>
-    <div class="grid grid-cols-2 gap-2 mt-4">
-      <button id="simCancelar" class="py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">SIM!, CANCELAR</button>
-      <button id="continuarReserva" class="py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold">CONTINUAR COM A RESERVA</button>
-    </div>
   </div>
 </div>
 
@@ -118,15 +115,15 @@ btns.forEach(btn => {
     btn.classList.remove('bg-green-300'); btn.classList.add('bg-green-600');
     precoCategoria = parseFloat(btn.getAttribute("data-preco"));
     categoriaSelecionada = btn.getAttribute("data-nome");
-    validarFormulario(); calcularRotaDebounced();
+    validarFormulario();
   });
 });
 
 const camposObrig = document.querySelectorAll('.campoObrigatorio');
+
 camposObrig.forEach(c => {
   c.addEventListener('input', () => {
     validarFormulario();
-    // Se todos preenchidos, calcular rota e rolar para mapa
     const todosPreenchidos = Array.from(camposObrig).every(f => f.value.trim() !== "");
     if (todosPreenchidos) {
       calcularRotaDebounced();
@@ -143,10 +140,10 @@ function validarFormulario() {
   const btn = document.getElementById('OK');
   if (categoriaOK && preenchidos) {
     btn.disabled = false;
-    btn.className = "mt-3 w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold";
+    btn.className = "mt-1 w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold";
   } else {
     btn.disabled = true;
-    btn.className = "mt-3 w-full py-2 rounded-2xl bg-gray-400 text-white font-bold";
+    btn.className = "mt-1 w-full py-2 rounded-2xl bg-gray-400 text-white font-bold";
   }
 }
 
@@ -156,8 +153,9 @@ function ativarCancelar() {
   btnCancelar.disabled = !codigoInput;
 }
 
-function gerarCodigoReserva() { return "RM-" + Math.random().toString(36).substring(2, 6).toUpperCase(); }
+function gerarCodigoReserva() { return "RM-" + Math.random().toString(36).substring(2,6).toUpperCase(); }
 
+// Google Maps
 let map, directionsService, directionsRenderer;
 function initAutocomplete() {
   const partidaInput = document.getElementById('partida');
@@ -165,8 +163,8 @@ function initAutocomplete() {
   const partidaAC = new google.maps.places.Autocomplete(partidaInput, { fields: ["place_id","formatted_address","geometry"], componentRestrictions:{country:["pt","es","fr"]} });
   const destinoAC = new google.maps.places.Autocomplete(destinoInput, { fields: ["place_id","formatted_address","geometry"], componentRestrictions:{country:["pt","es","fr"]} });
 
-  partidaAC.addListener('place_changed', () => { partidaPlace = partidaAC.getPlace(); if (partidaPlace && partidaPlace.place_id) { partidaInput.value = partidaPlace.formatted_address || partidaInput.value; calcularRotaDebounced(); } });
-  destinoAC.addListener('place_changed', () => { destinoPlace = destinoAC.getPlace(); if (destinoPlace && destinoPlace.place_id) { destinoInput.value = destinoPlace.formatted_address || destinoInput.value; calcularRotaDebounced(); } });
+  partidaAC.addListener('place_changed', () => { partidaPlace = partidaAC.getPlace(); });
+  destinoAC.addListener('place_changed', () => { destinoPlace = destinoAC.getPlace(); });
   initMap();
 }
 
@@ -183,8 +181,8 @@ function calcularRota() {
   const partidaTxt = document.getElementById("partida").value.trim();
   const destinoTxt = document.getElementById("destino").value.trim();
   if(!partidaTxt || !destinoTxt) { document.getElementById("infoViagem").textContent = ""; return; }
-  const origin = (partidaPlace && partidaPlace.place_id) ? {placeId: partidaPlace.place_id} : partidaTxt;
-  const destination = (destinoPlace && destinoPlace.place_id) ? {placeId: destinoPlace.place_id} : destinoTxt;
+  const origin = partidaPlace?.place_id ? {placeId: partidaPlace.place_id} : partidaTxt;
+  const destination = destinoPlace?.place_id ? {placeId: destinoPlace.place_id} : destinoTxt;
   directionsService.route({origin,destination,travelMode:google.maps.TravelMode.DRIVING,region:"PT"}, (result,status)=>{
     const info = document.getElementById("infoViagem");
     if(status==="OK"){
@@ -204,7 +202,7 @@ function calcularRota() {
   });
 }
 
-// Pin button
+// Localização automática
 document.getElementById("btnLocalizacao").addEventListener("click", () => {
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(pos => {
@@ -224,14 +222,15 @@ document.getElementById("btnLocalizacao").addEventListener("click", () => {
 
 // OK button
 document.getElementById("OK").addEventListener("click", () => {
-  camposObrig.forEach(c => c.style.borderColor = "red");
   codigoReservaAtual = gerarCodigoReserva();
   const codigoInd = document.getElementById("codigoReservaInd").value.trim();
   const codigoFinal = codigoInd ? `${codigoReservaAtual}/${codigoInd}` : codigoReservaAtual;
+
   document.getElementById("resCodigo").textContent = codigoFinal;
   document.getElementById("resNome").textContent = document.getElementById("nome").value;
   document.getElementById("resCategoria").textContent = categoriaSelecionada;
-  document.getElementById("resContato").textContent = document.getElementById("contato").value.trim();
+  document.getElementById("resContato").textContent = document.getElementById("contato").value;
+  document.getElementById("resEmail").textContent = document.getElementById("email").value;
 
   const partida = document.getElementById("partida").value.trim();
   const destino = document.getElementById("destino").value.trim();
@@ -251,9 +250,11 @@ document.getElementById("OK").addEventListener("click", () => {
 // Stripe payment
 document.getElementById("confirmarPagamento").addEventListener("click", async () => {
   const nome = document.getElementById("nome").value.trim();
-  const email = document.getElementById("contato").value.trim();
-  if(!email.includes('@')) return alert("Informe um e-mail válido para pagamento.");
+  const email = document.getElementById("email").value.trim();
   const valor = parseFloat(ultimoCusto);
+
+  if(!email.includes("@")) return alert("Informe um email válido para pagamento.");
+
   try {
     const response = await fetch(`${backendURL}/checkout`, {
       method: "POST",
@@ -261,35 +262,15 @@ document.getElementById("confirmarPagamento").addEventListener("click", async ()
       body: JSON.stringify({ nome, email, valor })
     });
     const data = await response.json();
-    if(data.url){ window.location.href = data.url; }
+    if(data.url) window.location.href = data.url;
   } catch (err) {
     document.getElementById("popupStatus").textContent = "FALHA NO PAGAMENTO!";
-    document.getElementById("popupStatus").classList.replace("text-green-700", "text-red-600");
+    document.getElementById("popupStatus").classList.replace("text-green-700","text-red-600");
   }
 });
 
 // Cancelamento
 document.getElementById("btn-cancelar").addEventListener("click", () => { document.getElementById("popupCancelar").classList.remove("hidden"); });
-document.getElementById("continuarReserva").addEventListener("click", () => { document.getElementById("popupCancelar").classList.add("hidden"); });
-document.getElementById("simCancelar").addEventListener("click", async () => {
-  const codigo = document.getElementById("codigoReservaInd").value.trim() || codigoReservaAtual;
-  try {
-    await fetch(`${backendURL}/cancelar/${codigo}`, { method: "DELETE" });
-    alert(`Código ${codigo} enviado para realmetropoli@gmail.com`);
-    document.getElementById("popupCancelar").classList.add("hidden");
-    document.getElementById("codigoReservaInd").value = "";
-    ativarCancelar();
-  } catch (err) { alert("Erro ao cancelar a reserva: " + err.message); }
-});
-
-// GOOGLE TRANSLATE SCRIPT
-function googleTranslateElementInit() {
-  new google.translate.TranslateElement({ pageLanguage: 'pt', layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL, includedLanguages: 'pt,en' }, 'google_translate_element');
-}
-(function(){ const script = document.createElement('script'); script.src = "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"; document.body.appendChild(script); })();
-
-window.onload = () => { initAutocomplete(); ativarCancelar(); validarFormulario(); camposObrig.forEach(c => c.style.borderColor = "blue"); };
 </script>
-
 </body>
 </html>
