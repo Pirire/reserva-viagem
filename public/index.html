@@ -84,7 +84,6 @@
   </div>
 </div>
 
-<!-- Popup resumo -->
 <div id="popupResumo" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
   <div class="bg-white rounded-2xl p-6 w-11/12 max-w-md shadow-lg space-y-4">
     <h2 class="text-xl font-bold text-green-700 text-center">Resumo da Viagem</h2>
@@ -98,7 +97,7 @@
     <p><strong>Valor da Viagem:</strong> <span id="resValor" class="font-bold text-green-700"></span></p>
     <p><strong>Código de Reserva/Indicação:</strong> <span id="resCodigo"></span></p>
     <div id="popupStatus" class="text-center font-bold mt-2 text-green-700"></div>
-    
+
     <div class="grid grid-cols-3 gap-2">
       <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">VOLTAR</button>
       <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">EFETUAR PAGAMENTO</button>
@@ -224,8 +223,6 @@ document.getElementById("OK").addEventListener("click",()=>{
   document.getElementById("resValor").textContent=ultimoCusto>0?`${ultimoCusto} €`:"—";
   document.getElementById("conteudoPrincipal").classList.add("hidden");
   document.getElementById("popupResumo").classList.remove("hidden");
-
-  criarElementoCartao(); // Inicializa o Stripe quando abre popup
 });
 
 // BOTÕES DO POPUP
@@ -250,53 +247,23 @@ camposObrig.forEach((campo, idx) => {
   });
 });
 
-// ------------------- INTEGRAÇÃO STRIPE -------------------
-const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13"); // substitua aqui
-const elements = stripe.elements();
-let card = null;
-
-function criarElementoCartao() {
-  if (!card) {
-    const style = {
-      base: { color: "#32325d", fontFamily: '"Helvetica Neue", Helvetica, sans-serif', fontSize: "16px" },
-      invalid: { color: "#fa755a", iconColor: "#fa755a" }
-    };
-    card = elements.create("card", { style });
-    const cardContainer = document.createElement("div");
-    cardContainer.id = "card-element";
-    cardContainer.className = "mb-2";
-    const popup = document.getElementById("popupResumo").querySelector(".bg-white");
-    popup.insertBefore(cardContainer, document.getElementById("popupStatus"));
-    card.mount("#card-element");
-  }
-}
+// ----------------- INTEGRAÇÃO STRIPE -----------------
+const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13SUA_PUBLIC_KEY_STRIPE"); // substitua pela sua chave pública Stripe
 
 document.getElementById("confirmarPagamento").addEventListener("click", async () => {
-  if (!card) { alert("Erro: cartão Stripe não inicializado"); return; }
   try {
-    const response = await fetch(`${backendURL}/create-payment-intent`, {
+    const res = await fetch(`${backendURL}/create-payment-intent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: Math.round(ultimoCusto*100), currency: "eur" })
+      body: JSON.stringify({ amount: Math.round(ultimoCusto * 100), currency: "eur" })
     });
-    const data = await response.json();
-    if (!data.clientSecret) { alert("Erro ao obter clientSecret"); return; }
-
-    const result = await stripe.confirmCardPayment(data.clientSecret, { payment_method: { card } });
-
-    if (result.error) {
-      alert("Falha no pagamento: " + result.error.message);
-    } else if (result.paymentIntent.status === "succeeded") {
-      alert("Pagamento concluído com sucesso!");
-      document.getElementById("popupStatus").textContent = "Pagamento realizado!";
-    }
-  } catch(err) {
+    const data = await res.json();
+    await stripe.redirectToCheckout({ sessionId: data.id });
+  } catch (err) {
     console.error(err);
-    alert("Erro inesperado no pagamento");
+    document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento.";
   }
 });
-
-// ------------------- FIM STRIPE -------------------
 
 window.onload=()=>{ initAutocomplete(); validarFormulario(); };
 </script>
