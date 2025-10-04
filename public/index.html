@@ -100,7 +100,10 @@
 
     <div class="grid grid-cols-3 gap-2">
       <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">VOLTAR</button>
-      <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">EFETUAR PAGAMENTO</button>
+      <!-- BOTÃO EFETUAR PAGAMENTO PRONTO -->
+      <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">
+        EFETUAR PAGAMENTO
+      </button>
       <button id="btn-fecharResumo" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">CANCELAR</button>
     </div>
   </div>
@@ -247,8 +250,8 @@ camposObrig.forEach((campo, idx) => {
   });
 });
 
-// ----------------- INTEGRAÇÃO STRIPE -----------------
-const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13SUA_PUBLIC_KEY_STRIPE"); // substitua pela sua chave pública Stripe
+// ----------------- BOTÃO EFETUAR PAGAMENTO -----------------
+const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13SUA_PUBLIC_KEY_STRIPE");
 
 document.getElementById("confirmarPagamento").addEventListener("click", async () => {
   try {
@@ -258,7 +261,11 @@ document.getElementById("confirmarPagamento").addEventListener("click", async ()
       body: JSON.stringify({ amount: Math.round(ultimoCusto * 100), currency: "eur" })
     });
     const data = await res.json();
-    await stripe.redirectToCheckout({ sessionId: data.id });
+    const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+    if (error) {
+      console.error(error);
+      document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento.";
+    }
   } catch (err) {
     console.error(err);
     document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento.";
