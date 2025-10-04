@@ -1,27 +1,19 @@
 {
   "name": "reserva-backend",
   "version": "1.0.0",
-  "description": "Backend para sistema de reservas de viagem",
+  "description": "Backend para reservas com Stripe e MongoDB",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
-  "keywords": [
-    "reserva",
-    "viagem",
-    "backend"
-  ],
-  "author": "Seu Nome",
-  "license": "MIT",
   "dependencies": {
-    "body-parser": "^1.20.3",
+    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
+    "dotenv": "^16.4.1",
+    "express": "^4.19.2",
     "express-basic-auth": "^1.2.1",
-    "mongodb": "^5.7.0",
-    "mongoose": "^8.19.0",
-    "stripe": "^12.18.0"
+    "mongoose": "^8.3.1",
+    "stripe": "^14.21.0"
   }
 }
