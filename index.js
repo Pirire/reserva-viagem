@@ -78,4 +78,41 @@ app.post("/checkout", async (req, res) => {
 });
 
 // Webhook Stripe para salvar reserva após pagamento
-app.post("/webhook", bodyParser.raw({ type: "application/json" }), asy
+app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error("Webhook error:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    try {
+      const novaReserva = new Reserva({
+        nome: session.metadata.nome,
+        email: session.metadata.email,
+        categoria: session.metadata.categoria,
+        partida: session.metadata.partida,
+        destino: session.metadata.destino,
+        datahora: session.metadata.datahora,
+        valor: session.amount_total / 100,
+        codigo: session.metadata.codigo
+      });
+      await novaReserva.save();
+      console.log("Reserva salva após pagamento ✅");
+    } catch (err) {
+      console.error("Erro ao salvar reserva:", err.message);
+    }
+  }
+
+  res.json({ received: true });
+});
+
+// Inicializa servidor
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
