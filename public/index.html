@@ -100,16 +100,14 @@
     
     <div class="grid grid-cols-3 gap-2">
       <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">VOLTAR</button>
-      <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">
-        EFETUAR PAGAMENTO
-      </button>
+      <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">EFETUAR PAGAMENTO</button>
       <button id="btn-fecharResumo" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">CANCELAR</button>
     </div>
   </div>
 </div>
 
 <script>
-const backendURL = "https://realmetropolis-reservas.onrender.com";
+const backendURL = "https://reserva-backend-uu52.onrender.com";
 let precoCategoria = 0, categoriaSelecionada = "", ultimoCusto = 0, ultimaDistancia = 0, ultimoTempo = "";
 let codigoReservaAtual = "", partidaPlace = null, destinoPlace = null;
 
@@ -140,7 +138,6 @@ document.getElementById("codigoReservaInd").addEventListener("input", ()=> {
   document.getElementById("btn-cancelar").disabled = !document.getElementById("codigoReservaInd").value.trim();
 });
 
-<<<<<<< HEAD
 // Google Maps
 let map, directionsService, directionsRenderer;
 function initAutocomplete(){
@@ -189,6 +186,7 @@ function calcularRota(){
   });
 }
 
+// Localização
 document.getElementById("btnLocalizacao").addEventListener("click",()=>{
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(pos=>{
@@ -205,6 +203,7 @@ document.getElementById("btnLocalizacao").addEventListener("click",()=>{
   } else alert("Geolocalização não suportada.");
 });
 
+// OK button
 document.getElementById("OK").addEventListener("click",()=>{
   codigoReservaAtual="RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
   const codigoInd=document.getElementById("codigoReservaInd").value.trim();
@@ -226,6 +225,7 @@ document.getElementById("OK").addEventListener("click",()=>{
   document.getElementById("popupResumo").classList.remove("hidden");
 });
 
+// BOTÕES DO POPUP
 document.getElementById("btn-voltar").addEventListener("click",()=>{
   document.getElementById("popupResumo").classList.add("hidden");
   document.getElementById("conteudoPrincipal").classList.remove("hidden");
@@ -236,11 +236,7 @@ document.getElementById("btn-fecharResumo").addEventListener("click",()=>{
   document.getElementById("conteudoPrincipal").classList.remove("hidden");
 });
 
-=======
-// ----------------- BOTÃO EFETUAR PAGAMENTO -----------------
->>>>>>> 41c098f (Atualiza frontend com botão de pagamento apontando para Render)
-const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13");
-
+// --- BOTÃO EFETUAR PAGAMENTO ---
 document.getElementById("confirmarPagamento").addEventListener("click", async () => {
   try {
     const nome = document.getElementById("nome").value;
@@ -251,25 +247,37 @@ document.getElementById("confirmarPagamento").addEventListener("click", async ()
     const datahora = document.getElementById("datahora").value;
     const valor = parseFloat(ultimoCusto);
 
-    const response = await fetch(`${backendURL}/criar-checkout`, {
+    const response = await fetch(`${backendURL}/checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nome, email, categoria, partida, destino, valor, datahora })
     });
 
     const data = await response.json();
+
     if (data.url) {
       window.location.href = data.url;
     } else {
       document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento (sem URL).";
     }
   } catch (err) {
-    console.error("Erro no fetch:", err);
+    console.error(err);
     document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento (falha de rede ou JSON).";
   }
 });
 
-window.onload=()=>{ validarFormulario(); };
+// ENTER para pular entre campos
+camposObrig.forEach((campo, idx) => {
+  campo.addEventListener('keydown', e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      let nextIdx = (idx + 1) % camposObrig.length;
+      camposObrig[nextIdx].focus();
+    }
+  });
+});
+
+window.onload=()=>{ initAutocomplete(); validarFormulario(); };
 </script>
 </body>
 </html>
