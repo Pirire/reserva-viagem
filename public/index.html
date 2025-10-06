@@ -140,6 +140,7 @@ document.getElementById("codigoReservaInd").addEventListener("input", ()=> {
   document.getElementById("btn-cancelar").disabled = !document.getElementById("codigoReservaInd").value.trim();
 });
 
+<<<<<<< HEAD
 // Google Maps
 let map, directionsService, directionsRenderer;
 function initAutocomplete(){
@@ -235,10 +236,10 @@ document.getElementById("btn-fecharResumo").addEventListener("click",()=>{
   document.getElementById("conteudoPrincipal").classList.remove("hidden");
 });
 
+=======
+// ----------------- BOTÃO EFETUAR PAGAMENTO -----------------
+>>>>>>> 41c098f (Atualiza frontend com botão de pagamento apontando para Render)
 const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13");
-
-// URL DO BACKEND NA NUVEM (Render)
-const backendURL = "https://realmetropolis-reservas.onrender.com";
 
 document.getElementById("confirmarPagamento").addEventListener("click", async () => {
   try {
@@ -250,28 +251,25 @@ document.getElementById("confirmarPagamento").addEventListener("click", async ()
     const datahora = document.getElementById("datahora").value;
     const valor = parseFloat(ultimoCusto);
 
-    const response = await fetch(`${backendURL}/checkout`, { 
+    const response = await fetch(`${backendURL}/criar-checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nome, email, categoria, partida, destino, valor, datahora })
     });
 
     const data = await response.json();
-    console.log("🔍 Resposta do backend:", data);
-
     if (data.url) {
       window.location.href = data.url;
     } else {
       document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento (sem URL).";
     }
   } catch (err) {
-    console.error("❌ Erro no fetch:", err);
+    console.error("Erro no fetch:", err);
     document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento (falha de rede ou JSON).";
   }
 });
 
-
-window.onload=()=>{ initAutocomplete(); validarFormulario(); };
+window.onload=()=>{ validarFormulario(); };
 </script>
 </body>
 </html>
