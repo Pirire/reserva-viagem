@@ -110,7 +110,7 @@
 </div>
 
 <script>
-const backendURL = "https://reserva-backend-uu52.onrender.com";
+const backendURL = "https://realmetropolis-reservas.onrender.com";
 let precoCategoria = 0, categoriaSelecionada = "", ultimoCusto = 0, ultimaDistancia = 0, ultimoTempo = "";
 let codigoReservaAtual = "", partidaPlace = null, destinoPlace = null;
 
@@ -250,25 +250,36 @@ camposObrig.forEach((campo, idx) => {
   });
 });
 
-// ----------------- BOTÃO EFETUAR PAGAMENTO -----------------
-const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13SUA_PUBLIC_KEY_STRIPE");
+// ----------------- BOTÃO EFETUAR PAGAMENTO (CORRIGIDO) -----------------
+const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13");
 
 document.getElementById("confirmarPagamento").addEventListener("click", async () => {
   try {
-    const res = await fetch(`${backendURL}/create-payment-intent`, {
+    const nome = document.getElementById("nome").value;
+    const email = document.getElementById("email").value;
+    const categoria = categoriaSelecionada;
+    const partida = document.getElementById("partida").value;
+    const destino = document.getElementById("destino").value;
+    const datahora = document.getElementById("datahora").value;
+    const valor = parseFloat(ultimoCusto);
+
+    const response = await fetch(`${backendURL}/checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: Math.round(ultimoCusto * 100), currency: "eur" })
+      body: JSON.stringify({ nome, email, categoria, partida, destino, valor, datahora })
     });
-    const data = await res.json();
-    const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-    if (error) {
-      console.error(error);
-      document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento.";
+
+    const data = await response.json();
+    console.log("🔍 Resposta do backend:", data);
+
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento (sem URL).";
     }
   } catch (err) {
-    console.error(err);
-    document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento.";
+    console.error("❌ Erro no fetch:", err);
+    document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento (falha de rede ou JSON).";
   }
 });
 
