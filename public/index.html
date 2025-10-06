@@ -31,7 +31,6 @@
     <div id="google_translate_element"></div>
   </div>
 
-  <!-- TÍTULO ALTERADO -->
   <h1 class="text-2xl font-extrabold text-center text-green-600 mb-2">INSERIR DADOS DA VIAGEM</h1>
 
   <label for="partida" class="font-bold text-gray-700">Local de Partida</label>
@@ -68,7 +67,6 @@
     </div>
   </div>
 
-  <!-- SELEÇÃO DE CATEGORIA MOVIDA PARA AQUI -->
   <h2 class="text-xl font-bold mb-1 text-center">SELECIONE A CATEGORIA</h2>
   <div id="categoria" class="grid grid-cols-2 gap-1 border p-1 rounded-xl mb-1">
     <button data-preco="0.55" data-nome="Confort" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">Confort</button>
@@ -86,7 +84,6 @@
   </div>
 </div>
 
-<!-- Popup resumo -->
 <div id="popupResumo" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
   <div class="bg-white rounded-2xl p-6 w-11/12 max-w-md shadow-lg space-y-4">
     <h2 class="text-xl font-bold text-green-700 text-center">Resumo da Viagem</h2>
@@ -101,10 +98,8 @@
     <p><strong>Código de Reserva/Indicação:</strong> <span id="resCodigo"></span></p>
     <div id="popupStatus" class="text-center font-bold mt-2 text-green-700"></div>
     
-    <!-- BOTÕES MODIFICADOS -->
     <div class="grid grid-cols-3 gap-2">
       <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">VOLTAR</button>
-      <!-- BOTÃO EFETUAR PAGAMENTO PRONTO -->
       <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">
         EFETUAR PAGAMENTO
       </button>
@@ -114,7 +109,7 @@
 </div>
 
 <script>
-const backendURL = "https://reserva-backend-uu52.onrender.com";
+const backendURL = "https://realmetropolis-reservas.onrender.com";
 let precoCategoria = 0, categoriaSelecionada = "", ultimoCusto = 0, ultimaDistancia = 0, ultimoTempo = "";
 let codigoReservaAtual = "", partidaPlace = null, destinoPlace = null;
 
@@ -193,7 +188,6 @@ function calcularRota(){
   });
 }
 
-// Localização
 document.getElementById("btnLocalizacao").addEventListener("click",()=>{
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(pos=>{
@@ -210,7 +204,6 @@ document.getElementById("btnLocalizacao").addEventListener("click",()=>{
   } else alert("Geolocalização não suportada.");
 });
 
-// OK button
 document.getElementById("OK").addEventListener("click",()=>{
   codigoReservaAtual="RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
   const codigoInd=document.getElementById("codigoReservaInd").value.trim();
@@ -232,7 +225,6 @@ document.getElementById("OK").addEventListener("click",()=>{
   document.getElementById("popupResumo").classList.remove("hidden");
 });
 
-// BOTÕES DO POPUP
 document.getElementById("btn-voltar").addEventListener("click",()=>{
   document.getElementById("popupResumo").classList.add("hidden");
   document.getElementById("conteudoPrincipal").classList.remove("hidden");
@@ -243,48 +235,38 @@ document.getElementById("btn-fecharResumo").addEventListener("click",()=>{
   document.getElementById("conteudoPrincipal").classList.remove("hidden");
 });
 
-// --- BOTÃO EFETUAR PAGAMENTO ---
-document.getElementById("confirmarPagamento").addEventListener("click", () => {
-  const stripeLink = "https://buy.stripe.com/test_123456789ABCDEFGH"; // 🔗 Substitua pelo seu link real
-  window.open(stripeLink, "_blank");
-});
-
-// ENTER para pular entre campos
-camposObrig.forEach((campo, idx) => {
-  campo.addEventListener('keydown', e => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      let nextIdx = (idx + 1) % camposObrig.length;
-      camposObrig[nextIdx].focus();
-    }
-  });
-});
-
-<<<<<<< HEAD
-=======
-// ----------------- BOTÃO EFETUAR PAGAMENTO -----------------
-const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13SUA_PUBLIC_KEY_STRIPE");
+const stripe = Stripe("pk_test_51S5DWFRp3yrCaO94FKa6rZ2YBUVSQ6ykSzx1GnRW5zmFCarNb1Wce1GhpAM3uEpmKLhnsTubGqC4o0hr8UMVdsj000SwLnSI13");
 
 document.getElementById("confirmarPagamento").addEventListener("click", async () => {
   try {
-    const res = await fetch(`${backendURL}/create-payment-intent`, {
+    const nome = document.getElementById("nome").value;
+    const email = document.getElementById("email").value;
+    const categoria = categoriaSelecionada;
+    const partida = document.getElementById("partida").value;
+    const destino = document.getElementById("destino").value;
+    const datahora = document.getElementById("datahora").value;
+    const valor = parseFloat(ultimoCusto);
+
+    const response = await fetch(`${backendURL}/checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: Math.round(ultimoCusto * 100), currency: "eur" })
+      body: JSON.stringify({ nome, email, categoria, partida, destino, valor, datahora })
     });
-    const data = await res.json();
-    const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-    if (error) {
-      console.error(error);
-      document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento.";
+
+    const data = await response.json();
+    console.log("🔍 Resposta do backend:", data);
+
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento (sem URL).";
     }
   } catch (err) {
-    console.error(err);
-    document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento.";
+    console.error("❌ Erro no fetch:", err);
+    document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento (falha de rede ou JSON).";
   }
 });
 
->>>>>>> 7eb83b4 (Atualiza botão EFETUAR PAGAMENTO e arquivos deletados)
 window.onload=()=>{ initAutocomplete(); validarFormulario(); };
 </script>
 </body>
