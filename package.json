@@ -1,26 +1,9 @@
 {
- HEAD
   "name": "reserva-backend",
   "version": "1.0.0",
   "description": "Backend para reservas com Stripe e MongoDB",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.1",
-    "express": "^4.19.2",
-    "express-basic-auth": "^1.2.1",
-    "mongoose": "^8.3.1",
-    "stripe": "^14.21.0"
-
-  "name": "reservas-viagem",
-  "version": "1.0.0",
-  "description": "Aplicação de reservas de viagem com envio de e-mail e Stripe",
-  "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
@@ -32,9 +15,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "mongodb": "^5.9.2",
-    "nodemailer": "^6.10.1",
+    "express-basic-auth": "^1.2.1",
+    "mongoose": "^8.3.1",
     "stripe": "^14.25.0"
- 7ad24bd (Preparar backend e frontend para deploy na nuvem)
   }
 }
