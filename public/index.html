@@ -236,6 +236,7 @@ document.getElementById("btn-fecharResumo").addEventListener("click",()=>{
   document.getElementById("conteudoPrincipal").classList.remove("hidden");
 });
 
+
 // --- BOTÃO EFETUAR PAGAMENTO ---
 document.getElementById("confirmarPagamento").addEventListener("click", async () => {
   try {
@@ -252,6 +253,30 @@ document.getElementById("confirmarPagamento").addEventListener("click", async ()
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nome, email, categoria, partida, destino, valor, datahora })
     });
+
+document.getElementById("confirmarPagamento").addEventListener("click", async () => {
+  const nome = document.getElementById("nome").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const categoria = categoriaSelecionada;
+  const partida = document.getElementById("partida").value.trim();
+  const destino = document.getElementById("destino").value.trim();
+  const datahora = document.getElementById("datahora").value;
+  const valor = parseFloat(ultimoCusto);
+
+  try {
+    const response = await fetch(`${backendURL}/checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome, email, categoria, partida, destino, datahora, valor })
+    });
+    const data = await response.json();
+    if (data.url) window.open(data.url, "_blank");
+    else alert("Erro ao gerar pagamento.");
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao conectar com o backend.");
+  }
+});
 
     const data = await response.json();
 
