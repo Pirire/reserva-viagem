@@ -1,8 +1,4 @@
-.env 
 # Ignorar arquivos .env em qualquer pasta
-.env
-*/.env
-# Ignorar variáveis de ambiente
 .env
 */.env
 
