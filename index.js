@@ -40,9 +40,9 @@ const Reserva = mongoose.model("Reserva", reservaSchema);
 app.use(cors());
 app.use(bodyParser.json());
 
-// Servir frontend da pasta public (mantendo estrutura)
+// Servir frontend da pasta public
 const __dirname = path.resolve();
-app.use(express.static(path.join(__dirname, "public"))); // ✅ permite acessar admin-reservas.html e index.html
+app.use(express.static(path.join(__dirname, "public")));
 
 // ------------------- ROTAS -------------------
 
@@ -150,9 +150,9 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
   }
 });
 
-// ✅ Rotas para arquivos estáticos já servidos acima
-// Para SPA, opcionalmente redirecionar "/" para index.html
-app.get("/", (req, res) => {
+// ✅ Rota catch-all para servir o frontend
+app.get("*", (req, res) => {
+  // Ajustado para servir qualquer HTML dentro de public
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
