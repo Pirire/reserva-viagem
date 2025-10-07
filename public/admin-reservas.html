@@ -18,25 +18,27 @@
   <div id="reservaContainer" class="grid-4"></div>
 
 <script>
-const backendURL = "https://reserva-backend-uu52.onrender.com"; // seu backend
+const backendURL = "https://reserva-backend-uu52.onrender.com"; 
+
+// Coloque aqui suas credenciais do .env
+const username = "silvano_Silsa";
+const password = "SUA_SENHA_DO_ENV"; 
 
 // Função para buscar reservas
 async function carregarReservas() {
   try {
-    const username = prompt("Usuário admin:");
-    const password = prompt("Senha admin:");
-    if (!username || !password) return alert("Autenticação cancelada");
-
     const res = await fetch(`${backendURL}/reservas`, {
       headers: { "Authorization": "Basic " + btoa(`${username}:${password}`) }
     });
+    if (!res.ok) {
+      const data = await res.json();
+      return alert(data.error || "Não foi possível carregar reservas.");
+    }
     const data = await res.json();
-    if (!res.ok) return alert(data.error);
 
     const container = document.getElementById("reservaContainer");
     container.innerHTML = "";
 
-    // Ordena por data
     data.reservas.sort((a,b)=>new Date(a.datahora)-new Date(b.datahora));
 
     data.reservas.forEach(r => {
@@ -57,7 +59,7 @@ async function carregarReservas() {
       container.appendChild(card);
     });
 
-    // Adiciona eventos aos botões
+    // Botões "Enviar para Motorista"
     document.querySelectorAll(".btnMotorista").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id = btn.dataset.id;
@@ -72,7 +74,7 @@ async function carregarReservas() {
           const result = await resp.json();
           if (resp.ok) {
             alert("Reserva marcada para motorista ✅");
-            carregarReservas(); // recarrega lista
+            carregarReservas();
           } else alert(result.error);
         } catch(err) { console.error(err); alert("Erro ao atualizar reserva"); }
       });
@@ -80,7 +82,7 @@ async function carregarReservas() {
 
   } catch(err) {
     console.error(err);
-    alert("Erro ao carregar reservas");
+    alert("Erro ao carregar reservas.");
   }
 }
 
