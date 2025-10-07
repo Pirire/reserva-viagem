@@ -40,9 +40,9 @@ const Reserva = mongoose.model("Reserva", reservaSchema);
 app.use(cors());
 app.use(bodyParser.json());
 
-// Servir frontend da pasta public
+// Servir frontend da pasta public (mantendo estrutura)
 const __dirname = path.resolve();
-app.use(express.static(path.join(__dirname, "public"))); // ✅ permite acessar admin-reservas.html
+app.use(express.static(path.join(__dirname, "public"))); // ✅ permite acessar admin-reservas.html e index.html
 
 // ------------------- ROTAS -------------------
 
@@ -110,8 +110,6 @@ app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, r
       });
       await novaReserva.save();
       console.log("Reserva salva após pagamento ✅");
-
-      // (Opcional) enviar email de notificação ao admin aqui
     } catch (err) {
       console.error("Erro ao salvar reserva:", err.message);
     }
@@ -152,8 +150,9 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
   }
 });
 
-// ✅ mantém no fim — apenas para rotas desconhecidas
-app.get("*", (req, res) => {
+// ✅ Rotas para arquivos estáticos já servidos acima
+// Para SPA, opcionalmente redirecionar "/" para index.html
+app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
