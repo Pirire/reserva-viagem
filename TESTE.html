@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reserva de Viagem</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Google Maps com callback -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ6XoeSWUFGWFwPPgOQXZA1zfGpy1ECTg&libraries=places&callback=initMap" async defer></script>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+body {
+  background:#f0f0f0;
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden;
+}
+.input {
+  width:100%;
+  padding:0.3rem;
+  border:2px solid #3B82F6;
+  border-radius:.5rem;
+  font-size:0.8rem;
+}
+.linha-horizontal { display:flex; gap:.5rem; }
+#map { border-radius:1rem; height:320px; margin-top:.3rem; }
+.header-container { display:flex; justify-content:space-between; align-items:center; margin-bottom:.2rem; }
+#google_translate_element { transform:scale(0.7); transform-origin:top left; }
+.btn-cat { font-size:0.8rem; padding:0.3rem; border-radius:.5rem; }
+</style>
+</head>
+<body>
+
+<div id="conteudoPrincipal" class="bg-white p-3 rounded-2xl shadow-md w-full max-w-lg space-y-1 relative">
+
+  <!-- Cabeçalho -->
+  <div class="header-container">
+    <div id="google_translate_element"></div>
+    <div>
+      <div id="g_id_onload"
+           data-client_id="SEU_CLIENT_ID_GOOGLE"
+           data-callback="handleCredentialResponse"></div>
+      <div class="g_id_signin" data-type="standard"></div>
+    </div>
+  </div>
+
+  <h2 class="text-md font-bold text-center">SELECIONE A CATEGORIA</h2>
+  <div id="categoria" class="grid grid-cols-2 gap-1">
+    <button data-preco="0.55" class="btn-cat bg-green-300">Confort</button>
+    <button data-preco="0.75" class="btn-cat bg-green-300">Premium</button>
+    <button data-preco="1.00" class="btn-cat bg-green-300">XL 7</button>
+    <button data-preco="0.70" class="btn-cat bg-green-300">Passeio</button>
+  </div>
+
+  <label for="partida" class="text-sm">Local de Partida</label>
+  <div class="flex gap-1">
+    <input id="partida" class="input campoObrigatorio">
+    <button id="btnLocalizacao" class="px-2 bg-green-500 text-white rounded-xl text-xs">📍</button>
+  </div>
+
+  <label for="destino" class="text-sm">Local de Destino</label>
+  <input id="destino" class="input campoObrigatorio">
+
+  <div class="grid grid-cols-2 gap-1">
+    <div>
+      <label class="text-sm">Data e Hora</label>
+      <input id="datahora" type="datetime-local" class="input campoObrigatorio">
+    </div>
+    <div>
+      <label class="text-sm">Nome</label>
+      <input id="nome" class="input campoObrigatorio">
+    </div>
+  </div>
+
+  <div>
+    <label class="text-sm">Email</label>
+    <input id="email" type="email" class="input campoObrigatorio">
+  </div>
+
+  <div class="linha-horizontal">
+    <div class="flex-1">
+      <label class="text-sm">Contato</label>
+      <input id="contato" class="input campoObrigatorio">
+    </div>
+    <div class="flex-1">
+      <label class="text-sm">Nº Indicação</label>
+      <input id="codigoReservaInd" class="input">
+    </div>
+  </div>
+
+  <div id="map" class="w-full"></div>
+  <div id="infoViagem" class="text-center font-bold mt-1 text-sm"></div>
+
+  <div class="grid grid-cols-2 gap-1 mt-1">
+    <button id="OK" disabled class="w-full py-1 rounded-2xl bg-gray-400 text-white font-bold text-sm">OK</button>
+    <button id="btn-cancelar" disabled class="w-full py-1 rounded-2xl bg-red-500 text-white font-bold text-sm">Cancelar</button>
+  </div>
+</div>
+
+<script>
+let map, directionsService, directionsRenderer;
+let partidaPlace=null, destinoPlace=null, precoCategoria=0;
+
+// Iniciar Google Maps
+function initMap(){
+  map=new google.maps.Map(document.getElementById("map"),{
+    center:{lat:38.7169,lng:-9.139}, zoom:12
+  });
+  directionsService=new google.maps.DirectionsService();
+  directionsRenderer=new google.maps.DirectionsRenderer();
+  directionsRenderer.setMap(map);
+
+  const partidaAC=new google.maps.places.Autocomplete(document.getElementById("partida"),{fields:["place_id","formatted_address","geometry"]});
+  const destinoAC=new google.maps.places.Autocomplete(document.getElementById("destino"),{fields:["place_id","formatted_address","geometry"]});
+
+  partidaAC.addListener("place_changed",()=>{ partidaPlace=partidaAC.getPlace(); validarCampos(); });
+  destinoAC.addListener("place_changed",()=>{ destinoPlace=destinoAC.getPlace(); validarCampos(); });
+}
+
+// Validação
+const campos=document.querySelectorAll(".campoObrigatorio");
+const btnOK=document.getElementById("OK");
+campos.forEach(c=>c.addEventListener("input",validarCampos));
+function validarCampos(){
+  const todosPreenchidos=[...campos].every(c=>c.value.trim()!=="");
+  btnOK.disabled=!(todosPreenchidos && partidaPlace && destinoPlace && precoCategoria>0);
+  btnOK.classList.toggle("bg-green-500",!btnOK.disabled);
+  btnOK.classList.toggle("bg-gray-400",btnOK.disabled);
+}
+
+// Seleção de categoria
+document.querySelectorAll(".btn-cat").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".btn-cat").forEach(b=>b.classList.remove("bg-green-600"));
+    btn.classList.add("bg-green-600");
+    precoCategoria=parseFloat(btn.dataset.preco);
+    validarCampos();
+  });
+});
+
+// PIN localização
+document.getElementById("btnLocalizacao").addEventListener("click",()=>{
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const latlng={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      const geocoder=new google.maps.Geocoder();
+      geocoder.geocode({location:latlng},(results,status)=>{
+        if(status==="OK"&&results[0]){
+          document.getElementById("partida").value=results[0].formatted_address;
+          partidaPlace={place_id:results[0].place_id, formatted_address:results[0].formatted_address};
+          validarCampos();
+        }
+      });
+    });
+  }
+});
+
+// OK → traçar rota
+btnOK.addEventListener("click",()=>{
+  directionsService.route({
+    origin:{placeId:partidaPlace.place_id},
+    destination:{placeId:destinoPlace.place_id},
+    travelMode:'DRIVING'
+  },(result,status)=>{
+    if(status==='OK'){
+      directionsRenderer.setDirections(result);
+      const leg=result.routes[0].legs[0];
+      document.getElementById("infoViagem").textContent=
+        `Distância: ${leg.distance.text} | Tempo: ${leg.duration.text}`;
+    }
+  });
+});
+
+// Google Login
+function handleCredentialResponse(response){
+  const decoded=JSON.parse(atob(response.credential.split('.')[1]));
+  document.getElementById("nome").value=decoded.name||"";
+  document.getElementById("email").value=decoded.email||"";
+  validarCampos();
+}
+
+// Google Translate
+function googleTranslateElementInit(){ 
+  new google.translate.TranslateElement({pageLanguage:'pt'},'google_translate_element'); 
+}
+const scriptGT=document.createElement('script'); 
+scriptGT.src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"; 
+document.body.appendChild(scriptGT);
+</script>
+</body>
+</html>

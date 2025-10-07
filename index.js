@@ -150,9 +150,13 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
   }
 });
 
-// ✅ Rota catch-all para servir o frontend
+// ✅ Rota raiz serve admin-reservas.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin-reservas.html"));
+});
+
+// ✅ Catch-all para outras rotas desconhecidas
 app.get("*", (req, res) => {
-  // Ajustado para servir qualquer HTML dentro de public
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
