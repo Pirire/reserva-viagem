@@ -5,6 +5,8 @@ import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import Stripe from "stripe";
 import mongoose from "mongoose";
+import path from "path";
+import basicAuth from "express-basic-auth";
 
 dotenv.config();
 
@@ -29,6 +31,7 @@ const reservaSchema = new mongoose.Schema({
   datahora: Date,
   valor: Number,
   codigo: String,
+  paraMotorista: { type: Boolean, default: false },
   criadoEm: { type: Date, default: Date.now }
 });
 const Reserva = mongoose.model("Reserva", reservaSchema);
@@ -37,15 +40,18 @@ const Reserva = mongoose.model("Reserva", reservaSchema);
 app.use(cors());
 app.use(bodyParser.json());
 
-// Servir frontend
-app.use(express.static("public"));
+// Servir frontend da pasta public
+const __dirname = path.resolve();
+app.use(express.static(path.join(__dirname, "public")));
 
-// Rota teste
+// ------------------- ROTAS -------------------
+
+// Teste backend
 app.get("/api", (req, res) => {
   res.json({ message: "Backend de reservas ativo 🚀" });
 });
 
-// Rota de pagamento Stripe
+// Stripe checkout
 app.post("/checkout", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, valor, datahora } = req.body;
@@ -65,8 +71,8 @@ app.post("/checkout", async (req, res) => {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.FRONTEND_URL}/sucesso.html`,
-      cancel_url: `${process.env.FRONTEND_URL}/`,
+      success_url: `${process.env.FRONTEND_URL}/?status=sucesso`,
+      cancel_url: `${process.env.FRONTEND_URL}/?status=cancelado`,
       metadata: { nome, email, categoria, partida, destino, datahora, codigo }
     });
 
@@ -77,7 +83,8 @@ app.post("/checkout", async (req, res) => {
   }
 });
 
-// Webhook Stripe para salvar reserva após pagamento
+
+// Webhook Stripe
 app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
@@ -104,12 +111,53 @@ app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, r
       });
       await novaReserva.save();
       console.log("Reserva salva após pagamento ✅");
+
+      // Aqui você pode enviar notificação por email ao admin usando SMTP
+      // Exemplo usando nodemailer (não incluído ainda)
+      
     } catch (err) {
       console.error("Erro ao salvar reserva:", err.message);
     }
   }
 
   res.json({ received: true });
+});
+
+// ----------------- ROTAS ADMIN -----------------
+
+// Proteção Basic Auth para admin
+app.use("/reservas", basicAuth({
+  users: { [process.env.ADMIN_USER]: process.env.ADMIN_PASS },
+  challenge: true
+}));
+
+// Listar todas reservas
+app.get("/reservas", async (req, res) => {
+  try {
+    const reservas = await Reserva.find();
+    res.json({ reservas });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar reservas" });
+  }
+});
+
+// Marcar reserva como enviada para motorista
+app.patch("/reservas/:id/motorista", async (req, res) => {
+  try {
+    const reserva = await Reserva.findByIdAndUpdate(
+      req.params.id,
+      { paraMotorista: true },
+      { new: true }
+    );
+    res.json({ reserva });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao atualizar reserva" });
+  }
+});
+
+// Para todas as outras rotas, servir index.html (SPA)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Inicializa servidor

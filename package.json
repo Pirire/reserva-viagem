@@ -17,6 +17,7 @@
     "express": "^4.21.2",
     "express-basic-auth": "^1.2.1",
     "mongoose": "^8.19.1",
+    "nodemailer": "^7.0.7",
     "stripe": "^14.25.0"
   }
 }
