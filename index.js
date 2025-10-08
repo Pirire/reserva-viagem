@@ -1,4 +1,4 @@
-// index.js - Backend de Reservas com Stripe, MongoDB e Painel Admin Protegido
+// index.js - Servidor de Reservas para Render
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -9,54 +9,73 @@ import path from "path";
 import basicAuth from "express-basic-auth";
 
 dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 10000;
+
+// Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// ================== Conexão MongoDB ==================
+// Conectar MongoDB
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("✅ MongoDB conectado"))
-  .catch(err => console.error("❌ Erro ao conectar MongoDB:", err));
+  .then(() => console.log("MongoDB conectado ✅"))
+  .catch(err => console.error("Erro ao conectar MongoDB:", err));
 
-// ================== Modelo de Reserva ==================
+// ------------------- MODELOS -------------------
+
+// Modelo de Reserva
 const reservaSchema = new mongoose.Schema({
   nome: String,
   email: String,
-  contato: String,
   categoria: String,
   partida: String,
   destino: String,
   datahora: Date,
   valor: Number,
   codigo: String,
-  status: { type: String, default: "paga" },
-  paraMotorista: { type: String, default: "" },
+  paraMotorista: { type: Boolean, default: false },
   criadoEm: { type: Date, default: Date.now }
 });
 const Reserva = mongoose.model("Reserva", reservaSchema);
 
-// ================== Middlewares ==================
+// Modelo de Motorista
+const motoristaSchema = new mongoose.Schema({
+  nome: String,
+  veiculo: String,
+  disponivel: Boolean,
+  email: String,
+  telefone: String
+});
+const Motorista = mongoose.model("Motorista", motoristaSchema);
+
+// Modelo de Taxa de Cancelamento
+const taxaCancelamentoSchema = new mongoose.Schema({
+  categoria: String,
+  valor: Number
+});
+const TaxaCancelamento = mongoose.model("TaxaCancelamento", taxaCancelamentoSchema);
+
+// ------------------- MIDDLEWARES -------------------
 app.use(cors());
 app.use(bodyParser.json());
 
-// ================== Frontend ==================
+// Servir frontend da pasta public
 const __dirname = path.resolve();
 app.use(express.static(path.join(__dirname, "public")));
 
-// ================== Rotas ==================
+// ------------------- ROTAS -------------------
 
-// Teste do backend
+// Teste backend
 app.get("/api", (req, res) => {
-  res.json({ message: "🚀 Backend de reservas ativo" });
+  res.json({ message: "Backend de reservas ativo 🚀" });
 });
 
-// ------------------ PAGAMENTO + GRAVAÇÃO DE RESERVA ------------------
+// Stripe checkout
 app.post("/checkout", async (req, res) => {
   try {
-    const { nome, email, contato, categoria, partida, destino, datahora, valor } = req.body;
-    const codigo = "RM-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const { nome, email, categoria, partida, destino, valor, datahora } = req.body;
+    const codigo = "RM-" + Math.random().toString(36).substring(2,6).toUpperCase();
 
-    // Cria sessão de pagamento Stripe
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -65,25 +84,25 @@ app.post("/checkout", async (req, res) => {
         {
           price_data: {
             currency: "eur",
-            product_data: { name: `Reserva de viagem - ${categoria}` },
+            product_data: { name: `Reserva de viagem - ${nome}` },
             unit_amount: Math.round(valor * 100),
           },
           quantity: 1,
         },
       ],
-      success_url: `${process.env.FRONTEND_URL}/?status=sucesso&codigo=${codigo}`,
+      success_url: `${process.env.FRONTEND_URL}/?status=sucesso`,
       cancel_url: `${process.env.FRONTEND_URL}/?status=cancelado`,
-      metadata: { nome, email, contato, categoria, partida, destino, datahora, codigo }
+      metadata: { nome, email, categoria, partida, destino, datahora, codigo }
     });
 
-    res.json({ url: session.url });
+    res.json({ url: session.url, success: true });
   } catch (err) {
     console.error("Erro Stripe:", err);
     res.status(500).json({ error: "Erro ao criar checkout", detalhes: err.message });
   }
 });
 
-// ------------------ WEBHOOK STRIPE ------------------
+// Webhook Stripe
 app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
@@ -98,20 +117,18 @@ app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, r
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     try {
-      const reserva = new Reserva({
+      const novaReserva = new Reserva({
         nome: session.metadata.nome,
         email: session.metadata.email,
-        contato: session.metadata.contato,
         categoria: session.metadata.categoria,
         partida: session.metadata.partida,
         destino: session.metadata.destino,
         datahora: session.metadata.datahora,
         valor: session.amount_total / 100,
-        codigo: session.metadata.codigo,
-        status: "paga"
+        codigo: session.metadata.codigo
       });
-      await reserva.save();
-      console.log("✅ Reserva salva após pagamento:", reserva.codigo);
+      await novaReserva.save();
+      console.log("Reserva salva após pagamento ✅");
     } catch (err) {
       console.error("Erro ao salvar reserva:", err.message);
     }
@@ -120,66 +137,76 @@ app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, r
   res.json({ received: true });
 });
 
-// ------------------ CANCELAR RESERVA ------------------
-app.post("/cancelar", async (req, res) => {
-  try {
-    const { contato, codigo } = req.body;
-    const reserva = await Reserva.findOne({ contato, codigo });
+// ----------------- ROTAS ADMIN -----------------
 
-    if (!reserva) {
-      return res.json({ success: false, message: "Reserva não encontrada ou dados incorretos." });
-    }
-
-    reserva.status = "cancelada";
-    await reserva.save();
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Erro cancelamento:", err);
-    res.status(500).json({ success: false });
-  }
-});
-
-// ------------------ ADMIN (PROTEGIDO) ------------------
-app.use("/admin", basicAuth({
+// Proteção Basic Auth para admin
+app.use("/reservas", basicAuth({
   users: { [process.env.ADMIN_USER]: process.env.ADMIN_PASS },
   challenge: true
 }));
 
-// Lista reservas por ordem de data (mais próxima primeiro)
-app.get("/admin/reservas", async (req, res) => {
+// Listar todas reservas
+app.get("/reservas", async (req, res) => {
   try {
     const reservas = await Reserva.find().sort({ datahora: 1 });
-    res.json(reservas);
+    res.json({ reservas });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao listar reservas" });
+    res.status(500).json({ error: "Erro ao buscar reservas" });
   }
 });
 
-// Atribuir motorista à reserva
-app.patch("/admin/reservas/:id/motorista", async (req, res) => {
+// Marcar reserva como enviada para motorista
+app.patch("/reservas/:id/motorista", async (req, res) => {
   try {
     const reserva = await Reserva.findByIdAndUpdate(
       req.params.id,
-      { paraMotorista: req.body.motorista },
+      { paraMotorista: true },
       { new: true }
     );
-    res.json(reserva);
+    res.json({ reserva });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar reserva" });
   }
 });
 
-// ------------------ ROTAS FRONTEND ------------------
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+// ----------------- ROTAS MOTORISTAS -----------------
+
+// Consultar motoristas disponíveis para determinada data/hora
+app.get("/motoristasDisponiveis", async (req, res) => {
+  try {
+    const { datahora } = req.query;
+    if (!datahora) return res.status(400).json({ error: "Parâmetro datahora obrigatório" });
+
+    // Buscar motoristas que estão disponíveis
+    const motoristas = await Motorista.find({ disponivel: true });
+    res.json({ motoristas });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar motoristas disponíveis" });
+  }
 });
 
+// ----------------- ROTAS TAXA CANCELAMENTO -----------------
+
+app.get("/taxasCancelamento", async (req, res) => {
+  try {
+    const taxas = await TaxaCancelamento.find();
+    res.json({ taxas });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar taxas de cancelamento" });
+  }
+});
+
+// ✅ Rota raiz serve admin-reservas.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin-reservas.html"));
+});
+
+// ✅ Catch-all para outras rotas desconhecidas
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ================== Inicializa servidor ==================
+// Inicializa servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
