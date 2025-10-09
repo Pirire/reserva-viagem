@@ -1,4 +1,4 @@
-// index.js - Servidor de Reservas para Render
+// index.js - Servidor de Reservas
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import path from "path";
 import basicAuth from "express-basic-auth";
 
+// Models
 import Reserva from "./models/Reserva.js";
 import Motorista from "./models/Motorista.js";
 import TaxaCancelamento from "./models/TaxaCancelamento.js";
@@ -140,14 +141,11 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
 });
 
 // ----------------- ROTAS MOTORISTAS -----------------
-
-// Consultar motoristas disponíveis para determinada data/hora
 app.get("/motoristasDisponiveis", async (req, res) => {
   try {
     const { datahora } = req.query;
     if (!datahora) return res.status(400).json({ error: "Parâmetro datahora obrigatório" });
 
-    // Buscar motoristas que estão disponíveis
     const motoristas = await Motorista.find({ disponivel: true });
     res.json({ motoristas });
   } catch (err) {
@@ -156,7 +154,6 @@ app.get("/motoristasDisponiveis", async (req, res) => {
 });
 
 // ----------------- ROTAS TAXA CANCELAMENTO -----------------
-
 app.get("/taxasCancelamento", async (req, res) => {
   try {
     const taxas = await TaxaCancelamento.find();
@@ -166,19 +163,24 @@ app.get("/taxasCancelamento", async (req, res) => {
   }
 });
 
-// ----------------- ROTA RAIZ -----------------
+// ----------------- ROTAS DE FRONTEND -----------------
 
-// Admin reserva HTML
-app.get("/", (req, res) => {
+// Painel admin
+app.get("/admin-reservas.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin-reservas.html"));
 });
 
-// Catch-all para frontend
+// Frontend cliente
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Catch-all (outras rotas desconhecidas)
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Inicializa servidor
+// ----------------- INICIALIZA SERVIDOR -----------------
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
