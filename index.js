@@ -1,4 +1,3 @@
-// index.js - Servidor de Reservas
 import express from "express";
 import path from "path";
 import basicAuth from "express-basic-auth";
@@ -6,36 +5,27 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { fileURLToPath } from "url";
 import Reserva from "./models/Reserva.js";
-import Motorista from "./models/Motorista.js";
-import TaxaCancelamento from "./models/TaxaCancelamento.js";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Corrigir __dirname em ES Modules
+// Corrigir __dirname em ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --------------------
-// Conexão com MongoDB
-// --------------------
+// Conexão MongoDB
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB conectado ✅"))
   .catch(err => console.error("❌ Erro ao conectar no MongoDB", err));
 
-// --------------------
-// Middlewares
-// --------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --------------------
-// Rotas de reservas
-// --------------------
+// Rotas API de reservas
 app.get("/reservas", async (req, res) => {
   try {
-    const reservas = await Reserva.find().sort({ datahora: 1 });
+    const reservas = await Reserva.find().sort({ createdAt: -1 });
     res.json({ reservas });
   } catch (err) {
     console.error(err);
@@ -43,6 +33,7 @@ app.get("/reservas", async (req, res) => {
   }
 });
 
+// Atualizar status de envio
 app.patch("/reservas/:id/motorista", async (req, res) => {
   try {
     const reserva = await Reserva.findById(req.params.id);
@@ -58,35 +49,25 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
   }
 });
 
-// --------------------
-// Proteção Basic Auth para admin
-// --------------------
+// Proteção painel admin
 app.use("/admin", basicAuth({
   users: { [process.env.ADMIN_USER]: process.env.ADMIN_PASS },
   challenge: true
 }));
 
-// --------------------
-// Servir frontend admin
-// --------------------
+// Servir painel admin
 app.use("/admin", express.static(path.join(__dirname, "admin")));
 
-// --------------------
 // Servir frontend público
-// --------------------
 app.use(express.static(path.join(__dirname, "public")));
 
-// --------------------
-// Catch-all para frontend público
-// --------------------
+// Rota catch-all para frontend público
 app.get("*", (req, res) => {
-  if (req.path.startsWith("/admin")) return; // evita conflito com admin
+  if (req.path.startsWith("/admin")) return;
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// --------------------
-// Inicializa servidor
-// --------------------
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
