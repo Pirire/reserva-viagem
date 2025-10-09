@@ -7,12 +7,13 @@ import mongoose from "mongoose";
 import { fileURLToPath } from "url";
 import Reserva from "./models/Reserva.js";
 import Motorista from "./models/Motorista.js";
+import TaxaCancelamento from "./models/TaxaCancelamento.js";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Corrigir __dirname em módulos ES
+// Corrigir __dirname em ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -34,7 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 // --------------------
 app.get("/reservas", async (req, res) => {
   try {
-    const reservas = await Reserva.find().sort({ createdAt: -1 });
+    const reservas = await Reserva.find().sort({ datahora: 1 });
     res.json({ reservas });
   } catch (err) {
     console.error(err);
@@ -79,37 +80,8 @@ app.use(express.static(path.join(__dirname, "public")));
 // Catch-all para frontend público
 // --------------------
 app.get("*", (req, res) => {
-  if (req.path.startsWith("/admin")) return;
+  if (req.path.startsWith("/admin")) return; // evita conflito com admin
   res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// --------------------
-// Rota de motoristas (para admin)
-// --------------------
-app.get("/motoristas", async (req, res) => {
-  try {
-    const motoristas = await Motorista.find();
-
-    const motoristasComViagens = await Promise.all(motoristas.map(async (m) => {
-      const reservas = await Reserva.find({
-        paraMotorista: true,
-        motorista: m.nome,
-        datahora: { $gte: new Date() } // somente futuras
-      }).sort({ datahora: 1 });
-
-      return {
-        _id: m._id,
-        nome: m.nome,
-        disponivel: m.disponivel,
-        proximasViagens: reservas.map(r => ({ datahora: r.datahora, destino: r.destino }))
-      };
-    }));
-
-    res.json({ motoristas: motoristasComViagens });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao buscar motoristas" });
-  }
 });
 
 // --------------------
