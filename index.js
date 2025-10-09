@@ -1,4 +1,4 @@
-// index.js - Servidor de Reservas
+// index.js - Servidor de Reservas para Render
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -8,7 +8,7 @@ import mongoose from "mongoose";
 import path from "path";
 import basicAuth from "express-basic-auth";
 
-// Models
+// Importando modelos
 import Reserva from "./models/Reserva.js";
 import Motorista from "./models/Motorista.js";
 import TaxaCancelamento from "./models/TaxaCancelamento.js";
@@ -30,7 +30,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use(cors());
 app.use(bodyParser.json());
 
-// Servir frontend da pasta public
+// Servir frontend público
 const __dirname = path.resolve();
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -111,12 +111,15 @@ app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, r
 // ----------------- ROTAS ADMIN -----------------
 
 // Proteção Basic Auth para admin
-app.use("/reservas", basicAuth({
+app.use("/admin", basicAuth({
   users: { [process.env.ADMIN_USER]: process.env.ADMIN_PASS },
   challenge: true
 }));
 
-// Listar todas reservas
+// Servir frontend admin
+app.use("/admin", express.static(path.join(__dirname, "admin")));
+
+// Listar todas reservas (rota API para admin)
 app.get("/reservas", async (req, res) => {
   try {
     const reservas = await Reserva.find().sort({ datahora: 1 });
@@ -141,11 +144,14 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
 });
 
 // ----------------- ROTAS MOTORISTAS -----------------
+
+// Consultar motoristas disponíveis para determinada data/hora
 app.get("/motoristasDisponiveis", async (req, res) => {
   try {
     const { datahora } = req.query;
     if (!datahora) return res.status(400).json({ error: "Parâmetro datahora obrigatório" });
 
+    // Buscar motoristas que estão disponíveis
     const motoristas = await Motorista.find({ disponivel: true });
     res.json({ motoristas });
   } catch (err) {
@@ -154,6 +160,7 @@ app.get("/motoristasDisponiveis", async (req, res) => {
 });
 
 // ----------------- ROTAS TAXA CANCELAMENTO -----------------
+
 app.get("/taxasCancelamento", async (req, res) => {
   try {
     const taxas = await TaxaCancelamento.find();
@@ -163,24 +170,19 @@ app.get("/taxasCancelamento", async (req, res) => {
   }
 });
 
-// ----------------- ROTAS DE FRONTEND -----------------
+// ----------------- ROTAS RAIZ -----------------
 
-// Painel admin
-app.get("/admin-reservas.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "admin-reservas.html"));
-});
-
-// Frontend cliente
+// Rota raiz serve index.html público
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Catch-all (outras rotas desconhecidas)
+// Catch-all para outras rotas públicas
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ----------------- INICIALIZA SERVIDOR -----------------
+// Inicializa servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
