@@ -8,6 +8,10 @@ import mongoose from "mongoose";
 import path from "path";
 import basicAuth from "express-basic-auth";
 
+import Reserva from "./models/Reserva.js";
+import Motorista from "./models/Motorista.js";
+import TaxaCancelamento from "./models/TaxaCancelamento.js";
+
 dotenv.config();
 
 const app = express();
@@ -20,40 +24,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB conectado ✅"))
   .catch(err => console.error("Erro ao conectar MongoDB:", err));
-
-// ------------------- MODELOS -------------------
-
-// Modelo de Reserva
-const reservaSchema = new mongoose.Schema({
-  nome: String,
-  email: String,
-  categoria: String,
-  partida: String,
-  destino: String,
-  datahora: Date,
-  valor: Number,
-  codigo: String,
-  paraMotorista: { type: Boolean, default: false },
-  criadoEm: { type: Date, default: Date.now }
-});
-const Reserva = mongoose.model("Reserva", reservaSchema);
-
-// Modelo de Motorista
-const motoristaSchema = new mongoose.Schema({
-  nome: String,
-  veiculo: String,
-  disponivel: Boolean,
-  email: String,
-  telefone: String
-});
-const Motorista = mongoose.model("Motorista", motoristaSchema);
-
-// Modelo de Taxa de Cancelamento
-const taxaCancelamentoSchema = new mongoose.Schema({
-  categoria: String,
-  valor: Number
-});
-const TaxaCancelamento = mongoose.model("TaxaCancelamento", taxaCancelamentoSchema);
 
 // ------------------- MIDDLEWARES -------------------
 app.use(cors());
@@ -196,12 +166,14 @@ app.get("/taxasCancelamento", async (req, res) => {
   }
 });
 
-// ✅ Rota raiz serve admin-reservas.html
+// ----------------- ROTA RAIZ -----------------
+
+// Admin reserva HTML
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin-reservas.html"));
 });
 
-// ✅ Catch-all para outras rotas desconhecidas
+// Catch-all para frontend
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
