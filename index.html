@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reserva</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ6XoeSWUFGWFwPPgOQXZA1zfGpy1ECTg&libraries=places"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body { 
+      background-image: url('imagens/imagem-fundo.jpg'); 
+      background-size: cover; 
+      background-position: center; 
+    }
+    .input { width: 100%; min-height: 2rem; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 0.75rem; box-sizing: border-box; margin-bottom:0.5rem; }
+    .linha-horizontal { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom:0.5rem; }
+    #map { min-height: 16rem; border-radius: 0.75rem; margin-bottom:0.5rem; }
+    .btn-cat { transition: all 0.2s; margin-bottom:0.5rem; }
+    .btn-cat:hover { background-color: #34D399; }
+    @media(max-width:640px){
+      .linha-horizontal { flex-direction: column; }
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+<div id="conteudoPrincipal" class="bg-white/80 backdrop-blur-md p-4 md:p-6 rounded-2xl shadow-md w-full max-w-lg space-y-1 relative">
+
+  <div class="absolute -top-2 right-4 scale-75">
+    <div id="google_translate_element"></div>
+  </div>
+
+  <h1 class="text-2xl font-extrabold text-center text-green-600 mb-2">INSERIR DADOS DA VIAGEM</h1>
+
+  <label for="partida" class="font-bold text-gray-700">Local de Partida</label>
+  <div class="flex items-center gap-2 mb-1">
+    <input id="partida" type="text" class="input flex-1 campoObrigatorio">
+    <button id="btnLocalizacao" type="button" class="p-2 bg-green-500 text-white rounded-xl hover:bg-green-600">📍</button>
+  </div>
+
+  <label for="destino" class="font-bold text-gray-700">Local de Destino</label>
+  <input id="destino" type="text" class="input campoObrigatorio">
+
+  <div class="grid grid-cols-2 gap-2 mb-1">
+    <div>
+      <label for="datahora" class="font-bold text-gray-700">Selecione Data e Hora</label>
+      <input id="datahora" type="datetime-local" class="input campoObrigatorio">
+    </div>
+    <div>
+      <label for="nome" class="font-bold text-gray-700">Nome de Utilizador</label>
+      <input id="nome" type="text" class="input campoObrigatorio">
+    </div>
+  </div>
+
+  <label for="email" class="font-bold text-gray-700">E-mail</label>
+  <input id="email" type="email" class="input campoObrigatorio">
+
+  <div class="linha-horizontal">
+    <div class="flex-1">
+      <label for="contato" class="font-bold text-gray-700">Nº de Contato</label>
+      <input id="contato" type="text" class="input campoObrigatorio">
+    </div>
+    <div class="flex-1">
+      <label for="codigoReservaInd" class="font-bold text-gray-700">Nº Indicação/Reserva</label>
+      <input id="codigoReservaInd" type="text" class="input">
+    </div>
+  </div>
+
+  <h2 class="text-xl font-bold mb-1 text-center">SELECIONE A CATEGORIA</h2>
+  <div id="categoria" class="grid grid-cols-2 gap-1 border p-1 rounded-xl mb-1">
+    <button data-preco="0.55" data-nome="Confort" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">Confort</button>
+    <button data-preco="0.75" data-nome="Premium" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">Premium</button>
+    <button data-preco="1.00" data-nome="XL 7" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">XL 7</button>
+    <button data-preco="0.70" data-nome="Passeio" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">Passeio</button>
+  </div>
+
+  <div id="map"></div>
+  <div id="infoViagem" class="text-center font-bold mb-1"></div>
+
+  <div class="grid grid-cols-2 gap-2">
+    <button id="OK" disabled class="w-full py-2 rounded-2xl bg-gray-400 text-white font-bold">OK</button>
+    <button id="btn-cancelar" disabled class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">Cancelar Reserva</button>
+  </div>
+</div>
+
+<div id="popupResumo" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
+  <div class="bg-white rounded-2xl p-6 w-11/12 max-w-md shadow-lg space-y-4">
+    <h2 class="text-xl font-bold text-green-700 text-center">Resumo da Viagem</h2>
+    <p><strong>Nome:</strong> <span id="resNome"></span></p>
+    <p><strong>Categoria:</strong> <span id="resCategoria"></span></p>
+    <p><strong>E-mail:</strong> <span id="resEmail"></span></p>
+    <p><strong>Partida:</strong> <a id="resPartida" href="#" target="_blank" class="text-blue-600 underline"></a></p>
+    <p><strong>Destino:</strong> <a id="resDestino" href="#" target="_blank" class="text-blue-600 underline"></a></p>
+    <p><strong>Data:</strong> <span id="resData"></span></p>
+    <p><strong>Contato:</strong> <span id="resContato"></span></p>
+    <p><strong>Valor da Viagem:</strong> <span id="resValor" class="font-bold text-green-700"></span></p>
+    <p><strong>Código de Reserva/Indicação:</strong> <span id="resCodigo"></span></p>
+    <div id="popupStatus" class="text-center font-bold mt-2 text-green-700"></div>
+    
+    <div class="grid grid-cols-3 gap-2">
+      <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">VOLTAR</button>
+      <button id="confirmarPagamento" class="w-full py-2 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold">EFETUAR PAGAMENTO</button>
+      <button id="btn-fecharResumo" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">CANCELAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP PAGAMENTO REALIZADO COM SUCESSO -->
+<div id="popupSucesso" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
+  <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm shadow-lg text-center space-y-4">
+    <h2 class="text-2xl font-bold text-green-700">Pagamento Realizado!</h2>
+    <p class="text-gray-700">O seu pagamento foi efetuado com sucesso.</p>
+    <button id="btnFecharSucesso" class="mt-4 w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold">
+      Fechar
+    </button>
+  </div>
+</div>
+
+<script>
+const backendURL = "https://reserva-backend-uu52.onrender.com";
+let precoCategoria = 0, categoriaSelecionada = "", ultimoCusto = 0, ultimaDistancia = 0, ultimoTempo = "";
+let codigoReservaAtual = "", partidaPlace = null, destinoPlace = null;
+
+const btns = document.querySelectorAll('.btn-cat');
+let camposObrig = document.querySelectorAll('.campoObrigatorio');
+
+btns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    btns.forEach(b=>{b.classList.remove('bg-green-600');b.classList.add('bg-green-300');});
+    btn.classList.remove('bg-green-300'); btn.classList.add('bg-green-600');
+    precoCategoria=parseFloat(btn.dataset.preco);
+    categoriaSelecionada=btn.dataset.nome;
+    validarFormulario(); calcularRotaDebounced();
+  });
+});
+
+function allCamposPreenchidos(){
+  return Array.from(camposObrig).every(c=>c.value.trim()!=="");
+}
+
+function validarFormulario(){
+  const btn=document.getElementById('OK');
+  btn.disabled=!(categoriaSelecionada!=="" && allCamposPreenchidos());
+  btn.className=btn.disabled ? "w-full py-2 rounded-2xl bg-gray-400 text-white font-bold" : "w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold";
+}
+
+document.getElementById("codigoReservaInd").addEventListener("input", ()=> {
+  document.getElementById("btn-cancelar").disabled = !document.getElementById("codigoReservaInd").value.trim();
+});
+
+// Google Maps
+let map, directionsService, directionsRenderer;
+function initAutocomplete(){
+  const partidaAC=new google.maps.places.Autocomplete(document.getElementById('partida'),{fields:["place_id","formatted_address","geometry"],componentRestrictions:{country:["pt","es","fr"]}});
+  const destinoAC=new google.maps.places.Autocomplete(document.getElementById('destino'),{fields:["place_id","formatted_address","geometry"],componentRestrictions:{country:["pt","es","fr"]}});
+  partidaAC.addListener('place_changed',()=>{partidaPlace=partidaAC.getPlace(); calcularRotaDebounced();});
+  destinoAC.addListener('place_changed',()=>{destinoPlace=destinoAC.getPlace(); calcularRotaDebounced();});
+  initMap();
+}
+
+function initMap(){
+  map=new google.maps.Map(document.getElementById("map"),{zoom:7,center:{lat:38.7169,lng:-9.139}});
+  directionsService=new google.maps.DirectionsService();
+  directionsRenderer=new google.maps.DirectionsRenderer({preserveViewport:false});
+  directionsRenderer.setMap(map);
+}
+
+let rotaTimer=null;
+function calcularRotaDebounced(){ 
+  clearTimeout(rotaTimer); 
+  if(allCamposPreenchidos()){
+    rotaTimer=setTimeout(()=>{
+      window.scrollTo({ top: document.getElementById("OK").offsetTop - 20, behavior:'smooth' });
+      calcularRota();
+    },1000);
+  }
+}
+
+function calcularRota(){
+  const partidaTxt=document.getElementById("partida").value.trim();
+  const destinoTxt=document.getElementById("destino").value.trim();
+  const info=document.getElementById("infoViagem");
+  if(!partidaTxt || !destinoTxt){ info.textContent=""; return; }
+  const origin=(partidaPlace&&partidaPlace.place_id)?{placeId:partidaPlace.place_id}:partidaTxt;
+  const destination=(destinoPlace&&destinoPlace.place_id)?{placeId:destinoPlace.place_id}:destinoTxt;
+  directionsService.route({origin,destination,travelMode:google.maps.TravelMode.DRIVING,region:"PT"},(result,status)=>{
+    if(status==="OK"){
+      directionsRenderer.setDirections(result);
+      let metros=0,segundos=0;
+      result.routes[0].legs.forEach(l=>{metros+=l.distance.value;segundos+=l.duration.value;});
+      ultimaDistancia=metros/1000;
+      ultimoTempo=`${Math.floor(segundos/60)} min`;
+      ultimoCusto=(precoCategoria>0)?(ultimaDistancia*precoCategoria).toFixed(2):0;
+      info.textContent=`Distância: ${ultimaDistancia.toFixed(2)} km | Tempo: ${ultimoTempo} | Valor: ${ultimoCusto>0?ultimoCusto+' €':''}`;
+    } else info.textContent=`Não foi possível calcular a rota (${status}).`;
+  });
+}
+
+// Localização
+document.getElementById("btnLocalizacao").addEventListener("click",()=>{
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const latlng={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      new google.maps.Geocoder().geocode({location:latlng},(results,status)=>{
+        if(status==="OK"&&results[0]){
+          document.getElementById("partida").value=results[0].formatted_address;
+          partidaPlace=results[0];
+          validarFormulario();
+          calcularRotaDebounced();
+        } else alert("Não foi possível obter o endereço da sua localização.");
+      });
+    });
+  } else alert("Geolocalização não suportada.");
+});
+
+// OK button
+document.getElementById("OK").addEventListener("click",()=>{
+  codigoReservaAtual="RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
+  const codigoInd=document.getElementById("codigoReservaInd").value.trim();
+  const codigoFinal=codigoInd?`${codigoReservaAtual}/${codigoInd}`:codigoReservaAtual;
+  document.getElementById("resCodigo").textContent=codigoFinal;
+  document.getElementById("resNome").textContent=document.getElementById("nome").value;
+  document.getElementById("resCategoria").textContent=categoriaSelecionada;
+  document.getElementById("resContato").textContent=document.getElementById("contato").value.trim();
+  document.getElementById("resEmail").textContent=document.getElementById("email").value.trim();
+  const partida=document.getElementById("partida").value.trim();
+  const destino=document.getElementById("destino").value.trim();
+  document.getElementById("resPartida").textContent=partida;
+  document.getElementById("resPartida").href=`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(partida)}&destination=${encodeURIComponent(destino)}`;
+  document.getElementById("resDestino").textContent=destino;
+  document.getElementById("resDestino").href=`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(partida)}&destination=${encodeURIComponent(destino)}`;
+  document.getElementById("resData").textContent=document.getElementById("datahora").value;
+  document.getElementById("resValor").textContent=ultimoCusto>0?`${ultimoCusto} €`:"—";
+  document.getElementById("conteudoPrincipal").classList.add("hidden");
+  document.getElementById("popupResumo").classList.remove("hidden");
+});
+
+// BOTÕES DO POPUP
+document.getElementById("btn-voltar").addEventListener("click",()=>{
+  document.getElementById("popupResumo").classList.add("hidden");
+  document.getElementById("conteudoPrincipal").classList.remove("hidden");
+});
+
+document.getElementById("btn-fecharResumo").addEventListener("click",()=>{
+  document.getElementById("popupResumo").classList.add("hidden");
+  document.getElementById("conteudoPrincipal").classList.remove("hidden");
+});
+
+// --- BOTÃO EFETUAR PAGAMENTO ---
+document.getElementById("confirmarPagamento").addEventListener("click", async () => {
+  const stripe = Stripe("SUA_CHAVE_PUBLICA_STRIPE"); // 👈 substitua pela sua chave pública Stripe
+
+  const nome = document.getElementById("nome").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const categoria = categoriaSelecionada;
+  const partida = document.getElementById("partida").value.trim();
+  const destino = document.getElementById("destino").value.trim();
+  const datahora = document.getElementById("datahora").value;
+  const valor = parseFloat(ultimoCusto);
+
+  if (!nome || !email || !partida || !destino || !datahora) {
+    document.getElementById("popupStatus").textContent = "Preencha todos os campos obrigatórios.";
+    return;
+  }
+
+  try {
+    const response = await fetch(`${backendURL}/checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome, email, categoria, partida, destino, datahora, valor })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      // Redirecionar para o checkout do Stripe
+      await stripe.redirectToCheckout({ sessionId: data.id });
+    } else {
+      document.getElementById("popupStatus").textContent = "Erro ao iniciar pagamento.";
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById("popupStatus").textContent = "Erro ao conectar com o servidor de pagamento.";
+  }
+});
+
+// --- BOTÃO CANCELAR RESERVA ---
+document.getElementById("btn-cancelar").addEventListener("click", async () => {
+  const codigo = document.getElementById("codigoReservaInd").value.trim();
+
+  if (!codigo) {
+    alert("Por favor, insira o código da reserva.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${backendURL}/reservas/cancelar/${codigo}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "Solicita Cancelamento" })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      alert("Solicitação de cancelamento enviada com sucesso.");
+      document.getElementById("codigoReservaInd").value = "";
+      document.getElementById("btn-cancelar").disabled = true;
+    } else {
+      alert("Reserva não encontrada ou erro ao cancelar.");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao conectar com o servidor.");
+  }
+});
+
+// ENTER para pular entre campos
+camposObrig.forEach((campo, idx) => {
+  campo.addEventListener('keydown', e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      let nextIdx = (idx + 1) % camposObrig.length;
+      camposObrig[nextIdx].focus();
+    }
+  });
+});
+
+// FECHAR POPUP SUCESSO
+document.getElementById("btnFecharSucesso").addEventListener("click", () => {
+  document.getElementById("popupSucesso").classList.add("hidden");
+  document.getElementById("conteudoPrincipal").classList.remove("hidden");
+});
+
+window.onload=()=>{ initAutocomplete(); validarFormulario(); };
+</script>
+</body>
+</html>
