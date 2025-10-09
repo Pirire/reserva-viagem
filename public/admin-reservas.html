@@ -27,16 +27,9 @@
 <script>
 const backendURL = "https://reserva-backend-uu52.onrender.com";
 
-// Substitua pelos dados do .env
-const ADMIN_USER = "silvano_Silsa";
-const ADMIN_PASS = "53711910_Silsa";
-
 async function fetchReservas() {
   try {
-    const headers = new Headers();
-    headers.set("Authorization", "Basic " + btoa(`${ADMIN_USER}:${ADMIN_PASS}`));
-
-    const response = await fetch(`${backendURL}/reservas`, { headers });
+    const response = await fetch(`${backendURL}/reservas`, { credentials: "include" });
     if (!response.ok) throw new Error("Erro ao buscar reservas");
     const data = await response.json();
     displayReservas(data.reservas);
@@ -47,7 +40,6 @@ async function fetchReservas() {
 }
 
 function displayReservas(reservas) {
-  // Ordenar por data mais próxima
   reservas.sort((a,b) => new Date(a.datahora) - new Date(b.datahora));
   const container = document.getElementById("reservasContainer");
   container.innerHTML = "";
@@ -62,11 +54,12 @@ function displayReservas(reservas) {
       <p><strong>Nome:</strong> ${r.nome}</p>
       <p><strong>Categoria:</strong> ${r.categoria}</p>
       <p><strong>Email:</strong> ${r.email}</p>
-      <p><strong>Partida:</strong> ${r.partida || "—"}</p>
-      <p><strong>Destino:</strong> ${r.destino || "—"}</p>
-      <p><strong>Data:</strong> ${r.datahora ? new Date(r.datahora).toLocaleString() : "—"}</p>
+      <p><strong>Partida:</strong> ${r.partida}</p>
+      <p><strong>Destino:</strong> ${r.destino}</p>
+      <p><strong>Data:</strong> ${new Date(r.datahora).toLocaleString()}</p>
+      <p><strong>Contato:</strong> ${r.contato || "—"}</p>
       <p><strong>Valor:</strong> ${r.valor} €</p>
-      <p><strong>Código:</strong> ${r.codigo || "—"}</p>
+      <p><strong>Código:</strong> ${r.codigo}</p>
       <p><strong>Status:</strong> <span class="${r.paraMotorista ? 'text-green-600' : 'text-red-600'}">${enviadoText}</span></p>
       <div class="mt-2 flex gap-2">
         <button class="btn btn-nao" onclick="toggleMotorista('${r._id}', ${r.paraMotorista})">
@@ -78,16 +71,11 @@ function displayReservas(reservas) {
   });
 }
 
-// Marcar envio para motorista
 async function toggleMotorista(id, statusAtual) {
   try {
-    const headers = new Headers();
-    headers.set("Authorization", "Basic " + btoa(`${ADMIN_USER}:${ADMIN_PASS}`));
-    headers.set("Content-Type", "application/json");
-
     const response = await fetch(`${backendURL}/reservas/${id}/motorista`, {
       method: "PATCH",
-      headers
+      headers: { "Content-Type": "application/json" }
     });
     if (!response.ok) throw new Error("Erro ao atualizar status");
     fetchReservas();
@@ -97,10 +85,8 @@ async function toggleMotorista(id, statusAtual) {
   }
 }
 
-// Botão atualizar manual
 document.getElementById("btn-atualizar").addEventListener("click", fetchReservas);
 
-// Inicial
 fetchReservas();
 </script>
 
