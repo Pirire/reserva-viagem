@@ -56,48 +56,39 @@ app.use("/admin", basicAuth({
   challenge: true
 }));
 
-// Servir frontend
-app.use(express.static(path.join(__dirname, "public")));
-
-// Inicializar Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-// Rota checkout com valor corrigido
+// Stripe - correção de valor
 app.post("/checkout", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, datahora, valor } = req.body;
 
-    // Corrigir valor: converter para centavos corretamente
-    const valorCentavos = Math.round(parseFloat(valor) * 100); // <-- CORREÇÃO
+    // Converte valor para centavos uma única vez
+    const valorCentavos = Math.round(parseFloat(valor) * 100);
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            product_data: {
-              name: `Reserva: ${categoria} | ${partida} → ${destino}`,
-              description: `Data/Hora: ${datahora} | Nome: ${nome} | Email: ${email}`,
-            },
-            unit_amount: valorCentavos,
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: {
+            name: `Reserva de viagem - ${categoria}`
           },
-          quantity: 1,
+          unit_amount: valorCentavos,
         },
-      ],
-      mode: "payment",
+        quantity: 1
+      }],
+      mode: 'payment',
+      customer_email: email,
       success_url: `${process.env.FRONTEND_URL}/sucesso`,
-      cancel_url: `${process.env.FRONTEND_URL}/cancelado`,
+      cancel_url: `${process.env.FRONTEND_URL}/cancelado`
     });
 
     res.json({ url: session.url });
   } catch (err) {
-    console.error("Erro no checkout:", err);
-    res.status(500).json({ error: "Erro ao criar sessão de pagamento" });
+    console.error(err);
+    res.status(500).json({ error: "Erro ao criar sessão Stripe" });
   }
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT} 🚀`));
