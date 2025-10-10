@@ -53,4 +53,51 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
 // Proteção painel admin
 app.use("/admin", basicAuth({
   users: { [process.env.ADMIN_USER]: process.env.ADMIN_PASS },
-  challenge:
+  challenge: true
+}));
+
+// Servir frontend
+app.use(express.static(path.join(__dirname, "public")));
+
+// Inicializar Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Rota checkout com valor corrigido
+app.post("/checkout", async (req, res) => {
+  try {
+    const { nome, email, categoria, partida, destino, datahora, valor } = req.body;
+
+    // Corrigir valor: converter para centavos corretamente
+    const valorCentavos = Math.round(parseFloat(valor) * 100); // <-- CORREÇÃO
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "eur",
+            product_data: {
+              name: `Reserva: ${categoria} | ${partida} → ${destino}`,
+              description: `Data/Hora: ${datahora} | Nome: ${nome} | Email: ${email}`,
+            },
+            unit_amount: valorCentavos,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${process.env.FRONTEND_URL}/sucesso`,
+      cancel_url: `${process.env.FRONTEND_URL}/cancelado`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error("Erro no checkout:", err);
+    res.status(500).json({ error: "Erro ao criar sessão de pagamento" });
+  }
+});
+
+// Iniciar servidor
+app.listen(PORT, () => {
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
+});
