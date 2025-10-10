@@ -9,7 +9,7 @@ import Stripe from "stripe";
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT; // Usa a porta fornecida pelo Render
+const PORT = process.env.PORT || 10000;
 
 // Corrigir __dirname em ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -23,16 +23,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ==========================
-// 📌 Rota raiz para teste
-// ==========================
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ==========================
-// 📌 Rotas API de reservas
-// ==========================
+// Rotas API de reservas
 app.get("/reservas", async (req, res) => {
   try {
     const reservas = await Reserva.find().sort({ createdAt: -1 });
@@ -59,66 +50,7 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
   }
 });
 
-// ==========================
-// 🔐 Proteção painel admin
-// ==========================
+// Proteção painel admin
 app.use("/admin", basicAuth({
   users: { [process.env.ADMIN_USER]: process.env.ADMIN_PASS },
-  challenge: true
-}));
-
-// Servir painel admin
-app.use("/admin", express.static(path.join(__dirname, "admin")));
-
-// ==========================
-// 🌐 Servir frontend público
-// ==========================
-app.use(express.static(path.join(__dirname, "public")));
-
-// Rota catch-all para frontend público
-app.get("*", (req, res) => {
-  if (req.path.startsWith("/admin")) return;
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ==========================
-// 💳 Rota de pagamento Stripe
-// ==========================
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-app.post("/pagamento", async (req, res) => {
-  try {
-    const { valor, descricao } = req.body;
-
-    if (!valor) return res.status(400).json({ error: "Valor é obrigatório" });
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "brl",
-            product_data: { name: descricao || "Reserva" },
-            unit_amount: valor, // em centavos
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${req.protocol}://${req.get("host")}/?success=true`,
-      cancel_url: `${req.protocol}://${req.get("host")}/?canceled=true`,
-    });
-
-    res.json({ url: session.url });
-  } catch (err) {
-    console.error("Erro no pagamento:", err);
-    res.status(500).json({ error: "Erro ao criar pagamento" });
-  }
-});
-
-// ==========================
-// 🚀 Iniciar servidor
-// ==========================
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
+  challenge:
