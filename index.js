@@ -82,7 +82,46 @@ app.get("*", (req, res) => {
 
 // ==========================
 // 🚀 Iniciar servidor
-// ==========================
+// ==========================import Stripe from "stripe";
+
+// Inicializa Stripe com a chave secreta
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Rota para criar sessão de pagamento
+app.post("/pagamento", async (req, res) => {
+  try {
+    const { valor, descricao } = req.body;
+
+    if (!valor) return res.status(400).json({ error: "Valor é obrigatório" });
+
+    // Cria sessão de checkout no Stripe
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "brl",
+            product_data: {
+              name: descricao || "Reserva",
+            },
+            unit_amount: valor, // em centavos (ex: 1000 = R$10,00)
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${req.protocol}://${req.get("host")}/?success=true`,
+      cancel_url: `${req.protocol}://${req.get("host")}/?canceled=true`,
+    });
+
+    // Retorna URL do checkout
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error("Erro no pagamento:", err);
+    res.status(500).json({ error: "Erro ao criar pagamento" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
