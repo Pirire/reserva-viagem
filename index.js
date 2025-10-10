@@ -22,7 +22,16 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rotas API de reservas
+// ==========================
+// 📌 Rota raiz para teste
+// ==========================
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// ==========================
+// 📌 Rotas API de reservas
+// ==========================
 app.get("/reservas", async (req, res) => {
   try {
     const reservas = await Reserva.find().sort({ createdAt: -1 });
@@ -49,7 +58,9 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
   }
 });
 
-// Proteção painel admin
+// ==========================
+// 🔐 Proteção painel admin
+// ==========================
 app.use("/admin", basicAuth({
   users: { [process.env.ADMIN_USER]: process.env.ADMIN_PASS },
   challenge: true
@@ -58,7 +69,9 @@ app.use("/admin", basicAuth({
 // Servir painel admin
 app.use("/admin", express.static(path.join(__dirname, "admin")));
 
-// Servir frontend público
+// ==========================
+// 🌐 Servir frontend público
+// ==========================
 app.use(express.static(path.join(__dirname, "public")));
 
 // Rota catch-all para frontend público
@@ -67,7 +80,9 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Iniciar servidor
+// ==========================
+// 🚀 Iniciar servidor
+// ==========================
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
