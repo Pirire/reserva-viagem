@@ -5,10 +5,11 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { fileURLToPath } from "url";
 import Reserva from "./models/Reserva.js";
+import Stripe from "stripe";
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT; // Usa a porta fornecida pelo Render
 
 // Corrigir __dirname em ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -81,30 +82,24 @@ app.get("*", (req, res) => {
 });
 
 // ==========================
-// 🚀 Iniciar servidor
-// ==========================import Stripe from "stripe";
-
-// Inicializa Stripe com a chave secreta
+// 💳 Rota de pagamento Stripe
+// ==========================
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Rota para criar sessão de pagamento
 app.post("/pagamento", async (req, res) => {
   try {
     const { valor, descricao } = req.body;
 
     if (!valor) return res.status(400).json({ error: "Valor é obrigatório" });
 
-    // Cria sessão de checkout no Stripe
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
             currency: "brl",
-            product_data: {
-              name: descricao || "Reserva",
-            },
-            unit_amount: valor, // em centavos (ex: 1000 = R$10,00)
+            product_data: { name: descricao || "Reserva" },
+            unit_amount: valor, // em centavos
           },
           quantity: 1,
         },
@@ -114,7 +109,6 @@ app.post("/pagamento", async (req, res) => {
       cancel_url: `${req.protocol}://${req.get("host")}/?canceled=true`,
     });
 
-    // Retorna URL do checkout
     res.json({ url: session.url });
   } catch (err) {
     console.error("Erro no pagamento:", err);
@@ -122,6 +116,9 @@ app.post("/pagamento", async (req, res) => {
   }
 });
 
+// ==========================
+// 🚀 Iniciar servidor
+// ==========================
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
