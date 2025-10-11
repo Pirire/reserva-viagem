@@ -56,14 +56,12 @@ app.use("/admin", basicAuth({
   challenge: true
 }));
 
-// Stripe - correção de valor
+// ✅ Stripe - valor corrigido
 app.post("/checkout", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, datahora, valor } = req.body;
 
-    // Converte valor para centavos uma única vez
-    const valorCentavos = Math.round(parseFloat(valor) * 100);
-
+    // O valor já vem em cêntimos do frontend, não precisa multiplicar de novo
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
@@ -74,7 +72,7 @@ app.post("/checkout", async (req, res) => {
           product_data: {
             name: `Reserva de viagem - ${categoria}`
           },
-          unit_amount: valorCentavos,
+          unit_amount: parseInt(valor, 10), // ✅ valor em centavos
         },
         quantity: 1
       }],
