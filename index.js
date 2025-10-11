@@ -61,7 +61,6 @@ app.post("/checkout", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, datahora, valor } = req.body;
 
-    // O valor já vem em cêntimos do frontend, não precisa multiplicar de novo
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
@@ -72,7 +71,7 @@ app.post("/checkout", async (req, res) => {
           product_data: {
             name: `Reserva de viagem - ${categoria}`
           },
-          unit_amount: parseInt(valor, 10), // ✅ valor em centavos
+          unit_amount: valor, // ✅ valor já vem em centavos do frontend
         },
         quantity: 1
       }],
