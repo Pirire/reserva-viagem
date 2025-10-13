@@ -56,36 +56,45 @@ app.use("/admin", basicAuth({
   challenge: true
 }));
 
-// ✅ Stripe - valor corrigido (sem multiplicar novamente)
+// ✅ Stripe - valor corrigido
 app.post("/checkout", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, datahora, valor } = req.body;
 
+    // Log para depuração (verás isso no terminal)
+    console.log("Valor recebido do front:", valor);
+    const valorEmCentimos = Math.round(parseFloat(valor) * 100);
+    console.log("Valor enviado ao Stripe:", valorEmCentimos);
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: {
-            name: `Reserva de viagem - ${categoria}`
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "eur",
+            product_data: {
+              name: `Reserva de viagem - ${nome}`,
+              description: `Categoria: ${categoria}\nPartida: ${partida}\nDestino: ${destino}\nData: ${datahora}`,
+            },
+            unit_amount: valorEmCentimos, // 💰 valor em centavos
           },
-          unit_amount: parseInt(valor, 10), // ✅ usa o valor recebido — já em cêntimos
+          quantity: 1,
         },
-        quantity: 1
-      }],
-      mode: 'payment',
+      ],
+      mode: "payment",
       customer_email: email,
       success_url: `${process.env.FRONTEND_URL}/sucesso`,
-      cancel_url: `${process.env.FRONTEND_URL}/cancelado`
+      cancel_url: `${process.env.FRONTEND_URL}/cancelado`,
     });
 
     res.json({ url: session.url });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Erro Stripe:", err);
     res.status(500).json({ error: "Erro ao criar sessão Stripe" });
   }
 });
+
 
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT} 🚀`));
