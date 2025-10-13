@@ -55,12 +55,17 @@ app.use("/admin", basicAuth({
   challenge: true
 }));
 
-// Stripe - apenas ajuste valor para centavos
+// Stripe - valor enviado já em centavos do frontend
 app.post("/checkout", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, datahora, valor } = req.body;
 
-    // valor já vem em centavos do frontend, não multiplicar novamente
+    // Converter valor para número inteiro e validar
+    const valorCentavos = Number(valor);
+    if (!Number.isInteger(valorCentavos) || valorCentavos <= 0) {
+      return res.status(400).json({ error: "Valor inválido. Deve ser inteiro positivo em centavos." });
+    }
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
@@ -69,7 +74,7 @@ app.post("/checkout", async (req, res) => {
         price_data: {
           currency: 'eur',
           product_data: { name: `Reserva de viagem - ${categoria}` },
-          unit_amount: valor, // valor em centavos
+          unit_amount: valorCentavos, // valor em centavos
         },
         quantity: 1
       }],
@@ -81,7 +86,7 @@ app.post("/checkout", async (req, res) => {
 
     res.json({ url: session.url });
   } catch (err) {
-    console.error(err);
+    console.error("Erro Stripe:", err);
     res.status(500).json({ error: "Erro ao criar sessão Stripe" });
   }
 });
