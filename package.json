@@ -1,0 +1,37 @@
+{
+  "name": "reserva-backend",
+  "version": "1.0.0",
+  "description": "Backend para sistema de reservas com Stripe e MongoDB e painel admin seguro",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "reserva",
+    "backend",
+    "stripe",
+    "mongodb",
+    "express",
+    "admin"
+  ],
+  "author": "Seu Nome",
+  "license": "MIT",
+  "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
+    "@paypal/paypal-server-sdk": "^1.1.0",
+    "bcrypt": "^5.1.0",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-basic-auth": "^1.2.1",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.8.7",
+    "stripe": "^12.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
