@@ -5,18 +5,16 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { fileURLToPath } from "url";
 import Reserva from "./models/Reserva.js";
-import Stripe from "stripe";
+import paypal from "@paypal/paypal-server-sdk";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Corrigir __dirname em ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Conexão MongoDB
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB conectado ✅"))
   .catch(err => console.error("❌ Erro ao conectar no MongoDB", err));
@@ -24,7 +22,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rotas API de reservas
+// 📌 Rotas reservas
 app.get("/reservas", async (req, res) => {
   try {
     const reservas = await Reserva.find().sort({ createdAt: -1 });
@@ -35,7 +33,6 @@ app.get("/reservas", async (req, res) => {
   }
 });
 
-// Atualizar status de envio
 app.patch("/reservas/:id/motorista", async (req, res) => {
   try {
     const reserva = await Reserva.findById(req.params.id);
@@ -49,45 +46,60 @@ app.patch("/reservas/:id/motorista", async (req, res) => {
   }
 });
 
-// Proteção painel admin
 app.use("/admin", basicAuth({
   users: { [process.env.ADMIN_USER]: process.env.ADMIN_PASS },
   challenge: true
 }));
 
-// Stripe - valor enviado já em centavos do frontend
+// 🟡 PayPal
+const client = new paypal.core.PayPalHttpClient(
+  process.env.PAYPAL_MODE === "live"
+    ? new paypal.core.LiveEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET)
+    : new paypal.core.SandboxEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET)
+);
+
+// ✅ Checkout PayPal
 app.post("/checkout", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, datahora, valor } = req.body;
 
-    // Converter valor para número inteiro e validar
-    const valorCentavos = Number(valor);
-    if (!Number.isInteger(valorCentavos) || valorCentavos <= 0) {
-      return res.status(400).json({ error: "Valor inválido. Deve ser inteiro positivo em centavos." });
+    const valorEuros = (Number(valor) / 100).toFixed(2);
+    if (isNaN(valorEuros) || valorEuros <= 0) {
+      return res.status(400).json({ error: "Valor inválido." });
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: { name: `Reserva de viagem - ${categoria}` },
-          unit_amount: valorCentavos, // valor em centavos
-        },
-        quantity: 1
-      }],
-      mode: 'payment',
-      customer_email: email,
-      success_url: `${process.env.FRONTEND_URL}/sucesso`,
-      cancel_url: `${process.env.FRONTEND_URL}/cancelado`
+    const orderRequest = new paypal.orders.OrdersCreateRequest();
+    orderRequest.requestBody({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: "EUR",
+            value: valorEuros
+          },
+          description: `Reserva de viagem - ${categoria}`
+        }
+      ],
+      application_context: {
+        brand_name: "Reserva de Viagem",
+        landing_page: "LOGIN",
+        user_action: "PAY_NOW",
+        return_url: `${process.env.FRONTEND_URL}/sucesso`,
+        cancel_url: `${process.env.FRONTEND_URL}/cancelado`
+      }
     });
 
-    res.json({ url: session.url });
+    const order = await client.execute(orderRequest);
+    const approveLink = order.result.links.find(link => link.rel === "approve");
+
+    if (approveLink) {
+      res.json({ url: approveLink.href });
+    } else {
+      res.status(500).json({ error: "Não foi possível criar a ordem PayPal." });
+    }
   } catch (err) {
-    console.error("Erro Stripe:", err);
-    res.status(500).json({ error: "Erro ao criar sessão Stripe" });
+    console.error("Erro PayPal:", err);
+    res.status(500).json({ error: "Erro ao criar ordem PayPal" });
   }
 });
 
