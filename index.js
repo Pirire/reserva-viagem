@@ -75,7 +75,8 @@ app.post("/checkout", async (req, res) => {
     const { nome, email, categoria, partida, destino, datahora, valor } = req.body;
     console.log("📩 Dados recebidos no checkout:", req.body);
 
-    const valorEuros = (Number(valor) / 100).toFixed(2);
+    // ✅ Corrigido — sem dividir por 100
+    const valorEuros = Number(valor).toFixed(2);
     if (isNaN(valorEuros) || valorEuros <= 0) {
       return res.status(400).json({ error: "Valor inválido." });
     }
