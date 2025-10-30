@@ -76,7 +76,7 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 
     <div class="flex gap-2">
       <button id="btnContinuar" disabled class="w-full py-2 rounded-2xl bg-gray-400 text-white font-bold">Continuar</button>
-      <button id="btnCancelarCampos" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">Cancelar</button>
+      <button id="btnCancelarCampos" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">Cancelar Reserva</button>
     </div>
   </div>
 
@@ -92,16 +92,14 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
     <div id="map"></div>
     <div class="grid grid-cols-2 gap-2">
       <button id="OK" disabled class="w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold">OK</button>
-      <button id="btn-cancelar" disabled class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">Cancelar Reserva</button>
+      <button id="btn-voltarEtapa1" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">Voltar</button>
     </div>
-    <button id="btn-voltarEtapa1" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold mt-2">Voltar</button>
   </div>
 </div>
 
 <!-- POPUP RESUMO -->
 <div id="popupResumo" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden">
   <div class="bg-white rounded-2xl p-6 w-11/12 max-w-md shadow-lg space-y-4">
-    <h2 class="text-xl font-bold text-green-700 text-center">Resumo da Viagem</h2>
     <p><strong>Nome:</strong> <span id="resNome"></span></p>
     <p><strong>Categoria:</strong> <span id="resCategoria"></span></p>
     <p><strong>E-mail:</strong> <span id="resEmail"></span></p>
@@ -114,7 +112,6 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 
     <div id="paypal-button-container" class="mt-4"></div>
 
-    <!-- Botões sempre visíveis -->
     <div class="grid grid-cols-2 gap-2 mt-2">
       <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">SAIR</button>
       <button id="btn-fecharResumo" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">CANCELAR</button>
@@ -190,7 +187,6 @@ function calcularRota(){
             ultimoCusto = (km*precoCategoria).toFixed(2);
             document.getElementById("OK").disabled=false;
             document.getElementById("OK").className="w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold";
-            document.getElementById("btn-cancelar").disabled=false;
         }
     });
 }
@@ -241,13 +237,16 @@ function abrirPopupResumo(dadosReserva, ativarPaypal=false){
     document.getElementById('resDestino').href = "https://www.google.com/maps/search/"+encodeURIComponent(dadosReserva.destino);
     document.getElementById('resData').textContent = dadosReserva.datahora;
     document.getElementById('resCodigo').textContent = dadosReserva.codigo;
+
+    // Oculta Etapa 2
+    etapa2.classList.add('hidden');
+
     document.getElementById('popupResumo').classList.remove('hidden');
 
-    // ✅ Limpa qualquer renderização anterior
-    const container = document.getElementById('paypal-button-container');
-    container.innerHTML = "";
-
+    // Limpa container antes de renderizar PayPal
     if(ativarPaypal){
+        const container = document.getElementById('paypal-button-container');
+        container.innerHTML = '';
         paypal.Buttons({
             createOrder: async function(data, actions) {
                 const res = await fetch("https://reserva-backend-uu52.onrender.com/create-paypal-order", {
@@ -297,7 +296,15 @@ document.getElementById("btn-voltar").addEventListener("click", ()=>{
     etapa1.classList.remove('hidden');
     etapa2.classList.add('hidden');
 });
-document.getElementById("btn-fecharResumo").addEventListener("click", ()=>{ document.getElementById('popupResumo').classList.add('hidden'); });
+document.getElementById("btn-fecharResumo").addEventListener("click", ()=>{
+    document.getElementById('popupResumo').classList.add('hidden');
+    // Limpar campos
+    camposObrig.forEach(c => c.value=''); 
+    document.getElementById('codigoReservaInd').value='';
+    btnContinuar.disabled=true;
+    etapa1.classList.remove('hidden');
+    etapa2.classList.add('hidden');
+});
 
 // --------------------- GEOLOCALIZAÇÃO ---------------------
 document.getElementById("btnLocalizacao").addEventListener("click", ()=>{
