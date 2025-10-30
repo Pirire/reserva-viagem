@@ -17,11 +17,7 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 @media(max-width:640px){.linha-horizontal{flex-direction:column;}}
 .campoInvalido { border-width:2px !important; animation:pulsarLaranja 1s infinite;}
 @keyframes pulsarLaranja {0% { border-color: orange; } 50% { border-color: darkorange;} 100% {border-color:orange;}}
-/* Limitar altura do PayPal no popup */
-#popupResumo .paypal-buttons-container iframe {
-    max-height: 400px !important;
-    width: 100% !important;
-}
+#popupResumo .paypal-buttons-container iframe { max-height: 400px !important; width: 100% !important;}
 </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
@@ -56,24 +52,25 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 
     <div class="linha-horizontal">
       <div class="flex-1">
-        <label class="font-bold text-gray-700">Nº Contato</label>
-        <div class="flex gap-2">
-          <select id="codigoPais" class="input w-32">
-            <option value="+351">PT-351</option>
-            <option value="+55">BR-55</option>
-            <option value="+1">US-1</option>
-            <option value="+44">UK-44</option>
-            <option value="+34">ES-34</option>
-            <option value="+33">FR-33</option>
-            <option value="+39">IT-39</option>
-            <option value="+49">DE-49</option>
-          </select>
-          <input id="contato" type="text" class="input flex-1 campoObrigatorio" placeholder="Somente números">
-        </div>
+        <label class="font-bold text-gray-700">DDD</label>
+        <select id="codigoPais" class="input w-32">
+          <option value="+351">PT-351</option>
+          <option value="+55">BR-55</option>
+          <option value="+1">US-1</option>
+          <option value="+44">UK-44</option>
+          <option value="+34">ES-34</option>
+          <option value="+33">FR-33</option>
+          <option value="+39">IT-39</option>
+          <option value="+49">DE-49</option>
+        </select>
       </div>
       <div class="flex-1">
-        <label class="font-bold text-gray-700">Nº Indicação/Reserva</label>
-        <input id="codigoReservaInd" type="text" class="input">
+        <label class="font-bold text-gray-700">Nº de contato</label>
+        <input id="contato" type="text" class="input campoObrigatorio" placeholder="Somente números">
+      </div>
+      <div class="flex-1">
+        <label class="font-bold text-gray-700">Indicação/Reserva</label>
+        <input id="codigoReservaInd" type="text" class="input" placeholder="Código do motorista ou reserva">
       </div>
     </div>
 
@@ -115,11 +112,11 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
     <p><strong>Valor:</strong> <span id="resValor" class="text-green-700 font-bold"></span></p>
     <p><strong>Código:</strong> <span id="resCodigo"></span></p>
 
-    <!-- Botão oficial PayPal -->
     <div id="paypal-button-container" class="mt-4"></div>
 
+    <!-- Botões sempre visíveis -->
     <div class="grid grid-cols-2 gap-2 mt-2">
-      <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">VOLTAR</button>
+      <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">SAIR</button>
       <button id="btn-fecharResumo" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">CANCELAR</button>
     </div>
   </div>
@@ -138,16 +135,19 @@ const codigoPaisSelect = document.getElementById('codigoPais');
 
 // --------------------- FUNÇÕES ---------------------
 function validarEmail(email){ return /^\S+@\S+\.\S+$/.test(email); }
+
 function checkCampos(){
-    const preenchidos = Array.from(camposObrig).every(c=>c.value.trim()!=="");
+    const preenchidos = Array.from(camposObrig).every(c => c.value.trim() !== "");
     const emailValido = validarEmail(emailInput.value);
-    btnContinuar.disabled = !(preenchidos && emailValido);
-    btnContinuar.className = (preenchidos && emailValido) ? 
+    const contatoValido = contatoInput.value.trim() !== "";
+    btnContinuar.disabled = !(preenchidos && emailValido && contatoValido);
+    btnContinuar.className = (preenchidos && emailValido && contatoValido) ?
         "w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold" :
         "w-full py-2 rounded-2xl bg-gray-400 text-white font-bold";
     if(emailInput.value && !emailValido){ emailInput.classList.add('campoInvalido'); } 
     else { emailInput.classList.remove('campoInvalido'); }
 }
+
 camposObrig.forEach(c=>{
     c.addEventListener('input', checkCampos);
     c.addEventListener('keydown', e=>{
@@ -160,6 +160,7 @@ camposObrig.forEach(c=>{
         }
     });
 });
+
 contatoInput.addEventListener('input', ()=>{ contatoInput.value = contatoInput.value.replace(/\D/g,''); });
 
 // --------------------- GOOGLE MAPS ---------------------
@@ -227,62 +228,78 @@ document.querySelectorAll('.btn-cat').forEach(btn=>{
     });
 });
 
-document.getElementById("OK").addEventListener("click", ()=>{
-    const codigoReservaAtual = "RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
-
-    // Preenche o resumo
-    document.getElementById('resNome').textContent = document.getElementById('nome').value;
-    document.getElementById('resEmail').textContent = document.getElementById('email').value;
-    document.getElementById('resContato').textContent = codigoPaisSelect.value + " " + contatoInput.value;
-    document.getElementById('resCategoria').textContent = categoriaSelecionada;
-    document.getElementById('resValor').textContent = ultimoCusto + " €";
-    document.getElementById('resPartida').textContent = document.getElementById('partida').value;
-    document.getElementById('resPartida').href = "https://www.google.com/maps/search/"+encodeURIComponent(document.getElementById('partida').value);
-    document.getElementById('resDestino').textContent = document.getElementById('destino').value;
-    document.getElementById('resDestino').href = "https://www.google.com/maps/search/"+encodeURIComponent(document.getElementById('destino').value);
-    document.getElementById('resData').textContent = document.getElementById('datahora').value;
-    document.getElementById('resCodigo').textContent = codigoReservaAtual;
-
+// --------------------- POPUP RESUMO ---------------------
+function abrirPopupResumo(dadosReserva, ativarPaypal=false){
+    document.getElementById('resNome').textContent = dadosReserva.nome;
+    document.getElementById('resEmail').textContent = dadosReserva.email;
+    document.getElementById('resContato').textContent = dadosReserva.contato;
+    document.getElementById('resCategoria').textContent = dadosReserva.categoria;
+    document.getElementById('resValor').textContent = dadosReserva.valor + " €";
+    document.getElementById('resPartida').textContent = dadosReserva.partida;
+    document.getElementById('resPartida').href = "https://www.google.com/maps/search/"+encodeURIComponent(dadosReserva.partida);
+    document.getElementById('resDestino').textContent = dadosReserva.destino;
+    document.getElementById('resDestino').href = "https://www.google.com/maps/search/"+encodeURIComponent(dadosReserva.destino);
+    document.getElementById('resData').textContent = dadosReserva.datahora;
+    document.getElementById('resCodigo').textContent = dadosReserva.codigo;
     document.getElementById('popupResumo').classList.remove('hidden');
 
-    // 🔹 Somente aqui alteramos para compatibilidade PayPal e popup menor
-    paypal.Buttons({
-        createOrder: async function(data, actions) {
-            const dadosReserva = {
-                nome: document.getElementById('nome').value,
-                email: document.getElementById('email').value,
-                categoria: categoriaSelecionada,
-                partida: document.getElementById('partida').value,
-                destino: document.getElementById('destino').value,
-                datahora: document.getElementById('datahora').value,
-                valor: parseFloat(ultimoCusto).toFixed(2)
-            };
-            const res = await fetch("https://reserva-backend-uu52.onrender.com/create-paypal-order", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(dadosReserva)
-            });
-            const dataResp = await res.json();
-            return dataResp.orderID;
-        },
-        onApprove: async function(data, actions) {
-            const capture = await fetch(`https://reserva-backend-uu52.onrender.com/capture-paypal-order/${data.orderID}`, { method: "POST" });
-            const result = await capture.json();
-            alert("Pagamento realizado com sucesso!");
-            document.getElementById('popupResumo').classList.add('hidden');
-        },
-        onError: function(err) {
-            console.error(err);
-            alert("Erro ao processar o pagamento.");
-        }
-    }).render('#paypal-button-container');
+    // ✅ Limpa qualquer renderização anterior
+    const container = document.getElementById('paypal-button-container');
+    container.innerHTML = "";
+
+    if(ativarPaypal){
+        paypal.Buttons({
+            createOrder: async function(data, actions) {
+                const res = await fetch("https://reserva-backend-uu52.onrender.com/create-paypal-order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dadosReserva)
+                });
+                const dataResp = await res.json();
+                return dataResp.orderID;
+            },
+            onApprove: async function(data, actions) {
+                const capture = await fetch(`https://reserva-backend-uu52.onrender.com/capture-paypal-order/${data.orderID}`, { method: "POST" });
+                const result = await capture.json();
+                alert("Pagamento realizado com sucesso!");
+                document.getElementById('popupResumo').classList.add('hidden');
+            },
+            onError: function(err) { console.error(err); alert("Erro ao processar o pagamento."); }
+        }).render('#paypal-button-container');
+    }
+}
+
+document.getElementById("OK").addEventListener("click", ()=>{
+    if(!contatoInput.value.trim()){ alert("Preencha o número de contato antes de continuar."); return; }
+    const codigoReservaAtual = "RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
+    let codigoMotorista = document.getElementById('codigoReservaInd').value.trim();
+    let codigoResumo = codigoReservaAtual;
+    if(codigoMotorista) codigoResumo += "/" + codigoMotorista;
+
+    const dadosReserva = {
+        nome: document.getElementById('nome').value,
+        email: document.getElementById('email').value,
+        contato: codigoPaisSelect.value + " " + contatoInput.value,
+        categoria: categoriaSelecionada,
+        valor: ultimoCusto,
+        partida: document.getElementById('partida').value,
+        destino: document.getElementById('destino').value,
+        datahora: document.getElementById('datahora').value,
+        codigo: codigoResumo
+    };
+
+    abrirPopupResumo(dadosReserva, true);
 });
 
-// Popups
-document.getElementById("btn-voltar").addEventListener("click", ()=>{ document.getElementById('popupResumo').classList.add('hidden'); });
+// --------------------- POPUPS BOTÕES ---------------------
+document.getElementById("btn-voltar").addEventListener("click", ()=>{
+    document.getElementById('popupResumo').classList.add('hidden');
+    etapa1.classList.remove('hidden');
+    etapa2.classList.add('hidden');
+});
 document.getElementById("btn-fecharResumo").addEventListener("click", ()=>{ document.getElementById('popupResumo').classList.add('hidden'); });
 
-// Geolocalização
+// --------------------- GEOLOCALIZAÇÃO ---------------------
 document.getElementById("btnLocalizacao").addEventListener("click", ()=>{
     if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(pos=>{
@@ -295,6 +312,45 @@ document.getElementById("btnLocalizacao").addEventListener("click", ()=>{
                 }
             });
         });
+    }
+});
+
+// --------------------- CANCELAMENTO ---------------------
+document.getElementById('btnCancelarCampos').addEventListener('click', async ()=>{
+    const codigoInput = document.getElementById('codigoReservaInd').value.trim();
+    const emailInputValue = document.getElementById('email').value.trim();
+
+    if(!codigoInput || !emailInputValue){
+        alert("Para cancelar, preencha o código de reserva/indicação e o e-mail.");
+        return;
+    }
+
+    const dadosCancelamento = { codigo: codigoInput, email: emailInputValue };
+
+    try {
+        const res = await fetch("https://reserva-backend-uu52.onrender.com/pedido-cancelamento", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dadosCancelamento)
+        });
+        const resultado = await res.json();
+
+        if(resultado.sucesso){
+            abrirPopupResumo({
+                nome: resultado.nome,
+                email: resultado.email,
+                contato: resultado.contato,
+                categoria: resultado.categoria,
+                valor: resultado.valor,
+                partida: resultado.partida,
+                destino: resultado.destino,
+                datahora: resultado.datahora,
+                codigo: resultado.codigo
+            }, false);
+        } else { alert("Motorista não reconhecido."); }
+    } catch(err){
+        console.error(err);
+        alert("Erro ao tentar validar o código.");
     }
 });
 
