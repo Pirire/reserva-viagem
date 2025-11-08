@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login do Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f0fdf4; font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+  <div class="bg-white shadow-lg rounded-2xl p-8 w-full max-w-md">
+    <h2 class="text-2xl font-bold text-center text-green-700 mb-6">
+      Painel Administrativo
+    </h2>
+
+    <div id="erro" class="hidden bg-red-100 text-red-700 px-4 py-2 rounded-lg mb-4"></div>
+
+    <form id="loginForm" class="space-y-4">
+      <div>
+        <label class="block font-semibold mb-1">Usuário</label>
+        <input type="text" id="usuario" class="w-full border rounded-lg px-3 py-2" placeholder="Digite o usuário" required />
+      </div>
+
+      <div>
+        <label class="block font-semibold mb-1">Senha</label>
+        <input type="password" id="senha" class="w-full border rounded-lg px-3 py-2" placeholder="Digite a senha" required />
+      </div>
+
+      <button type="submit" class="w-full bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700">
+        Entrar
+      </button>
+    </form>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://reserva-backend-uu52.onrender.com";
+
+    // Se já estiver logado, vai direto para o painel
+    if (localStorage.getItem("tokenAdmin")) {
+      window.location.href = "painel.html";
+    }
+
+    const loginForm = document.getElementById("loginForm");
+    const erroDiv = document.getElementById("erro");
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const usuario = document.getElementById("usuario").value.trim();
+      const senha = document.getElementById("senha").value.trim();
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ usuario, senha })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          // Salva o JWT retornado pelo backend
+          localStorage.setItem("tokenAdmin", data.token);
+          window.location.href = "painel.html";
+        } else {
+          erroDiv.textContent = data.message || "Usuário ou senha incorretos!";
+          erroDiv.classList.remove("hidden");
+        }
+      } catch(err) {
+        console.error(err);
+        erroDiv.textContent = "Erro de conexão com o servidor!";
+        erroDiv.classList.remove("hidden");
+      }
+    });
+  </script>
+
+</body>
+</html>
