@@ -5,6 +5,8 @@ import mongoose from "mongoose";
 import { fileURLToPath } from "url";
 import Reserva from "./models/Reserva.js";
 import Motorista from "./models/Motorista.js";
+import Categoria from "./models/Categoria.js"; // <-- novo
+import Config from "./models/Config.js";       // <-- novo
 import nodemailer from "nodemailer";
 import paypal from "@paypal/paypal-server-sdk";
 import jwt from "jsonwebtoken";
@@ -30,6 +32,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/teste", (req, res) => {
+  res.json({ success: true, message: "Backend está funcionando!" });
+});
 
 // ==========================================================
 // 🧩 SMTP
@@ -105,6 +111,7 @@ function autenticarAdmin(tipoNecessario = null) {
 
 // ==========================================================
 // 🚗 CRIAR RESERVA
+// (mantive igual ao original)
 // ==========================================================
 app.post("/reserva", async (req, res) => {
   try {
@@ -150,7 +157,8 @@ app.post("/reserva", async (req, res) => {
 });
 
 // ==========================================================
-// 🚫 CANCELAR RESERVA COM TAXA %
+// 🚫 CANCELAR RESERVA COM TAXA % (mantive igual)
+// ==========================================================
 const TAXA_CANCELAMENTO_PERCENT = 20;
 const LIMITE_HORAS_TAXA = 4;
 
@@ -200,6 +208,7 @@ app.post("/cancelar-reserva", async (req, res) => {
 
 // ==========================================================
 // 💳 PAYPAL - CAPTURA MANUAL (SOMENTE MASTER)
+// ==========================================================
 app.post("/capture-paypal-order/:authorizationID", autenticarAdmin("master"), async (req, res) => {
   try {
     const { authorizationID } = req.params;
@@ -215,6 +224,7 @@ app.post("/capture-paypal-order/:authorizationID", autenticarAdmin("master"), as
 
 // ==========================================================
 // 🧾 LISTAR RESERVAS (PAINEL ADMIN)
+// ==========================================================
 app.get("/reservas", autenticarAdmin(null), async (req, res) => {
   try {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 100));
@@ -246,7 +256,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// CRUD MOTORISTAS MASTER
+// CRUD MOTORISTAS MASTER (mantive igual)
 app.post("/admin/motorista", autenticarAdmin("master"), upload.single("imagem"), async (req, res) => {
   try {
     const { codigo, nome, veiculo, email } = req.body; // email para envio diário
@@ -259,7 +269,6 @@ app.post("/admin/motorista", autenticarAdmin("master"), upload.single("imagem"),
   }
 });
 
-// Listar, atualizar e deletar motoristas - Master
 app.get("/admin/motoristas", autenticarAdmin("master"), async (req, res) => {
   try {
     const motoristas = await Motorista.find().sort({ nome: 1 });
@@ -292,7 +301,8 @@ app.delete("/admin/motorista/:id", autenticarAdmin("master"), async (req, res) =
 });
 
 // ==========================================================
-// 👨‍✈️ ATRIBUIR MOTORISTA (RESERVA E MASTER)
+// 👨‍✈️ ATRIBUIR MOTORISTA (RESERVA E MASTER) (mantive)
+// ==========================================================
 app.post("/reserva/:id/atribuir", autenticarAdmin(null), async (req, res) => {
   try {
     const reserva = await Reserva.findById(req.params.id);
@@ -311,7 +321,8 @@ app.post("/reserva/:id/atribuir", autenticarAdmin(null), async (req, res) => {
 });
 
 // ==========================================================
-// ✅ MARCAR COMO ENTREGUE (APENAS MASTER)
+// ✅ MARCAR COMO ENTREGUE (APENAS MASTER) (mantive)
+// ==========================================================
 app.post("/reserva/:id/entregue", autenticarAdmin("master"), async (req, res) => {
   try {
     const reserva = await Reserva.findByIdAndUpdate(
@@ -327,7 +338,163 @@ app.post("/reserva/:id/entregue", autenticarAdmin("master"), async (req, res) =>
 });
 
 // ==========================================================
-// 🔹 CRON DIÁRIO - ENVIO DE LINK PARA MOTORISTAS (5h da manhã)
+// ====================== NOVAS ROTAS: CATEGORIAS / CONFIG ========================
+// (Públicas para leitura; admin para CRUD)
+// ==========================================================
+
+// Seed defaults (valores provisórios) - altere aqui se quiser outros valores iniciais
+const DEFAULT_CATEGORIAS = [
+  { nome: "Confort", precoKm: 0.50 },
+  { nome: "Premium", precoKm: 0.75 },
+  { nome: "XL 7", precoKm: 1.00 },
+  { nome: "Passeio", precoKm: 0.70 }
+];
+
+// Tempo extra padrão (minutos -> euros)
+const DEFAULT_TEMPO_EXTRA = {
+  "30": 10,
+  "45": 15,
+  "60": 20,
+  "120": 40,
+  "180": 60
+};
+
+// GET categorias (público) -> retorna lista
+app.get("/categorias", async (req, res) => {
+  try {
+    const categorias = await Categoria.find().sort({ nome: 1 }).lean();
+    res.json(categorias);
+  } catch (err) {
+    console.error("Erro /categorias:", err);
+    res.status(500).json({ error: "Erro ao buscar categorias" });
+  }
+});
+
+// ADMIN: listar categorias
+app.get("/admin/categorias", autenticarAdmin("master"), async (req, res) => {
+  try {
+    const categorias = await Categoria.find().sort({ nome: 1 });
+    res.json({ categorias });
+  } catch (err) {
+    console.error("Erro /admin/categorias:", err);
+    res.status(500).json({ error: "Erro ao buscar categorias" });
+  }
+});
+
+// ADMIN: criar categoria
+app.post("/admin/categoria", autenticarAdmin("master"), async (req, res) => {
+  try {
+    const { nome, precoKm } = req.body;
+    const c = await Categoria.create({ nome, precoKm });
+    res.json({ success: true, categoria: c });
+  } catch (err) {
+    console.error("Erro criar categoria:", err);
+    res.status(500).json({ error: "Erro ao criar categoria" });
+  }
+});
+
+// ADMIN: editar
+app.put("/admin/categoria/:id", autenticarAdmin("master"), async (req, res) => {
+  try {
+    const { nome, precoKm } = req.body;
+    const c = await Categoria.findByIdAndUpdate(req.params.id, { nome, precoKm }, { new: true });
+    res.json({ success: true, categoria: c });
+  } catch (err) {
+    console.error("Erro atualizar categoria:", err);
+    res.status(500).json({ error: "Erro ao atualizar categoria" });
+  }
+});
+
+// ADMIN: deletar
+app.delete("/admin/categoria/:id", autenticarAdmin("master"), async (req, res) => {
+  try {
+    await Categoria.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Erro deletar categoria:", err);
+    res.status(500).json({ error: "Erro ao deletar categoria" });
+  }
+});
+
+// Config: obter tempoExtra (público)
+app.get("/config", async (req, res) => {
+  try {
+    let config = await Config.findOne().lean();
+    if (!config) {
+      // se não existir, respondemos com DEFAULT_TEMPO_EXTRA
+      return res.json({ tempoExtra: DEFAULT_TEMPO_EXTRA });
+    }
+    // converter Map para objeto simples
+    const obj = {};
+    for (const [k, v] of config.tempoExtra.entries()) obj[k] = v;
+    res.json({ tempoExtra: obj });
+  } catch (err) {
+    console.error("Erro /config:", err);
+    res.status(500).json({ error: "Erro ao buscar config" });
+  }
+});
+
+// ADMIN: obter config completa
+app.get("/admin/config", autenticarAdmin("master"), async (req, res) => {
+  try {
+    let config = await Config.findOne();
+    if (!config) {
+      // cria default
+      config = await Config.create({ tempoExtra: DEFAULT_TEMPO_EXTRA });
+    }
+    const obj = {};
+    for (const [k, v] of config.tempoExtra.entries()) obj[k] = v;
+    res.json({ config: obj });
+  } catch (err) {
+    console.error("Erro /admin/config:", err);
+    res.status(500).json({ error: "Erro ao buscar config" });
+  }
+});
+
+// ADMIN: atualizar config (envia objeto { tempoExtra: { "30":10, ... } })
+app.put("/admin/config", autenticarAdmin("master"), async (req, res) => {
+  try {
+    const { tempoExtra } = req.body;
+    let config = await Config.findOne();
+    if (!config) {
+      config = new Config();
+    }
+    config.tempoExtra = tempoExtra;
+    await config.save();
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Erro atualizar config:", err);
+    res.status(500).json({ error: "Erro ao atualizar config" });
+  }
+});
+
+// ==========================================================
+// 🔹 SEED INICIAL: cria categorias/config padrão se não existir
+// ==========================================================
+async function seedDefaults() {
+  try {
+    const cnt = await Categoria.countDocuments();
+    if (cnt === 0) {
+      console.log("📦 Seed: criando categorias padrão...");
+      await Categoria.insertMany(DEFAULT_CATEGORIAS);
+      console.log("✅ Categorias criadas");
+    }
+
+    const conf = await Config.findOne();
+    if (!conf) {
+      console.log("📦 Seed: criando config de tempoExtra padrão...");
+      await Config.create({ tempoExtra: DEFAULT_TEMPO_EXTRA });
+      console.log("✅ Config padrão criada");
+    }
+  } catch (err) {
+    console.error("Erro no seedDefaults:", err);
+  }
+}
+seedDefaults();
+
+// ==========================================================
+// 🔹 CRON DIÁRIO - ENVIO DE LINK PARA MOTORISTAS (5h da manhã) (mantive)
+// ==========================================================
 cron.schedule('0 5 * * *', async () => {
   try {
     console.log('📤 Enviando links de acesso para motoristas...');
