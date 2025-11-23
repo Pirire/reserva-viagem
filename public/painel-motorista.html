@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Motorista</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+
+  <h1 class="text-2xl font-bold mb-6 text-center">Painel de Motorista</h1>
+
+  <div id="cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+  <div class="mt-6 text-center">
+    <button id="resgateBtn" class="bg-green-600 text-white py-2 px-4 rounded-lg disabled:opacity-50" disabled>
+      Resgatar Saldo Disponível
+    </button>
+  </div>
+
+<script>
+const BACKEND_URL = "https://seu-backend.com"; // Ajuste para seu backend
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get("token");
+let motoristaId;
+
+// ==================================================
+// 🔹 Valida token e obtém dados do motorista
+// ==================================================
+async function carregarDados() {
+  if (!token) return alert("Token não fornecido!");
+  try {
+    const res = await fetch(`${BACKEND_URL}/motorista/painel`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("Token inválido ou expirado");
+    const data = await res.json();
+    motoristaId = data.motorista._id;
+    renderizarCards(data);
+  } catch(err) {
+    console.error(err);
+    alert("Erro ao acessar painel. Verifique seu link.");
+  }
+}
+
+// ==================================================
+// 🔹 Renderiza reservas e faturação em cards
+// ==================================================
+function renderizarCards(data) {
+  const cardsDiv = document.getElementById("cards");
+  cardsDiv.innerHTML = "";
+
+  const saldoCard = `
+    <div class="bg-white p-4 rounded-lg shadow">
+      <h2 class="font-bold text-lg mb-2">Saldo Líquido</h2>
+      <p class="text-2xl text-green-600">€${data.saldoLiquido.toFixed(2)}</p>
+    </div>
+  `;
+  cardsDiv.innerHTML += saldoCard;
+
+  data.reservas.forEach(r => {
+    const card = `
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="font-bold">${r.codigo} - ${r.status.toUpperCase()}</h3>
+        <p>Data/Hora: ${new Date(r.datahora).toLocaleString()}</p>
+        <p>Destino: ${r.destino}</p>
+        <p>Valor: €${r.valor}</p>
+      </div>
+    `;
+    cardsDiv.innerHTML += card;
+  });
+
+  verificarHorarioResgate(data.saldoLiquido);
+}
+
+// ==================================================
+// 🔹 Habilita botão resgate apenas sexta 06:00-13:00
+// ==================================================
+function verificarHorarioResgate(saldo) {
+  const btn = document.getElementById("resgateBtn");
+  const now = new Date();
+  const dia = now.getDay(); // 5 = sexta
+  const hora = now.getHours();
+
+  if (dia === 5 && hora >= 6 && hora < 13 && saldo > 0) {
+    btn.disabled = false;
+    btn.addEventListener("click", resgatarSaldo);
+  }
+}
+
+// ==================================================
+// 🔹 Função de resgate de saldo
+// ==================================================
+async function resgatarSaldo() {
+  if (!motoristaId) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/motorista/${motoristaId}/resgatar`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("Saldo resgatado com sucesso!");
+      carregarDados();
+    } else alert("Erro ao resgatar saldo.");
+  } catch(err) {
+    console.error(err);
+    alert("Erro na requisição.");
+  }
+}
+
+// ==================================================
+// 🔹 Inicializa
+// ==================================================
+carregarDados();
+</script>
+</body>
+</html>
