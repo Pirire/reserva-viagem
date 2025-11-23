@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Reservas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f3f4f6; font-family: 'Inter', sans-serif; }
+    .card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body class="p-4">
+
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-3xl font-bold text-green-700">Painel de Reservas</h1>
+    <button id="btnSair" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Sair</button>
+  </div>
+
+  <div class="flex justify-between items-center mb-4">
+    <div>
+      <label class="font-semibold">Filtrar por status:</label>
+      <select id="filtroStatus" class="border rounded-lg px-3 py-2">
+        <option value="">Todas</option>
+        <option value="pendente">Pendente</option>
+        <option value="em andamento">Em Andamento</option>
+        <option value="entregue">Entregue</option>
+        <option value="cancelada">Cancelada</option>
+      </select>
+    </div>
+    <button id="btnAtualizar" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <div id="listaReservas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+  <script>
+    const lista = document.getElementById("listaReservas");
+    const filtroStatus = document.getElementById("filtroStatus");
+    const btnAtualizar = document.getElementById("btnAtualizar");
+    const btnSair = document.getElementById("btnSair");
+
+    btnSair.addEventListener("click", () => {
+      window.location.href = "admin.html";
+    });
+
+    async function carregarReservas() {
+      lista.innerHTML = "<p class='text-gray-500 text-center col-span-3'>Carregando reservas...</p>";
+      const filtro = filtroStatus.value ? `?status=${filtroStatus.value}` : "";
+      try {
+        const res = await fetch(`/reservas${filtro}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Erro ao carregar reservas");
+
+        lista.innerHTML = data.reservas.length === 0
+          ? "<p class='text-gray-500 text-center col-span-3'>Nenhuma reserva encontrada.</p>"
+          : data.reservas.map(r => criarCard(r)).join("");
+      } catch (err) {
+        lista.innerHTML = "<p class='text-red-600 text-center col-span-3'>Erro ao carregar reservas</p>";
+      }
+    }
+
+    function criarCard(r) {
+      const corStatus = {
+        "pendente": "bg-yellow-100 text-yellow-800",
+        "em andamento": "bg-blue-100 text-blue-800",
+        "entregue": "bg-green-100 text-green-800",
+        "cancelada": "bg-red-100 text-red-800"
+      }[r.status] || "bg-gray-100 text-gray-800";
+
+      return `
+      <div class="card bg-white rounded-2xl shadow-md p-4 space-y-2">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold text-gray-800">${r.nome}</h2>
+          <span class="px-3 py-1 text-sm font-semibold rounded-full ${corStatus}">
+            ${r.status || "pendente"}
+          </span>
+        </div>
+        <p><strong>Categoria:</strong> ${r.categoria}</p>
+        <p><strong>Valor:</strong> €${r.valor}</p>
+        <p><strong>Partida:</strong> ${r.partida}</p>
+        <p><strong>Destino:</strong> ${r.destino}</p>
+        <p><strong>Data/Hora:</strong> ${new Date(r.datahora).toLocaleString()}</p>
+        <p><strong>Contato:</strong> ${r.contato}</p>
+        <p><strong>Código:</strong> ${r.codigo}</p>
+      </div>`;
+    }
+
+    filtroStatus.addEventListener("change", carregarReservas);
+    btnAtualizar.addEventListener("click", carregarReservas);
+
+    carregarReservas();
+  </script>
+</body>
+</html>

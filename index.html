@@ -12,17 +12,22 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 .input { width: 100%; min-height: 2rem; padding: 0.5rem; border: 1px solid #1E40AF; border-radius: 0.75rem; margin-bottom:0.5rem; box-sizing:border-box;} 
 .linha-horizontal { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem;}
 #map { min-height:16rem; border-radius:0.75rem; margin-bottom:0.5rem;}
-.btn-cat { transition: all 0.2s; margin-bottom:0.5rem;}
-.btn-cat:hover { background-color:#34D399;}
-@media(max-width:640px){.linha-horizontal{flex-direction:column;}}
+.btn-cat { transition: all 0.2s; margin-bottom:0.5rem; background-color:black; color:white;}
+.btn-cat.selected { background-color:green; color:white;}
+.btn-cat:hover { opacity:0.8;}
+@media(max-width:640px){.linha-horizontal{flex-direction:column;} }
 .campoInvalido { border-width:2px !important; animation:pulsarLaranja 1s infinite;}
 @keyframes pulsarLaranja {0% { border-color: orange; } 50% { border-color: darkorange;} 100% {border-color:orange;}}
 #popupResumo .paypal-buttons-container iframe { max-height: 400px !important; width: 100% !important;}
+/* TRANSPARÊNCIA ETAPA 1 e 2 */
+#etapa1, #etapa2 { background-color: rgba(255,255,255,0.8); /* Modificar este valor para alterar transparência */ padding:1rem; border-radius:1rem;}
+.btn-continuar { background-color: gray; color:white;}
+.btn-continuar.active { background-color: black; color:white;}
 </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
 
-<div id="conteudoPrincipal" class="bg-white/80 backdrop-blur-md p-4 md:p-6 rounded-2xl shadow-md w-full max-w-lg space-y-4 relative">
+<div id="conteudoPrincipal" class="backdrop-blur-md p-4 md:p-6 rounded-2xl shadow-md w-full max-w-lg space-y-4 relative">
   <h1 class="text-2xl font-extrabold text-center text-green-600 mb-2">INSERIR DADOS DA VIAGEM</h1>
 
   <!-- ETAPA 1 -->
@@ -42,13 +47,28 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
         <input id="datahora" type="datetime-local" class="input campoObrigatorio">
       </div>
       <div>
-        <label class="font-bold text-gray-700">Nome</label>
-        <input id="nome" type="text" class="input campoObrigatorio">
+        <label class="font-bold text-gray-700">Tempo de Espera Extra</label>
+        <select id="tempoExtra" class="input">
+          <option value="0" selected>0h</option>
+          <option value="30">30min</option>
+          <option value="45">45min</option>
+          <option value="60">1h</option>
+          <option value="120">2h</option>
+          <option value="180">3h</option>
+        </select>
       </div>
     </div>
 
-    <label class="font-bold text-gray-700">E-mail</label>
-    <input id="email" type="email" class="input campoObrigatorio">
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label class="font-bold text-gray-700">Nome</label>
+        <input id="nome" type="text" class="input campoObrigatorio">
+      </div>
+      <div>
+        <label class="font-bold text-gray-700">E-mail</label>
+        <input id="email" type="email" class="input campoObrigatorio">
+      </div>
+    </div>
 
     <div class="linha-horizontal">
       <div class="flex-1">
@@ -75,7 +95,7 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
     </div>
 
     <div class="flex gap-2">
-      <button id="btnContinuar" disabled class="w-full py-2 rounded-2xl bg-gray-400 text-white font-bold">Continuar</button>
+      <button id="btnContinuar" class="w-full py-2 rounded-2xl btn-continuar" disabled>Continuar</button>
       <button id="btnCancelarCampos" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">Cancelar Reserva</button>
     </div>
   </div>
@@ -84,15 +104,15 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
   <div id="etapa2" class="hidden space-y-2">
     <h2 class="text-xl font-bold text-center">SELECIONE A CATEGORIA</h2>
     <div id="categoria" class="grid grid-cols-2 gap-2">
-      <button data-preco="0.50" data-nome="Confort" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">Confort</button>
-      <button data-preco="0.75" data-nome="Premium" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">Premium</button>
-      <button data-preco="1.00" data-nome="XL 7" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">XL 7</button>
-      <button data-preco="0.70" data-nome="Passeio" class="btn-cat w-full py-2 rounded-2xl bg-green-300 uppercase">Passeio</button>
+      <button data-preco="0.50" data-nome="Confort" class="btn-cat w-full py-2 rounded-2xl uppercase">Confort</button>
+      <button data-preco="0.75" data-nome="Premium" class="btn-cat w-full py-2 rounded-2xl uppercase">Premium</button>
+      <button data-preco="1.00" data-nome="XL 7" class="btn-cat w-full py-2 rounded-2xl uppercase">XL 7</button>
+      <button data-preco="0.70" data-nome="Passeio" class="btn-cat w-full py-2 rounded-2xl uppercase">Passeio</button>
     </div>
     <div id="map"></div>
     <div class="grid grid-cols-2 gap-2">
-      <button id="OK" disabled class="w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold">OK</button>
-      <button id="btn-voltarEtapa1" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">Voltar</button>
+      <button id="OK" class="w-full py-2 rounded-2xl btn-continuar" disabled>OK</button>
+      <button id="btn-voltarEtapa1" class="w-full py-2 rounded-2xl bg-black text-white hover:bg-green-600">Voltar</button>
     </div>
   </div>
 </div>
@@ -107,11 +127,11 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
     <p><strong>Destino:</strong> <a id="resDestino" href="#" target="_blank" class="text-blue-600 underline"></a></p>
     <p><strong>Data:</strong> <span id="resData"></span></p>
     <p><strong>Contato:</strong> <span id="resContato"></span></p>
-    <p><strong>Valor:</strong> <span id="resValor" class="text-green-700 font-bold"></span></p>
+    <p><strong>Valor da Viagem:</strong> <span id="resValorViagem" class="text-green-700 font-bold"></span></p>
+    <p><strong>Tempo Extra:</strong> <span id="resValorTempoExtra" class="text-green-700 font-bold"></span></p>
+    <p><strong>VALOR TOTAL DA VIAGEM:</strong> <span id="resValorTotal" class="text-green-700 font-bold"></span></p>
     <p><strong>Código:</strong> <span id="resCodigo"></span></p>
-
     <div id="paypal-button-container" class="mt-4"></div>
-
     <div class="grid grid-cols-2 gap-2 mt-2">
       <button id="btn-voltar" class="w-full py-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold">SAIR</button>
       <button id="btn-fecharResumo" class="w-full py-2 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold">CANCELAR</button>
@@ -120,7 +140,7 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 </div>
 
 <script>
-// --------------------- VARIÁVEIS ---------------------
+// ---------------- VARIÁVEIS ----------------
 let precoCategoria = 0, categoriaSelecionada = "", ultimoCusto = 0, partidaPlace = null, destinoPlace = null;
 const etapa1 = document.getElementById('etapa1');
 const etapa2 = document.getElementById('etapa2');
@@ -129,18 +149,22 @@ const camposObrig = document.querySelectorAll('.campoObrigatorio');
 const emailInput = document.getElementById('email');
 const contatoInput = document.getElementById('contato');
 const codigoPaisSelect = document.getElementById('codigoPais');
+const tempoExtraSelect = document.getElementById('tempoExtra');
 
-// --------------------- FUNÇÕES ---------------------
+// ---------------- FUNÇÕES ----------------
 function validarEmail(email){ return /^\S+@\S+\.\S+$/.test(email); }
 
 function checkCampos(){
     const preenchidos = Array.from(camposObrig).every(c => c.value.trim() !== "");
     const emailValido = validarEmail(emailInput.value);
     const contatoValido = contatoInput.value.trim() !== "";
-    btnContinuar.disabled = !(preenchidos && emailValido && contatoValido);
-    btnContinuar.className = (preenchidos && emailValido && contatoValido) ?
-        "w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold" :
-        "w-full py-2 rounded-2xl bg-gray-400 text-white font-bold";
+    if(preenchidos && emailValido && contatoValido){
+        btnContinuar.disabled = false;
+        btnContinuar.classList.add("active");
+    } else {
+        btnContinuar.disabled = true;
+        btnContinuar.classList.remove("active");
+    }
     if(emailInput.value && !emailValido){ emailInput.classList.add('campoInvalido'); } 
     else { emailInput.classList.remove('campoInvalido'); }
 }
@@ -160,53 +184,54 @@ camposObrig.forEach(c=>{
 
 contatoInput.addEventListener('input', ()=>{ contatoInput.value = contatoInput.value.replace(/\D/g,''); });
 
-// --------------------- GOOGLE MAPS ---------------------
-let map, directionsService, directionsRenderer;
+// ---------------- GOOGLE MAPS ----------------
+let map, directionsService, directionsRenderer, markerPartida, markerDestino;
+
 function initAutocomplete(){
     const partidaAC = new google.maps.places.Autocomplete(document.getElementById('partida'), {fields:["place_id","formatted_address","geometry"]});
     const destinoAC = new google.maps.places.Autocomplete(document.getElementById('destino'), {fields:["place_id","formatted_address","geometry"]});
-    partidaAC.addListener('place_changed', ()=>{ partidaPlace = partidaAC.getPlace(); });
-    destinoAC.addListener('place_changed', ()=>{ destinoPlace = destinoAC.getPlace(); });
+    partidaAC.addListener('place_changed', ()=>{ partidaPlace = partidaAC.getPlace(); colocarMarker('partida'); });
+    destinoAC.addListener('place_changed', ()=>{ destinoPlace = destinoAC.getPlace(); colocarMarker('destino'); });
     initMap();
 }
+
 function initMap(){
     map = new google.maps.Map(document.getElementById("map"), {zoom:7, center:{lat:38.7169,lng:-9.139}});
     directionsService = new google.maps.DirectionsService();
     directionsRenderer = new google.maps.DirectionsRenderer({preserveViewport:false});
     directionsRenderer.setMap(map);
 }
-function calcularRota(){
-    const origem = partidaPlace ? {placeId:partidaPlace.place_id} : document.getElementById("partida").value.trim();
-    const destino = destinoPlace ? {placeId:destinoPlace.place_id} : document.getElementById("destino").value.trim();
-    if(!origem || !destino) return;
-    directionsService.route({origin:origem, destination:destino, travelMode:google.maps.TravelMode.DRIVING}, (res,status)=>{
-        if(status==="OK"){
-            directionsRenderer.setDirections(res);
-            let km=0;
-            res.routes[0].legs.forEach(l=>{ km += l.distance.value/1000; });
-            ultimoCusto = (km*precoCategoria).toFixed(2);
-            document.getElementById("OK").disabled=false;
-            document.getElementById("OK").className="w-full py-2 rounded-2xl bg-green-500 hover:bg-green-600 text-white font-bold";
-        }
-    });
+
+function colocarMarker(tipo){
+    if(tipo==='partida' && partidaPlace){
+        if(markerPartida) markerPartida.setMap(null);
+        markerPartida = new google.maps.Marker({position: partidaPlace.geometry.location, map: map, label:"P"});
+        map.setCenter(partidaPlace.geometry.location);
+    }
+    if(tipo==='destino' && destinoPlace){
+        if(markerDestino) markerDestino.setMap(null);
+        markerDestino = new google.maps.Marker({position: destinoPlace.geometry.location, map: map, label:"D"});
+        map.setCenter(destinoPlace.geometry.location);
+    }
 }
 
-// --------------------- EVENTOS ---------------------
+// ---------------- ETAPA1 -> ETAPA2 ----------------
 btnContinuar.addEventListener('click', ()=>{
     etapa1.classList.add('hidden');
     etapa2.classList.remove('hidden');
-
     const origem = partidaPlace ? {placeId:partidaPlace.place_id} : document.getElementById("partida").value.trim();
     const destino = destinoPlace ? {placeId:destinoPlace.place_id} : document.getElementById("destino").value.trim();
+
     if(origem && destino){
         directionsService.route({origin:origem, destination:destino, travelMode:google.maps.TravelMode.DRIVING}, (res,status)=>{
             if(status==="OK"){
                 let km=0;
                 res.routes[0].legs.forEach(l=>{ km += l.distance.value/1000; });
                 document.querySelectorAll('.btn-cat').forEach(btn=>{
-                    const preco=parseFloat(btn.dataset.preco);
-                    const valor=(km*preco).toFixed(2);
-                    btn.textContent = `${btn.dataset.nome} - €${valor}`;
+                    const preco = parseFloat(btn.dataset.preco);
+                    const valorCalculado = (km * preco).toFixed(2);
+                    btn.textContent = `${btn.dataset.nome} - €${valorCalculado}`;
+                    btn.dataset.valorCalculado = valorCalculado;
                 });
             }
         });
@@ -214,23 +239,27 @@ btnContinuar.addEventListener('click', ()=>{
     directionsRenderer.set('directions', null);
 });
 
+// ---------------- BOTÕES CATEGORIA ----------------
 document.querySelectorAll('.btn-cat').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-        document.querySelectorAll('.btn-cat').forEach(b=>{b.classList.remove('bg-green-600'); b.classList.add('bg-green-300');});
-        btn.classList.remove('bg-green-300'); btn.classList.add('bg-green-600');
+        document.querySelectorAll('.btn-cat').forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
         precoCategoria = parseFloat(btn.dataset.preco);
         categoriaSelecionada = btn.dataset.nome;
-        calcularRota();
+        ultimoCusto = parseFloat(btn.dataset.valorCalculado);
     });
 });
 
-// --------------------- POPUP RESUMO ---------------------
+// ---------------- POPUP / PAYPAL ----------------
 function abrirPopupResumo(dadosReserva, ativarPaypal=false){
+    const valorTotal = (parseFloat(dadosReserva.valor) + (parseInt(dadosReserva.tempoExtra)||0)).toFixed(2);
     document.getElementById('resNome').textContent = dadosReserva.nome;
     document.getElementById('resEmail').textContent = dadosReserva.email;
     document.getElementById('resContato').textContent = dadosReserva.contato;
     document.getElementById('resCategoria').textContent = dadosReserva.categoria;
-    document.getElementById('resValor').textContent = dadosReserva.valor + " €";
+    document.getElementById('resValorViagem').textContent = dadosReserva.valor + " €";
+    document.getElementById('resValorTempoExtra').textContent = dadosReserva.tempoExtra + " €";
+    document.getElementById('resValorTotal').textContent = valorTotal + " €";
     document.getElementById('resPartida').textContent = dadosReserva.partida;
     document.getElementById('resPartida').href = "https://www.google.com/maps/search/"+encodeURIComponent(dadosReserva.partida);
     document.getElementById('resDestino').textContent = dadosReserva.destino;
@@ -238,12 +267,9 @@ function abrirPopupResumo(dadosReserva, ativarPaypal=false){
     document.getElementById('resData').textContent = dadosReserva.datahora;
     document.getElementById('resCodigo').textContent = dadosReserva.codigo;
 
-    // Oculta Etapa 2
     etapa2.classList.add('hidden');
-
     document.getElementById('popupResumo').classList.remove('hidden');
 
-    // Limpa container antes de renderizar PayPal
     if(ativarPaypal){
         const container = document.getElementById('paypal-button-container');
         container.innerHTML = '';
@@ -268,6 +294,7 @@ function abrirPopupResumo(dadosReserva, ativarPaypal=false){
     }
 }
 
+// ---------------- BOTÃO OK ----------------
 document.getElementById("OK").addEventListener("click", ()=>{
     if(!contatoInput.value.trim()){ alert("Preencha o número de contato antes de continuar."); return; }
     const codigoReservaAtual = "RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
@@ -275,12 +302,15 @@ document.getElementById("OK").addEventListener("click", ()=>{
     let codigoResumo = codigoReservaAtual;
     if(codigoMotorista) codigoResumo += "/" + codigoMotorista;
 
+    const tempoExtra = parseInt(tempoExtraSelect.value,10);
+
     const dadosReserva = {
         nome: document.getElementById('nome').value,
         email: document.getElementById('email').value,
         contato: codigoPaisSelect.value + " " + contatoInput.value,
         categoria: categoriaSelecionada,
         valor: ultimoCusto,
+        tempoExtra: tempoExtra,
         partida: document.getElementById('partida').value,
         destino: document.getElementById('destino').value,
         datahora: document.getElementById('datahora').value,
@@ -290,7 +320,7 @@ document.getElementById("OK").addEventListener("click", ()=>{
     abrirPopupResumo(dadosReserva, true);
 });
 
-// --------------------- POPUPS BOTÕES ---------------------
+// ---------------- BOTÕES POPUP ----------------
 document.getElementById("btn-voltar").addEventListener("click", ()=>{
     document.getElementById('popupResumo').classList.add('hidden');
     etapa1.classList.remove('hidden');
@@ -298,15 +328,21 @@ document.getElementById("btn-voltar").addEventListener("click", ()=>{
 });
 document.getElementById("btn-fecharResumo").addEventListener("click", ()=>{
     document.getElementById('popupResumo').classList.add('hidden');
-    // Limpar campos
     camposObrig.forEach(c => c.value=''); 
     document.getElementById('codigoReservaInd').value='';
     btnContinuar.disabled=true;
+    btnContinuar.classList.remove("active");
     etapa1.classList.remove('hidden');
     etapa2.classList.add('hidden');
 });
 
-// --------------------- GEOLOCALIZAÇÃO ---------------------
+// ---------------- BOTÃO VOLTAR ETAPA2 ----------------
+document.getElementById("btn-voltarEtapa1").addEventListener("click", ()=>{
+    etapa2.classList.add('hidden');
+    etapa1.classList.remove('hidden');
+});
+
+// ---------------- GEOLOCALIZAÇÃO ----------------
 document.getElementById("btnLocalizacao").addEventListener("click", ()=>{
     if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(pos=>{
@@ -315,6 +351,7 @@ document.getElementById("btnLocalizacao").addEventListener("click", ()=>{
                 if(status==="OK" && results[0]){
                     document.getElementById("partida").value = results[0].formatted_address;
                     partidaPlace = results[0];
+                    colocarMarker('partida');
                     checkCampos();
                 }
             });
@@ -322,18 +359,12 @@ document.getElementById("btnLocalizacao").addEventListener("click", ()=>{
     }
 });
 
-// --------------------- CANCELAMENTO ---------------------
+// ---------------- CANCELAMENTO ----------------
 document.getElementById('btnCancelarCampos').addEventListener('click', async ()=>{
     const codigoInput = document.getElementById('codigoReservaInd').value.trim();
     const emailInputValue = document.getElementById('email').value.trim();
-
-    if(!codigoInput || !emailInputValue){
-        alert("Para cancelar, preencha o código de reserva/indicação e o e-mail.");
-        return;
-    }
-
+    if(!codigoInput || !emailInputValue){ alert("Para cancelar, preencha o código de reserva/indicação e o e-mail."); return; }
     const dadosCancelamento = { codigo: codigoInput, email: emailInputValue };
-
     try {
         const res = await fetch("https://reserva-backend-uu52.onrender.com/pedido-cancelamento", {
             method: "POST",
@@ -341,7 +372,6 @@ document.getElementById('btnCancelarCampos').addEventListener('click', async ()=
             body: JSON.stringify(dadosCancelamento)
         });
         const resultado = await res.json();
-
         if(resultado.sucesso){
             abrirPopupResumo({
                 nome: resultado.nome,
@@ -355,14 +385,11 @@ document.getElementById('btnCancelarCampos').addEventListener('click', async ()=
                 codigo: resultado.codigo
             }, false);
         } else { alert("Motorista não reconhecido."); }
-    } catch(err){
-        console.error(err);
-        alert("Erro ao tentar validar o código.");
-    }
+    } catch(err){ console.error(err); alert("Erro ao tentar validar o código."); }
 });
 
+// ---------------- INICIALIZAÇÃO ----------------
 window.onload = ()=>{ initAutocomplete(); checkCampos(); };
 </script>
-
 </body>
 </html>
