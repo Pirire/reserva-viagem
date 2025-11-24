@@ -12,10 +12,10 @@
     "reserva",
     "backend",
     "stripe",
+    "paypal",
     "mongodb",
     "express",
-    "admin",
-    "paypal"
+    "admin"
   ],
   "author": "Seu Nome",
   "license": "MIT",
@@ -23,17 +23,16 @@
     "@paypal/checkout-server-sdk": "^1.0.3",
     "@paypal/paypal-server-sdk": "^2.0.0",
     "bcrypt": "^5.1.0",
-    "body-parser": "^1.20.3",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "express-basic-auth": "^1.2.1",
-    "jsonwebtoken": "^9.0.0",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.8.7",
     "multer": "^1.4.4",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
-    "stripe": "^12.18.0"
+    "stripe": "^12.18.0",
+    "path": "^0.12.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
