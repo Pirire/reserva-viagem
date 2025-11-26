@@ -139,7 +139,8 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 </div>
 
 <script>
-let precoCategoria = 0, categoriaSelecionada = "", ultimoCusto = 0, partidaPlace = null, destinoPlace = null;
+let map, directionsService, directionsRenderer, markerPartida, markerDestino;
+let categoriaSelecionada="", ultimoCusto=0, partidaPlace=null, destinoPlace=null;
 const etapa1 = document.getElementById('etapa1');
 const etapa2 = document.getElementById('etapa2');
 const btnContinuar = document.getElementById('btnContinuar');
@@ -172,16 +173,15 @@ camposObrig.forEach(c=>{
     c.addEventListener('keydown', e=>{
         if(e.key==='Enter'){
             e.preventDefault();
-            const idx = Array.from(camposObrig).indexOf(c);
-            if(idx+1 < camposObrig.length) camposObrig[idx+1].focus();
+            const campos = Array.from(camposObrig);
+            const idx = campos.indexOf(c);
+            if(idx+1 < campos.length) campos[idx+1].focus();
             else btnContinuar.focus();
         }
     });
 });
 
 contatoInput.addEventListener('input', ()=>{ contatoInput.value = contatoInput.value.replace(/\D/g,''); });
-
-let map, directionsService, directionsRenderer, markerPartida, markerDestino;
 
 function initAutocomplete(){
     const partidaAC = new google.maps.places.Autocomplete(document.getElementById('partida'), {fields:["place_id","formatted_address","geometry"]});
@@ -211,91 +211,104 @@ function colocarMarker(tipo){
     }
 }
 
-// 🔹 AVANÇAR PARA ETAPA 2 E BUSCAR VALORES REAIS DO BACKEND
 btnContinuar.addEventListener('click', async ()=>{
     etapa1.classList.add('hidden');
     etapa2.classList.remove('hidden');
 
-    const partidaVal = partidaPlace ? partidaPlace.formatted_address : document.getElementById('partida').value.trim();
-    const destinoVal = destinoPlace ? destinoPlace.formatted_address : document.getElementById('destino').value.trim();
-    const tempoExtra = parseInt(tempoExtraSelect.value,10);
+    const origem = partidaPlace ? partidaPlace.formatted_address : document.getElementById("partida").value.trim();
+    const destino = destinoPlace ? destinoPlace.formatted_address : document.getElementById("destino").value.trim();
+    if(!origem || !destino) return;
 
     const botoes = document.querySelectorAll('.btn-cat');
-    for(let btn of botoes){
+    for(const btn of botoes){
+        const categoria = btn.dataset.nome;
         try{
-            const categoria = btn.dataset.nome;
-            const res = await fetch('http://localhost:10000/calcular-viagem',{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({partida: partidaVal, destino: destinoVal, categoria: categoria, tempoExtra})
+            const resp = await fetch("https://seu-backend.onrender.com/calcular-viagem",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({partida:origem,destino:destino,categoria,tempoExtra:parseInt(tempoExtraSelect.value,10)})
             });
-            const data = await res.json();
-            btn.textContent = `${categoria} - €${parseFloat(data.valorViagem).toFixed(2)}`;
-            btn.dataset.valorCalculado = parseFloat(data.valorViagem).toFixed(2);
-        }catch(err){ console.error("Erro ao buscar valor backend:", err); }
+            const data = await resp.json();
+            if(data.valorViagem) btn.textContent = `${categoria} - €${data.valorViagem}`;
+        }catch(err){console.error(err);}
     }
-    botaoOK.disabled = true;
-    botaoOK.classList.remove("active");
 });
 
-// 🔹 SELEÇÃO DE CATEGORIA -> TRAÇAR ROTA E ATIVAR BOTÃO OK
+// Etapa 2 categoria seleção
 document.querySelectorAll('.btn-cat').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', async ()=>{
         document.querySelectorAll('.btn-cat').forEach(b=>b.classList.remove('selected'));
         btn.classList.add('selected');
         categoriaSelecionada = btn.dataset.nome;
-        ultimoCusto = parseFloat(btn.dataset.valorCalculado);
 
-        if(partidaPlace && destinoPlace){
-            const origem = partidaPlace.place_id ? {placeId: partidaPlace.place_id} : document.getElementById("partida").value;
-            const destino = destinoPlace.place_id ? {placeId: destinoPlace.place_id} : document.getElementById("destino").value;
-            directionsService.route({
-                origin: origem,
-                destination: destino,
-                travelMode: google.maps.TravelMode.DRIVING
-            }, (res,status)=>{
-                if(status==="OK"){
-                    directionsRenderer.setDirections(res);
-                    colocarMarker('partida');
-                    colocarMarker('destino');
-                } else { alert("Erro ao calcular rota."); }
-            });
-        }
+        const origem = partidaPlace ? partidaPlace.formatted_address : document.getElementById("partida").value.trim();
+        const destino = destinoPlace ? destinoPlace.formatted_address : document.getElementById("destino").value.trim();
+        if(!origem || !destino) return;
 
+        // Google Maps desenha rota
+        directionsService.route({origin:origem,destination:destino,travelMode:google.maps.TravelMode.DRIVING},(res,status)=>{
+            if(status==="OK") directionsRenderer.setDirections(res);
+            colocarMarker();
+        });
+
+        // Habilita OK
         botaoOK.disabled = false;
         botaoOK.classList.add("active");
+
+        // Busca valor real
+        try{
+            const resp = await fetch("https://seu-backend.onrender.com/calcular-viagem",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({partida:origem,destino:destino,categoria:categoriaSelecionada,tempoExtra:parseInt(tempoExtraSelect.value,10)})
+            });
+            const data = await resp.json();
+            if(data.valorViagem){
+                ultimoCusto = parseFloat(data.valorViagem);
+                btn.textContent = `${categoriaSelecionada} - €${data.valorViagem}`;
+            }
+        }catch(err){console.error(err);}
     });
 });
 
-botaoOK.addEventListener("click", ()=>{
-    if(!contatoInput.value.trim()){ alert("Preencha o número de contato antes de continuar."); return; }
-    const codigoReservaAtual = "RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
-    let codigoMotorista = document.getElementById('codigoReservaInd').value.trim();
-    let codigoResumo = codigoReservaAtual;
-    if(codigoMotorista) codigoResumo += "/" + codigoMotorista;
-
-    const tempoExtra = parseInt(tempoExtraSelect.value,10);
-
+botaoOK.addEventListener('click', ()=>{
     const dadosReserva = {
         nome: document.getElementById('nome').value,
         email: document.getElementById('email').value,
         contato: codigoPaisSelect.value + " " + contatoInput.value,
         categoria: categoriaSelecionada,
         valor: ultimoCusto,
-        tempoExtra: tempoExtra,
+        tempoExtra: parseInt(tempoExtraSelect.value,10),
         partida: document.getElementById('partida').value,
         destino: document.getElementById('destino').value,
         datahora: document.getElementById('datahora').value,
-        codigo: codigoResumo
+        codigo: "RM-"+Math.random().toString(36).substring(2,6).toUpperCase()
     };
-
-    abrirPopupResumo(dadosReserva, true);
+    abrirPopupResumo(dadosReserva,true);
 });
 
-window.onload = ()=>{
-    initAutocomplete();
-    checkCampos();
-};
+document.getElementById("btn-voltarEtapa1").addEventListener("click",()=>{
+    etapa2.classList.add('hidden');
+    etapa1.classList.remove('hidden');
+});
+
+document.getElementById("btnLocalizacao").addEventListener("click",()=>{
+    if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(pos=>{
+            const latlng={lat:pos.coords.latitude,lng:pos.coords.longitude};
+            new google.maps.Geocoder().geocode({location:latlng},(results,status)=>{
+                if(status==="OK" && results[0]){
+                    document.getElementById("partida").value = results[0].formatted_address;
+                    partidaPlace = results[0];
+                    colocarMarker('partida');
+                    checkCampos();
+                }
+            });
+        });
+    }
+});
+
+window.onload = ()=>{ initAutocomplete(); checkCampos(); };
 </script>
 
 </body>
