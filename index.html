@@ -17,10 +17,10 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 .btn-cat:hover { opacity:0.8;}
 @media(max-width:640px){.linha-horizontal{flex-direction:column;} }
 .campoInvalido { border-width:2px !important; animation:pulsarLaranja 1s infinite;}
-@keyframes pulsarLaranja {0% { border-color: orange; } 50% { border-color: darkorange;} 100% {border-color:orange;}}
+@keyframes pulsarLaranja {0% { border-color: orange; } 50% { border-color: darkorange;} 100% {border-color:orange;} }
 #popupResumo .paypal-buttons-container iframe { max-height: 400px !important; width: 100% !important;}
 /* TRANSPARÊNCIA ETAPA 1 e 2 */
-#etapa1, #etapa2 { background-color: rgba(255,255,255,0.8); /* Modificar este valor para alterar transparência */ padding:1rem; border-radius:1rem;}
+#etapa1, #etapa2 { background-color: rgba(255,255,255,0.8); padding:1rem; border-radius:1rem;}
 .btn-continuar { background-color: gray; color:white;}
 .btn-continuar.active { background-color: black; color:white;}
 </style>
@@ -140,7 +140,6 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 </div>
 
 <script>
-// ---------------- VARIÁVEIS ----------------
 let precoCategoria = 0, categoriaSelecionada = "", ultimoCusto = 0, partidaPlace = null, destinoPlace = null;
 const etapa1 = document.getElementById('etapa1');
 const etapa2 = document.getElementById('etapa2');
@@ -150,8 +149,8 @@ const emailInput = document.getElementById('email');
 const contatoInput = document.getElementById('contato');
 const codigoPaisSelect = document.getElementById('codigoPais');
 const tempoExtraSelect = document.getElementById('tempoExtra');
+const botaoOK = document.getElementById("OK");
 
-// ---------------- FUNÇÕES ----------------
 function validarEmail(email){ return /^\S+@\S+\.\S+$/.test(email); }
 
 function checkCampos(){
@@ -184,7 +183,6 @@ camposObrig.forEach(c=>{
 
 contatoInput.addEventListener('input', ()=>{ contatoInput.value = contatoInput.value.replace(/\D/g,''); });
 
-// ---------------- GOOGLE MAPS ----------------
 let map, directionsService, directionsRenderer, markerPartida, markerDestino;
 
 function initAutocomplete(){
@@ -215,88 +213,48 @@ function colocarMarker(tipo){
     }
 }
 
-// ---------------- ETAPA1 -> ETAPA2 ----------------
-btnContinuar.addEventListener('click', ()=>{
+btnContinuar.addEventListener('click', ()=> {
     etapa1.classList.add('hidden');
     etapa2.classList.remove('hidden');
-    const origem = partidaPlace ? {placeId:partidaPlace.place_id} : document.getElementById("partida").value.trim();
-    const destino = destinoPlace ? {placeId:destinoPlace.place_id} : document.getElementById("destino").value.trim();
-
-    if(origem && destino){
-        directionsService.route({origin:origem, destination:destino, travelMode:google.maps.TravelMode.DRIVING}, (res,status)=>{
-            if(status==="OK"){
-                let km=0;
-                res.routes[0].legs.forEach(l=>{ km += l.distance.value/1000; });
-                document.querySelectorAll('.btn-cat').forEach(btn=>{
-                    const preco = parseFloat(btn.dataset.preco);
-                    const valorCalculado = (km * preco).toFixed(2);
-                    btn.textContent = `${btn.dataset.nome} - €${valorCalculado}`;
-                    btn.dataset.valorCalculado = valorCalculado;
-                });
-            }
-        });
-    }
     directionsRenderer.set('directions', null);
 });
 
-// ---------------- BOTÕES CATEGORIA ----------------
-document.querySelectorAll('.btn-cat').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-        document.querySelectorAll('.btn-cat').forEach(b=>b.classList.remove('selected'));
+// 🔹 NOVA LÓGICA DOS BOTÕES DE CATEGORIA (busca backend)
+document.querySelectorAll('.btn-cat').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        document.querySelectorAll('.btn-cat').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
-        precoCategoria = parseFloat(btn.dataset.preco);
+
         categoriaSelecionada = btn.dataset.nome;
-        ultimoCusto = parseFloat(btn.dataset.valorCalculado);
+        const origem = partidaPlace ? partidaPlace.formatted_address : document.getElementById("partida").value.trim();
+        const destino = destinoPlace ? destinoPlace.formatted_address : document.getElementById("destino").value.trim();
+        const tempoExtra = parseInt(tempoExtraSelect.value,10);
+
+        if(!origem || !destino) { alert("Preencha partida e destino antes de selecionar a categoria."); return; }
+
+        try {
+            const resp = await fetch("https://reserva-backend-uu52.onrender.com/calcular-viagem", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ partida: origem, destino: destino, categoria: categoriaSelecionada, tempoExtra })
+            });
+            const data = await resp.json();
+            if(data.error){ alert("Erro ao calcular viagem: " + data.error); return; }
+
+            ultimoCusto = parseFloat(data.valorViagem);
+            btn.textContent = `${categoriaSelecionada} - €${ultimoCusto.toFixed(2)}`;
+            botaoOK.disabled = false;
+            botaoOK.classList.add("active");
+        } catch(err){
+            console.error(err);
+            alert("Erro ao se comunicar com o servidor para calcular viagem.");
+        }
     });
 });
 
-// ---------------- POPUP / PAYPAL ----------------
-function abrirPopupResumo(dadosReserva, ativarPaypal=false){
-    const valorTotal = (parseFloat(dadosReserva.valor) + (parseInt(dadosReserva.tempoExtra)||0)).toFixed(2);
-    document.getElementById('resNome').textContent = dadosReserva.nome;
-    document.getElementById('resEmail').textContent = dadosReserva.email;
-    document.getElementById('resContato').textContent = dadosReserva.contato;
-    document.getElementById('resCategoria').textContent = dadosReserva.categoria;
-    document.getElementById('resValorViagem').textContent = dadosReserva.valor + " €";
-    document.getElementById('resValorTempoExtra').textContent = dadosReserva.tempoExtra + " €";
-    document.getElementById('resValorTotal').textContent = valorTotal + " €";
-    document.getElementById('resPartida').textContent = dadosReserva.partida;
-    document.getElementById('resPartida').href = "https://www.google.com/maps/search/"+encodeURIComponent(dadosReserva.partida);
-    document.getElementById('resDestino').textContent = dadosReserva.destino;
-    document.getElementById('resDestino').href = "https://www.google.com/maps/search/"+encodeURIComponent(dadosReserva.destino);
-    document.getElementById('resData').textContent = dadosReserva.datahora;
-    document.getElementById('resCodigo').textContent = dadosReserva.codigo;
-
-    etapa2.classList.add('hidden');
-    document.getElementById('popupResumo').classList.remove('hidden');
-
-    if(ativarPaypal){
-        const container = document.getElementById('paypal-button-container');
-        container.innerHTML = '';
-        paypal.Buttons({
-            createOrder: async function(data, actions) {
-                const res = await fetch("https://reserva-backend-uu52.onrender.com/create-paypal-order", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(dadosReserva)
-                });
-                const dataResp = await res.json();
-                return dataResp.orderID;
-            },
-            onApprove: async function(data, actions) {
-                const capture = await fetch(`https://reserva-backend-uu52.onrender.com/capture-paypal-order/${data.orderID}`, { method: "POST" });
-                const result = await capture.json();
-                alert("Pagamento realizado com sucesso!");
-                document.getElementById('popupResumo').classList.add('hidden');
-            },
-            onError: function(err) { console.error(err); alert("Erro ao processar o pagamento."); }
-        }).render('#paypal-button-container');
-    }
-}
-
-// ---------------- BOTÃO OK ----------------
-document.getElementById("OK").addEventListener("click", ()=>{
+botaoOK.addEventListener("click", ()=> {
     if(!contatoInput.value.trim()){ alert("Preencha o número de contato antes de continuar."); return; }
+
     const codigoReservaAtual = "RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
     let codigoMotorista = document.getElementById('codigoReservaInd').value.trim();
     let codigoResumo = codigoReservaAtual;
@@ -320,75 +278,6 @@ document.getElementById("OK").addEventListener("click", ()=>{
     abrirPopupResumo(dadosReserva, true);
 });
 
-// ---------------- BOTÕES POPUP ----------------
-document.getElementById("btn-voltar").addEventListener("click", ()=>{
-    document.getElementById('popupResumo').classList.add('hidden');
-    etapa1.classList.remove('hidden');
-    etapa2.classList.add('hidden');
-});
-document.getElementById("btn-fecharResumo").addEventListener("click", ()=>{
-    document.getElementById('popupResumo').classList.add('hidden');
-    camposObrig.forEach(c => c.value=''); 
-    document.getElementById('codigoReservaInd').value='';
-    btnContinuar.disabled=true;
-    btnContinuar.classList.remove("active");
-    etapa1.classList.remove('hidden');
-    etapa2.classList.add('hidden');
-});
-
-// ---------------- BOTÃO VOLTAR ETAPA2 ----------------
-document.getElementById("btn-voltarEtapa1").addEventListener("click", ()=>{
-    etapa2.classList.add('hidden');
-    etapa1.classList.remove('hidden');
-});
-
-// ---------------- GEOLOCALIZAÇÃO ----------------
-document.getElementById("btnLocalizacao").addEventListener("click", ()=>{
-    if(navigator.geolocation){
-        navigator.geolocation.getCurrentPosition(pos=>{
-            const latlng = {lat:pos.coords.latitude, lng:pos.coords.longitude};
-            new google.maps.Geocoder().geocode({location:latlng},(results,status)=>{
-                if(status==="OK" && results[0]){
-                    document.getElementById("partida").value = results[0].formatted_address;
-                    partidaPlace = results[0];
-                    colocarMarker('partida');
-                    checkCampos();
-                }
-            });
-        });
-    }
-});
-
-// ---------------- CANCELAMENTO ----------------
-document.getElementById('btnCancelarCampos').addEventListener('click', async ()=>{
-    const codigoInput = document.getElementById('codigoReservaInd').value.trim();
-    const emailInputValue = document.getElementById('email').value.trim();
-    if(!codigoInput || !emailInputValue){ alert("Para cancelar, preencha o código de reserva/indicação e o e-mail."); return; }
-    const dadosCancelamento = { codigo: codigoInput, email: emailInputValue };
-    try {
-        const res = await fetch("https://reserva-backend-uu52.onrender.com/pedido-cancelamento", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(dadosCancelamento)
-        });
-        const resultado = await res.json();
-        if(resultado.sucesso){
-            abrirPopupResumo({
-                nome: resultado.nome,
-                email: resultado.email,
-                contato: resultado.contato,
-                categoria: resultado.categoria,
-                valor: resultado.valor,
-                partida: resultado.partida,
-                destino: resultado.destino,
-                datahora: resultado.datahora,
-                codigo: resultado.codigo
-            }, false);
-        } else { alert("Motorista não reconhecido."); }
-    } catch(err){ console.error(err); alert("Erro ao tentar validar o código."); }
-});
-
-// ---------------- INICIALIZAÇÃO ----------------
 window.onload = ()=>{ initAutocomplete(); checkCampos(); };
 </script>
 </body>
