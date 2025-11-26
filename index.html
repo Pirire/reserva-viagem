@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reserva</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ6XoeSWUFGWFwPPgOQXZA1zfGpy1ECTg&libraries=places"></script>
-<script src="https://www.paypal.com/sdk/js?client-id=AfqhxESfMaCs_3uZRpltJX9Ka2sx2U2z6_HvUdZ1l2JzrImHGE7atObhlfkV3W99ifYYitKujJrnf4mf&currency=EUR"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY&libraries=places"></script>
+<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=EUR"></script>
 <style>
 body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cover; background-position: center; }
 .input { width: 100%; min-height: 2rem; padding: 0.5rem; border: 1px solid #1E40AF; border-radius: 0.75rem; margin-bottom:0.5rem; box-sizing:border-box;} 
@@ -19,7 +19,6 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 .campoInvalido { border-width:2px !important; animation:pulsarLaranja 1s infinite;}
 @keyframes pulsarLaranja {0% { border-color: orange; } 50% { border-color: darkorange;} 100% {border-color:orange;} }
 #popupResumo .paypal-buttons-container iframe { max-height: 400px !important; width: 100% !important;}
-/* TRANSPARÊNCIA ETAPA 1 e 2 */
 #etapa1, #etapa2 { background-color: rgba(255,255,255,0.8); padding:1rem; border-radius:1rem;}
 .btn-continuar { background-color: gray; color:white;}
 .btn-continuar.active { background-color: black; color:white;}
@@ -104,10 +103,10 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
   <div id="etapa2" class="hidden space-y-2">
     <h2 class="text-xl font-bold text-center">SELECIONE A CATEGORIA</h2>
     <div id="categoria" class="grid grid-cols-2 gap-2">
-      <button data-preco="0.50" data-nome="Confort" class="btn-cat w-full py-2 rounded-2xl uppercase">Confort</button>
-      <button data-preco="0.75" data-nome="Premium" class="btn-cat w-full py-2 rounded-2xl uppercase">Premium</button>
-      <button data-preco="1.00" data-nome="XL 7" class="btn-cat w-full py-2 rounded-2xl uppercase">XL 7</button>
-      <button data-preco="0.70" data-nome="Passeio" class="btn-cat w-full py-2 rounded-2xl uppercase">Passeio</button>
+      <button data-nome="Confort" class="btn-cat w-full py-2 rounded-2xl uppercase">Confort</button>
+      <button data-nome="Premium" class="btn-cat w-full py-2 rounded-2xl uppercase">Premium</button>
+      <button data-nome="XL 7" class="btn-cat w-full py-2 rounded-2xl uppercase">XL 7</button>
+      <button data-nome="Passeio" class="btn-cat w-full py-2 rounded-2xl uppercase">Passeio</button>
     </div>
     <div id="map"></div>
     <div class="grid grid-cols-2 gap-2">
@@ -173,9 +172,8 @@ camposObrig.forEach(c=>{
     c.addEventListener('keydown', e=>{
         if(e.key==='Enter'){
             e.preventDefault();
-            const campos = Array.from(camposObrig);
-            const idx = campos.indexOf(c);
-            if(idx+1 < campos.length) campos[idx+1].focus();
+            const idx = Array.from(camposObrig).indexOf(c);
+            if(idx+1 < camposObrig.length) camposObrig[idx+1].focus();
             else btnContinuar.focus();
         }
     });
@@ -213,48 +211,64 @@ function colocarMarker(tipo){
     }
 }
 
-btnContinuar.addEventListener('click', ()=> {
+// 🔹 AVANÇAR PARA ETAPA 2 E BUSCAR VALORES REAIS DO BACKEND
+btnContinuar.addEventListener('click', async ()=>{
     etapa1.classList.add('hidden');
     etapa2.classList.remove('hidden');
-    directionsRenderer.set('directions', null);
+
+    const partidaVal = partidaPlace ? partidaPlace.formatted_address : document.getElementById('partida').value.trim();
+    const destinoVal = destinoPlace ? destinoPlace.formatted_address : document.getElementById('destino').value.trim();
+    const tempoExtra = parseInt(tempoExtraSelect.value,10);
+
+    const botoes = document.querySelectorAll('.btn-cat');
+    for(let btn of botoes){
+        try{
+            const categoria = btn.dataset.nome;
+            const res = await fetch('http://localhost:10000/calcular-viagem',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({partida: partidaVal, destino: destinoVal, categoria: categoria, tempoExtra})
+            });
+            const data = await res.json();
+            btn.textContent = `${categoria} - €${parseFloat(data.valorViagem).toFixed(2)}`;
+            btn.dataset.valorCalculado = parseFloat(data.valorViagem).toFixed(2);
+        }catch(err){ console.error("Erro ao buscar valor backend:", err); }
+    }
+    botaoOK.disabled = true;
+    botaoOK.classList.remove("active");
 });
 
-// 🔹 NOVA LÓGICA DOS BOTÕES DE CATEGORIA (busca backend)
-document.querySelectorAll('.btn-cat').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        document.querySelectorAll('.btn-cat').forEach(b => b.classList.remove('selected'));
+// 🔹 SELEÇÃO DE CATEGORIA -> TRAÇAR ROTA E ATIVAR BOTÃO OK
+document.querySelectorAll('.btn-cat').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.btn-cat').forEach(b=>b.classList.remove('selected'));
         btn.classList.add('selected');
-
         categoriaSelecionada = btn.dataset.nome;
-        const origem = partidaPlace ? partidaPlace.formatted_address : document.getElementById("partida").value.trim();
-        const destino = destinoPlace ? destinoPlace.formatted_address : document.getElementById("destino").value.trim();
-        const tempoExtra = parseInt(tempoExtraSelect.value,10);
+        ultimoCusto = parseFloat(btn.dataset.valorCalculado);
 
-        if(!origem || !destino) { alert("Preencha partida e destino antes de selecionar a categoria."); return; }
-
-        try {
-            const resp = await fetch("https://reserva-backend-uu52.onrender.com/calcular-viagem", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ partida: origem, destino: destino, categoria: categoriaSelecionada, tempoExtra })
+        if(partidaPlace && destinoPlace){
+            const origem = partidaPlace.place_id ? {placeId: partidaPlace.place_id} : document.getElementById("partida").value;
+            const destino = destinoPlace.place_id ? {placeId: destinoPlace.place_id} : document.getElementById("destino").value;
+            directionsService.route({
+                origin: origem,
+                destination: destino,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, (res,status)=>{
+                if(status==="OK"){
+                    directionsRenderer.setDirections(res);
+                    colocarMarker('partida');
+                    colocarMarker('destino');
+                } else { alert("Erro ao calcular rota."); }
             });
-            const data = await resp.json();
-            if(data.error){ alert("Erro ao calcular viagem: " + data.error); return; }
-
-            ultimoCusto = parseFloat(data.valorViagem);
-            btn.textContent = `${categoriaSelecionada} - €${ultimoCusto.toFixed(2)}`;
-            botaoOK.disabled = false;
-            botaoOK.classList.add("active");
-        } catch(err){
-            console.error(err);
-            alert("Erro ao se comunicar com o servidor para calcular viagem.");
         }
+
+        botaoOK.disabled = false;
+        botaoOK.classList.add("active");
     });
 });
 
-botaoOK.addEventListener("click", ()=> {
+botaoOK.addEventListener("click", ()=>{
     if(!contatoInput.value.trim()){ alert("Preencha o número de contato antes de continuar."); return; }
-
     const codigoReservaAtual = "RM-"+Math.random().toString(36).substring(2,6).toUpperCase();
     let codigoMotorista = document.getElementById('codigoReservaInd').value.trim();
     let codigoResumo = codigoReservaAtual;
@@ -278,7 +292,11 @@ botaoOK.addEventListener("click", ()=> {
     abrirPopupResumo(dadosReserva, true);
 });
 
-window.onload = ()=>{ initAutocomplete(); checkCampos(); };
+window.onload = ()=>{
+    initAutocomplete();
+    checkCampos();
+};
 </script>
+
 </body>
 </html>
