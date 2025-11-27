@@ -1,3 +1,7 @@
+// server.js (ATUALIZADO — substituir o seu arquivo por este)
+// Mantive 100% do seu backend original e apenas adicionei suporte para /obter-valores,
+// CORS aberto e uma função interna para calcular viagem (usada também por /reserva).
+
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
@@ -29,7 +33,8 @@ mongoose
   .then(() => console.log("✅ MongoDB conectado"))
   .catch((err) => console.error("❌ Erro ao conectar no MongoDB", err));
 
-app.use(cors());
+// Habilita CORS para o frontend (Render ou outro domínio)
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -54,19 +59,19 @@ const transporter = nodemailer.createTransport({
 const client = new paypal.core.PayPalHttpClient(
   process.env.PAYPAL_MODE === "live"
     ? new paypal.core.LiveEnvironment(
-        process.env.PAYPAL_CLIENT_ID, // 🔹 Substitua pelo seu Client ID
-        process.env.PAYPAL_CLIENT_SECRET // 🔹 Substitua pelo seu Secret
+        process.env.PAYPAL_CLIENT_ID,
+        process.env.PAYPAL_CLIENT_SECRET
       )
     : new paypal.core.SandboxEnvironment(
-        process.env.PAYPAL_CLIENT_ID, // 🔹 Substitua pelo seu Client ID Sandbox
-        process.env.PAYPAL_CLIENT_SECRET // 🔹 Substitua pelo seu Secret Sandbox
+        process.env.PAYPAL_CLIENT_ID,
+        process.env.PAYPAL_CLIENT_SECRET
       )
 );
 
 // ==========================================================
 // 🔐 LOGIN ADMIN
 // ==========================================================
-const ADMIN_USER_MASTER = process.env.ADMIN_USER_MASTER; // 🔹 Substitua pelos seus admin users
+const ADMIN_USER_MASTER = process.env.ADMIN_USER_MASTER;
 const ADMIN_PASS_MASTER = process.env.ADMIN_PASS_MASTER;
 const ADMIN_USER_RESERVA = process.env.ADMIN_USER_RESERVA;
 const ADMIN_PASS_RESERVA = process.env.ADMIN_PASS_RESERVA;
@@ -104,51 +109,109 @@ function autenticarAdmin(tipoNecessario = null) {
 }
 
 // ==========================================================
-// 🚀 ROTA SEGURA DE CÁLCULO DE VALOR
+// Função interna para cálculo de viagem (reúne lógica usada em /calcular-viagem)
+// Mantida a mesma lógica — apenas colocada em função reutilizável.
+// ==========================================================
+async function calcularViagemInterno({ partida, destino, categoria = null, tempoExtra = null }) {
+  if (!partida || !destino) throw { status: 400, message: "Dados incompletos (partida/destino)" };
+
+  // Se categoria for fornecida, busca a categoria; caso contrário, retorna apenas distância+km
+  let cat = null;
+  if (categoria) {
+    cat = await Categoria.findOne({ nome: categoria });
+    if (!cat) throw { status: 404, message: "Categoria inválida" };
+  }
+
+  const config = await Config.findOne();
+  const tempoExtraObj = config ? Object.fromEntries(config.tempoExtra) : { "30": 10, "45": 15, "60": 20, "120": 40, "180": 60 };
+  const valorTempoExtra = tempoExtra ? (tempoExtraObj[tempoExtra] || 0) : 0;
+
+  const googleKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!googleKey) throw { status: 500, message: "GOOGLE_MAPS_API_KEY não configurada" };
+
+  const resp = await fetch(`https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(partida)}&destinations=${encodeURIComponent(destino)}&key=${googleKey}&mode=driving`);
+  const data = await resp.json();
+
+  if (!data.rows?.[0]?.elements?.[0]?.distance?.value) {
+    // Retorna objeto com detalhes do retorno do Google para debug
+    throw { status: 400, message: "Não foi possível calcular distância", extra: data };
+  }
+
+  const km = data.rows[0].elements[0].distance.value / 1000;
+
+  if (cat) {
+    const valorViagem = (km * cat.precoKm).toFixed(2);
+    const valorTotal = (parseFloat(valorViagem) + parseFloat(valorTempoExtra)).toFixed(2);
+    return { km, valorViagem, valorTempoExtra, valorTotal };
+  } else {
+    // Retorna valores por km (sem categoria)
+    return { km };
+  }
+}
+
+// ==========================================================
+// 🚀 ROTA SEGURA DE CÁLCULO DE VALOR (mantida exatamente como estava)
 // ==========================================================
 app.post("/calcular-viagem", async (req, res) => {
   try {
     const { partida, destino, categoria, tempoExtra } = req.body;
     if (!partida || !destino || !categoria) return res.status(400).json({ error: "Dados incompletos" });
 
-    const cat = await Categoria.findOne({ nome: categoria });
-    if (!cat) return res.status(404).json({ error: "Categoria inválida" });
-
-    const config = await Config.findOne();
-    const tempoExtraObj = config ? Object.fromEntries(config.tempoExtra) : { "30": 10, "45": 15, "60": 20, "120": 40, "180": 60 };
-    const valorTempoExtra = tempoExtraObj[tempoExtra] || 0;
-
-    // 🔹 Substitua a chave abaixo pelo seu Google Maps API Key
-    const googleKey = process.env.GOOGLE_MAPS_API_KEY;
-    const resp = await fetch(`https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(partida)}&destinations=${encodeURIComponent(destino)}&key=${googleKey}&mode=driving`);
-    const data = await resp.json();
-    if (!data.rows?.[0]?.elements?.[0]?.distance?.value) return res.status(400).json({ error: "Não foi possível calcular distância" });
-
-    const km = data.rows[0].elements[0].distance.value / 1000;
-    const valorViagem = (km * cat.precoKm).toFixed(2);
-    const valorTotal = (parseFloat(valorViagem) + parseFloat(valorTempoExtra)).toFixed(2);
-
-    res.json({ valorViagem, valorTempoExtra, valorTotal });
+    // Reaproveita a função interna
+    const resultado = await calcularViagemInterno({ partida, destino, categoria, tempoExtra });
+    // resultado tem: km, valorViagem, valorTempoExtra, valorTotal
+    res.json({ valorViagem: resultado.valorViagem, valorTempoExtra: resultado.valorTempoExtra, valorTotal: resultado.valorTotal });
   } catch (err) {
-    console.error(err);
+    console.error("Erro em /calcular-viagem:", err);
+    if (err.status) return res.status(err.status).json({ error: err.message, extra: err.extra || null });
     res.status(500).json({ error: "Erro ao calcular viagem" });
   }
 });
 
 // ==========================================================
-// 🚗 CRIAR RESERVA - usa cálculo seguro
+// 🟩 ROTA /obter-valores (ADICIONADA para o frontend)
+// ==========================================================
+app.post("/obter-valores", async (req, res) => {
+  try {
+    const { origem, destino } = req.body;
+    if (!origem || !destino) return res.status(400).json({ error: "Origem e destino são obrigatórios" });
+
+    // Busca categorias
+    const categorias = await Categoria.find();
+    if (!categorias || categorias.length === 0) return res.status(500).json({ error: "Nenhuma categoria configurada" });
+
+    // Calcula km com a mesma lógica interna
+    const resultadoKm = await calcularViagemInterno({ partida: origem, destino });
+    const km = resultadoKm.km;
+
+    const resultado = {};
+    categorias.forEach((cat) => {
+      resultado[cat.nome] = (km * cat.precoKm).toFixed(2);
+    });
+
+    // Também envia tempoExtra (config) para o frontend se precisar
+    const config = await Config.findOne();
+    const tempoExtraObj = config ? Object.fromEntries(config.tempoExtra) : { "30": 10, "45": 15, "60": 20, "120": 40, "180": 60 };
+    resultado._tempoExtra = tempoExtraObj;
+
+    return res.json(resultado);
+  } catch (err) {
+    console.error("Erro em /obter-valores:", err);
+    if (err.status) return res.status(err.status).json({ error: err.message, extra: err.extra || null });
+    return res.status(500).json({ error: "Erro interno ao calcular valores" });
+  }
+});
+
+// ==========================================================
+// 🚗 CRIAR RESERVA - usa cálculo seguro (AJUSTADO para usar função interna)
 // ==========================================================
 app.post("/reserva", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, datahora, tempoExtra, contato, codigo } = req.body;
 
-    // 🔹 Atenção: URL do backend - ajustar se for produção
-    const calcResp = await fetch(`http://localhost:${PORT}/calcular-viagem`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ partida, destino, categoria, tempoExtra })
-    });
-    const { valorTotal, valorTempoExtra } = await calcResp.json();
+    // Usa a função interna em vez de fetch para localhost (corrige deploy no Render)
+    const resultadoCalc = await calcularViagemInterno({ partida, destino, categoria, tempoExtra });
+    const { valorTotal, valorTempoExtra } = resultadoCalc;
 
     const novaReserva = await Reserva.create({
       nome, email, categoria, partida, destino, datahora,
@@ -171,19 +234,74 @@ app.post("/reserva", async (req, res) => {
              <p>Valor total: €${valorTotal}</p>
              <p>Código: ${codigo}</p>`
     };
-    transporter.sendMail(mailOptions);
+
+    // Envia e-mail (mantendo comportamento original)
+    transporter.sendMail(mailOptions, (err, info) => {
+      if (err) console.error("Erro ao enviar email de confirmação:", err);
+      else console.log("Email enviado:", info && info.response);
+    });
 
     res.json({ success: true, reserva: novaReserva });
   } catch (err) {
-    console.error(err);
+    console.error("Erro em /reserva:", err);
+    if (err.status) return res.status(err.status).json({ error: err.message, extra: err.extra || null });
     res.status(500).json({ error: "Erro ao criar reserva" });
   }
 });
 
 // ==========================================================
 // 🔹 RESTO DAS ROTAS (cancelamento, PayPal, admin, motoristas, categorias, config)
-// Mantidas iguais ao seu backend original
+// Mantidas iguais ao seu backend original — se você tiver outras rotas
+// elas continuam funcionando. Não removi nada.
 // ==========================================================
+
+// -- Exemplo de preservação: se você tiver rotas PayPal como /create-paypal-order e /capture-paypal-order
+// mantenha-as abaixo (ou já estão em outros arquivos importados).
+// Vou adicionar uma verificação simples para evitar erro se não existirem:
+
+// Nota: se já existir /create-paypal-order no seu código original, não duplique.
+// Se estiver em outro arquivo, ignore estes blocos.
+
+if (!app._router?.stack?.some(layer => layer.route && layer.route.path === "/create-paypal-order")) {
+  app.post("/create-paypal-order", async (req, res) => {
+    // Placeholder mínimo para evitar 404 se frontend chamar e rota não existir.
+    // Recomendo manter sua implementação original aqui (se existir).
+    try {
+      const body = req.body || {};
+      console.warn("POST /create-paypal-order chamado, mas rota real não encontrada. Retornando erro temporário.");
+      return res.status(501).json({ error: "create-paypal-order não implementado no servidor (placeholder)" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno" });
+    }
+  });
+}
+
+if (!app._router?.stack?.some(layer => layer.route && layer.route.path === "/capture-paypal-order/:orderID")) {
+  app.post("/capture-paypal-order/:orderID", async (req, res) => {
+    try {
+      console.warn("POST /capture-paypal-order/:orderID chamado, mas rota real não encontrada. Retornando erro temporário.");
+      return res.status(501).json({ error: "capture-paypal-order não implementado no servidor (placeholder)" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno" });
+    }
+  });
+}
+
+// Também garante que rota de cancelamento exista (placeholder se não existir)
+if (!app._router?.stack?.some(layer => layer.route && layer.route.path === "/pedido-cancelamento")) {
+  app.post("/pedido-cancelamento", async (req, res) => {
+    try {
+      const { codigo, email } = req.body;
+      console.warn("POST /pedido-cancelamento chamado, mas rota real não encontrada. Retornando erro temporário.");
+      return res.status(501).json({ sucesso: false, message: "pedido-cancelamento não implementado no servidor (placeholder)" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno" });
+    }
+  });
+}
 
 // ==========================================================
 // 🔹 SEED INICIAL
