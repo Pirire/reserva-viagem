@@ -19,7 +19,6 @@ body { background-image: url('/imagens/imagem-fundo.jpg'); background-size: cove
 .campoInvalido { border-width:2px !important; animation:pulsarLaranja 1s infinite;}
 @keyframes pulsarLaranja {0% { border-color: orange; } 50% { border-color: darkorange;} 100% {border-color:orange;} }
 #popupResumo .paypal-buttons-container iframe { max-height: 400px !important; width: 100% !important;}
-/* TRANSPARÊNCIA ETAPA 1 e 2 */
 #etapa1, #etapa2 { background-color: rgba(255,255,255,0.8); padding:1rem; border-radius:1rem;}
 .btn-continuar { background-color: gray; color:white;}
 .btn-continuar.active { background-color: black; color:white;}
@@ -213,29 +212,33 @@ function colocarMarker(tipo){
     }
 }
 
-btnContinuar.addEventListener('click', ()=>{
-    etapa1.classList.add('hidden');
-    etapa2.classList.remove('hidden');
-    const origem = partidaPlace ? {placeId:partidaPlace.place_id} : document.getElementById("partida").value.trim();
-    const destino = destinoPlace ? {placeId:destinoPlace.place_id} : document.getElementById("destino").value.trim();
+// Ao clicar em continuar, busca valores do backend e atualiza os botões
+btnContinuar.addEventListener('click', async ()=>{
+    const origem = document.getElementById("partida").value.trim();
+    const destino = document.getElementById("destino").value.trim();
+    if(!origem || !destino) return;
 
-    if(origem && destino){
-        directionsService.route({origin:origem, destination:destino, travelMode:google.maps.TravelMode.DRIVING}, (res,status)=>{
-            if(status==="OK"){
-                let km=0;
-                res.routes[0].legs.forEach(l=>{ km += l.distance.value/1000; });
-                document.querySelectorAll('.btn-cat').forEach(btn=>{
-                    const preco = parseFloat(btn.dataset.preco);
-                    const valorCalculado = (km * preco).toFixed(2);
-                    btn.textContent = `${btn.dataset.nome} - €${valorCalculado}`;
-                    btn.dataset.valorCalculado = valorCalculado;
-                });
-            }
+    try {
+        const res = await fetch("https://reserva-backend-uu52.onrender.com/obter-valores", {
+            method:"POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ origem, destino })
         });
-    }
-    directionsRenderer.set('directions', null);
+        const data = await res.json();
+
+        document.querySelectorAll('.btn-cat').forEach(btn=>{
+            const nome = btn.dataset.nome;
+            const valor = parseFloat(data[nome] || 0).toFixed(2);
+            btn.textContent = `${nome} - €${valor}`;
+            btn.dataset.valorCalculado = valor;
+        });
+
+        etapa1.classList.add('hidden');
+        etapa2.classList.remove('hidden');
+    } catch(err){ console.error(err); alert("Erro ao buscar valores do backend."); }
 });
 
+// Seleção de categoria
 document.querySelectorAll('.btn-cat').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.btn-cat').forEach(b => b.classList.remove('selected'));
@@ -243,11 +246,22 @@ document.querySelectorAll('.btn-cat').forEach(btn => {
         precoCategoria = parseFloat(btn.dataset.preco);
         categoriaSelecionada = btn.dataset.nome;
         ultimoCusto = parseFloat(btn.dataset.valorCalculado);
+
+        // Traça a rota no Google Maps (apenas visual)
+        const origem = partidaPlace ? {placeId:partidaPlace.place_id} : document.getElementById("partida").value.trim();
+        const destino = destinoPlace ? {placeId:destinoPlace.place_id} : document.getElementById("destino").value.trim();
+        if(origem && destino){
+            directionsService.route({origin:origem, destination:destino, travelMode:google.maps.TravelMode.DRIVING}, (res,status)=>{
+                if(status==="OK"){ directionsRenderer.setDirections(res); }
+            });
+        }
+
         botaoOK.disabled = false;
         botaoOK.classList.add("active");
     });
 });
 
+// Botão OK - abre resumo e PayPal
 botaoOK.addEventListener("click", ()=>{
     if(!contatoInput.value.trim()){ alert("Preencha o número de contato antes de continuar."); return; }
 
@@ -274,6 +288,7 @@ botaoOK.addEventListener("click", ()=>{
     abrirPopupResumo(dadosReserva, true);
 });
 
+// Função abrir popup resumo com PayPal + cartão
 function abrirPopupResumo(dadosReserva, ativarPaypal=false){
     const valorTotal = (parseFloat(dadosReserva.valor) + (parseInt(dadosReserva.tempoExtra)||0)).toFixed(2);
     document.getElementById('resNome').textContent = dadosReserva.nome;
@@ -295,11 +310,19 @@ function abrirPopupResumo(dadosReserva, ativarPaypal=false){
 
     if(ativarPaypal){
         const container = document.getElementById('paypal-button-container');
-        container.innerHTML = '';
+        container.innerHTML = '<div id="paypal-buttons-wrapper" class="flex flex-col sm:flex-row gap-2"></div>';
+        const wrapper = document.getElementById('paypal-buttons-wrapper');
+
+        // Botão PayPal
+        const paypalDiv = document.createElement('div');
+        paypalDiv.id = 'paypal-btn-paypal';
+        wrapper.appendChild(paypalDiv);
+
         paypal.Buttons({
+            fundingSource: paypal.FUNDING.PAYPAL,
+            style: { layout: 'vertical', color: 'blue', shape: 'rect', label: 'paypal' },
             createOrder: async function(data, actions) {
-                // 🔹 ATUALIZE AQUI PARA O SEU BACKEND NO RENDER
-                const res = await fetch("https://https://reserva-backend-uu52.onrender.com/create-paypal-order", {
+                const res = await fetch("https://reserva-backend-uu52.onrender.com/create-paypal-order", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(dadosReserva)
@@ -308,13 +331,39 @@ function abrirPopupResumo(dadosReserva, ativarPaypal=false){
                 return dataResp.orderID;
             },
             onApprove: async function(data, actions) {
-                const capture = await fetch(`https://https://reserva-backend-uu52.onrender.com/capture-paypal-order/${data.orderID}`, { method: "POST" });
+                const capture = await fetch(`https://reserva-backend-uu52.onrender.com/capture-paypal-order/${data.orderID}`, { method: "POST" });
                 const result = await capture.json();
                 alert("Pagamento realizado com sucesso!");
                 document.getElementById('popupResumo').classList.add('hidden');
             },
             onError: function(err) { console.error(err); alert("Erro ao processar o pagamento."); }
-        }).render('#paypal-button-container');
+        }).render('#paypal-btn-paypal');
+
+        // Botão Cartão
+        const cardDiv = document.createElement('div');
+        cardDiv.id = 'paypal-btn-card';
+        wrapper.appendChild(cardDiv);
+
+        paypal.Buttons({
+            fundingSource: paypal.FUNDING.CARD,
+            style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'card' },
+            createOrder: async function(data, actions) {
+                const res = await fetch("https://reserva-backend-uu52.onrender.com/create-paypal-order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dadosReserva)
+                });
+                const dataResp = await res.json();
+                return dataResp.orderID;
+            },
+            onApprove: async function(data, actions) {
+                const capture = await fetch(`https://reserva-backend-uu52.onrender.com/capture-paypal-order/${data.orderID}`, { method: "POST" });
+                const result = await capture.json();
+                alert("Pagamento realizado com sucesso!");
+                document.getElementById('popupResumo').classList.add('hidden');
+            },
+            onError: function(err) { console.error(err); alert("Erro ao processar o pagamento."); }
+        }).render('#paypal-btn-card');
     }
 }
 
@@ -360,8 +409,7 @@ document.getElementById('btnCancelarCampos').addEventListener('click', async ()=
     if(!codigoInput || !emailInputValue){ alert("Para cancelar, preencha o código de reserva/indicação e o e-mail."); return; }
     const dadosCancelamento = { codigo: codigoInput, email: emailInputValue };
     try {
-        // 🔹 ATUALIZE AQUI PARA O SEU BACKEND NO RENDER
-        const res = await fetch("https://https://reserva-backend-uu52.onrender.com/pedido-cancelamento", {
+        const res = await fetch("https://reserva-backend-uu52.onrender.com/pedido-cancelamento", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(dadosCancelamento)
