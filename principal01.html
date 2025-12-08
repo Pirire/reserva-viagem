@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REALMETROPOLIS</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+  html,body{width:100%;height:100%;overflow-x:hidden;}
+  body{
+    background:url('/frontend/public/imagens/imagem-fundo.jpg') center/cover no-repeat;
+  }
+
+  header{
+    position:fixed;top:0;left:0;width:100%;
+    padding:15px 30px;display:flex;justify-content:space-between;align-items:center;
+    z-index:200; background:black;
+  }
+
+  .pill-btn{
+    padding:10px 20px;border-radius:50px;border:none;cursor:pointer;font-weight:bold;transition:.3s;
+    margin-left:15px;color:gold;
+  }
+  .pill-btn:hover{ text-shadow: 0 0 8px gold; color:gold; }
+
+  .rm-circle{
+    width:50px;height:50px;border-radius:50%;background:black;color:gold;
+    display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;margin-right:5px;
+    border:2px solid gold;
+  }
+
+  .header-left{display:flex;align-items:center;}
+  .header-center{display:flex;align-items:center;}
+  .header-right{display:flex;align-items:center;gap:10px;}
+
+  .flags-box{display:flex;gap:8px;}
+  .flag{width:35px;height:25px;cursor:pointer;border-radius:5px;border:1px solid #ccc;object-fit:cover;transition:.3s;}
+  .flag:hover{transform:scale(1.1);}
+
+  /* QUEM SOMOS */
+  .quem-somos-panel{
+    position:fixed;top:60px;left:-400px;width:400px;height:calc(100% - 60px);
+    background:rgba(0,0,0,0.85);color:white;padding:20px;
+    transition:left 0.5s ease; z-index:150; overflow-y:auto;
+  }
+
+  /* Carrossel */
+  .carousel-container{
+    width:100%;position:absolute;bottom:120px;
+    display:flex;justify-content:center;align-items:center;
+    transition: transform 0.5s ease;
+  }
+  .carousel{display:flex;gap:30px;justify-content:center;align-items:center;transition: transform 0.5s ease;}
+  .carousel img{
+    width:200px;height:150px;border-radius:15px;object-fit:cover;cursor:pointer;transition: all 0.5s ease;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    z-index: 1;
+  }
+  .carousel img.center{width:250px;height:180px;box-shadow: 0 0 25px gold;}
+
+  .carousel img:hover{
+    transform: scale(1.3);
+    box-shadow: 0 0 30px gold;
+    z-index: 5;
+  }
+
+  /* AMPLIAR AO CLIQUE (GALERIA CENTRALIZADA) */
+  .carousel img.clicked {
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%) scale(2);
+    width:auto; height:auto; max-width:90%; max-height:90%;
+    z-index:1000 !important;
+    box-shadow:0 0 40px gold;
+    border-radius:15px;
+    transition: all 0.4s ease;
+    cursor:zoom-out;
+  }
+
+  /* Botão RESERVAR UMA VIAGEM */
+  .reserve-btn{
+    position:fixed;top:180px;
+    left:50%;transform:translateX(-50%);
+    padding:15px 30px;border-radius:50px;background:black;color:white;font-size:20px;font-weight:bold;
+    cursor:pointer;z-index:150;
+    animation: glow 2s infinite alternate;
+  }
+  @keyframes glow{
+    0%{box-shadow: 0 0 10px gold, 0 0 20px gold inset;}
+    50%{box-shadow: 0 0 20px gold, 0 0 40px gold inset;}
+    100%{box-shadow: 0 0 10px gold, 0 0 20px gold inset;}
+  }
+
+  /* POPUPS */
+  .popup-overlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.5);backdrop-filter:blur(10px);
+    justify-content:center;align-items:center;z-index:500;
+  }
+  .popup-box{
+    width:380px;background:rgba(255,255,255,0.15);padding:25px;border-radius:20px;
+    backdrop-filter:blur(25px);box-shadow:0 0 25px rgba(0,0,0,.3);color:white;text-align:center;
+  }
+  .popup-box input, .popup-box textarea{
+    width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;outline:none;
+  }
+  .popup-btn{
+    width:100%;padding:12px;margin-top:15px;background:black;color:white;border:none;
+    border-radius:50px;font-weight:bold;font-size:16px;cursor:pointer;transition:.3s;
+  }
+  .popup-btn:hover{background:#333;}
+  .close-popup{margin-top:15px;padding:10px 20px;background:#222;border-radius:10px;color:white;cursor:pointer;}
+
+  .contact-options{display:flex;gap:10px;justify-content:center;margin-top:15px;}
+  .contact-inputs{display:none;margin-top:15px;flex-direction:column;gap:10px;}
+
+  /* LIGHTBOX */
+  #lightbox{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.8);justify-content:center;align-items:center;z-index:1000;
+  }
+  #lightbox img{
+    max-width:33%; max-height:80%; border-radius:15px; box-shadow:0 0 40px gold;
+  }
+  #lightbox-close,#lightbox-prev,#lightbox-next{
+    position:absolute; font-size:50px; color:white; cursor:pointer; user-select:none;
+  }
+  #lightbox-close{top:20px; right:30px;}
+  #lightbox-prev{top:50%; left:20px; transform:translateY(-50%);}
+  #lightbox-next{top:50%; right:20px; transform:translateY(-50%);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="rm-circle">RM</div>
+    <div class="pill-btn">REALMETROPOLIS</div>
+  </div>
+  <div class="header-center">
+    <div class="pill-btn" id="quemSomosBtn">QUEM SOMOS</div>
+    <div class="pill-btn" id="colaboradorBtn">COLABORADOR</div>
+    <div class="pill-btn" id="areaClienteBtn">ÁREA DE CLIENTE</div>
+    <div class="pill-btn" id="contatoBtn">CONTACTO</div>
+  </div>
+  <div class="header-right">
+    <div class="flags-box">
+      <img class="flag" data-lang="pt" src="https://flagcdn.com/w40/pt.png">
+      <img class="flag" data-lang="en" src="https://flagcdn.com/w40/gb.png">
+      <img class="flag" data-lang="fr" src="https://flagcdn.com/w40/fr.png">
+      <img class="flag" data-lang="de" src="https://flagcdn.com/w40/de.png">
+      <img class="flag" data-lang="es" src="https://flagcdn.com/w40/es.png">
+    </div>
+  </div>
+</header>
+
+<button class="reserve-btn" id="reserveBtn">RESERVAR UMA VIAGEM</button>
+
+<div class="quem-somos-panel" id="quemSomosPanel">
+  <h2>Quem Somos</h2>
+  <p>A REALMETROPOLIS é líder em turismo premium, oferecendo experiências inesquecíveis aos nossos clientes.</p>
+  <p>Nosso objetivo é combinar conforto, segurança e aventura em cada viagem.</p>
+</div>
+
+<!-- CARROSSEL COM GRUPOS -->
+<div class="carousel-container" id="carouselContainer">
+  <div class="carousel" id="carousel">
+    <!-- Grupo 1 -->
+    <img src="/frontend/public/imagens/Sintra1.jpg" alt="Sintra 1" data-group="1" data-index="0">
+    <img src="/frontend/public/imagens/Sintra02.jpg" alt="Sintra 2" data-group="1" data-index="1" style="display:none">
+    <img src="/frontend/public/imagens/Sintra03.jpg" alt="Sintra 3" data-group="1" data-index="2" style="display:none">
+
+    <!-- Grupo 2 -->
+    <img src="/frontend/public/imagens/Grupo2-1.jpg" alt="Grupo2-1" data-group="2" data-index="0">
+    <img src="/frontend/public/imagens/Grupo2-2.jpg" alt="Grupo2-2" data-group="2" data-index="1" style="display:none">
+    <img src="/frontend/public/imagens/Grupo2-3.jpg" alt="Grupo2-3" data-group="2" data-index="2" style="display:none">
+
+    <!-- Grupo 3 -->
+    <img src="/frontend/public/imagens/Grupo3-1.jpg" alt="Grupo3-1" data-group="3" data-index="0">
+    <img src="/frontend/public/imagens/Grupo3-2.jpg" alt="Grupo3-2" data-group="3" data-index="1" style="display:none">
+    <img src="/frontend/public/imagens/Grupo3-3.jpg" alt="Grupo3-3" data-group="3" data-index="2" style="display:none">
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox">
+  <img id="lightbox-img" src="">
+  <div id="lightbox-close">&#10005;</div>
+  <div id="lightbox-prev">&#10094;</div>
+  <div id="lightbox-next">&#10095;</div>
+</div>
+
+<!-- POPUPS -->
+<div class="popup-overlay" id="popupColaborador">
+  <div class="popup-box">
+    <h2>INSERIR DADOS</h2>
+    <input type="text" id="colabNome" placeholder="Nome">
+    <input type="email" id="colabEmail" placeholder="Email">
+    <input type="text" id="colabContacto" placeholder="Contacto">
+    <button class="popup-btn" onclick="registarColaborador()">REGISTAR</button>
+    <button class="popup-btn" onclick="loginColaborador()">ENTRAR</button>
+    <button class="popup-btn" id="recuperarBtn" style="display:none;" onclick="recuperarSenha()">RECUPERAR PALAVRA-PASSE</button>
+    <button class="close-popup" onclick="closeColab()">Fechar</button>
+  </div>
+</div>
+
+<div class="popup-overlay" id="popupCliente">
+  <div class="popup-box">
+    <h2>INSERIR DADOS</h2>
+    <input type="text" id="clienteNome" placeholder="Nome">
+    <input type="email" id="clienteEmail" placeholder="Email">
+    <input type="text" id="clienteContacto" placeholder="Contacto">
+    <button class="popup-btn" onclick="registrarCliente()">REGISTAR</button>
+    <button class="popup-btn" onclick="loginCliente()">ENTRAR</button>
+    <button class="popup-btn" id="recuperarClienteBtn" style="display:none;" onclick="recuperarSenhaCliente()">RECUPERAR PALAVRA-PASSE</button>
+    <button class="close-popup" onclick="closeCliente()">Fechar</button>
+  </div>
+</div>
+
+<div class="popup-overlay" id="popupContato">
+  <div class="popup-box">
+    <h2>CONTACTO</h2>
+    <div class="contact-options">
+      <button class="popup-btn" id="viaWhats">VIA WHATSAPP</button>
+      <button class="popup-btn" id="viaEmail">VIA E-MAIL</button>
+    </div>
+    <div class="contact-inputs" id="contactInputs">
+      <input type="text" id="contactNome" placeholder="Nome">
+      <input type="email" id="contactEmail" placeholder="Email">
+      <textarea id="contactMsg" placeholder="Mensagem"></textarea>
+      <button class="popup-btn" onclick="enviarMensagem()">ENVIAR</button>
+    </div>
+    <button class="close-popup" onclick="closeContato()">Fechar</button>
+  </div>
+</div>
+
+<script>
+/* ===== QUEM SOMOS ===== */
+const quemBtn = document.getElementById("quemSomosBtn");
+const quemPanel = document.getElementById("quemSomosPanel");
+const carouselContainer = document.getElementById("carouselContainer");
+
+document.addEventListener("click", function(e){
+  if(quemPanel.style.left==="0px" && !quemPanel.contains(e.target) && e.target!==quemBtn){
+    quemPanel.style.left="-400px";
+    carouselContainer.style.transform="translateX(0) scale(1)";
+  }
+});
+
+quemBtn.onclick = ()=> {
+  if(quemPanel.style.left === "0px"){
+    quemPanel.style.left = "-400px";
+    carouselContainer.style.transform="translateX(0) scale(1)";
+  }else{
+    quemPanel.style.left = "0px";
+    carouselContainer.style.transform="translateX(200px) scale(0.85)";
+  }
+};
+
+/* ===== CARROSSEL ===== */
+const carouselImages = document.querySelectorAll(".carousel img");
+function updateCarouselSizes(){
+  const scale = quemPanel.style.left==="0px" ? 0.85 : 1;
+  carouselImages.forEach((img,i)=>{
+    img.classList.remove("center");
+    if(i===1) img.classList.add("center");
+    img.style.transform = `scale(${scale})`;
+    img.style.zIndex = '1';
+  });
+}
+updateCarouselSizes();
+quemBtn.addEventListener("click", updateCarouselSizes);
+
+/* ===== EFEITO HOVER ===== */
+carouselImages.forEach(img => {
+  img.addEventListener('mouseenter', () => {
+    carouselImages.forEach(i => { if(i !== img) i.style.transform = 'scale(0.9)'; });
+    img.style.transform = 'scale(1.3)';
+    img.style.zIndex = '5';
+  });
+
+  img.addEventListener('mouseleave', () => {
+    carouselImages.forEach(i => i.style.transform = 'scale(1)');
+    carouselImages.forEach(i => i.style.zIndex = '1');
+    updateCarouselSizes();
+  });
+});
+
+/* ===== LIGHTBOX ===== */
+const lightbox = document.getElementById("lightbox");
+const lightboxImg = document.getElementById("lightbox-img");
+const closeBtn = document.getElementById("lightbox-close");
+const prevBtn = document.getElementById("lightbox-prev");
+const nextBtn = document.getElementById("lightbox-next");
+
+let currentGroup = null;
+let currentIndex = 0;
+
+function showLightbox(group,index){
+  currentGroup = group;
+  currentIndex = index;
+  const imgs = Array.from(carouselImages).filter(img=>parseInt(img.dataset.group)===group);
+  lightboxImg.src = imgs[index].src;
+  lightbox.style.display = "flex";
+}
+
+carouselImages.forEach(img=>{
+  img.addEventListener("click",()=>{
+    const group = parseInt(img.dataset.group);
+    const index = parseInt(img.dataset.index);
+    showLightbox(group,index);
+  });
+});
+
+function updateLightbox(){
+  const imgs = Array.from(carouselImages).filter(img=>parseInt(img.dataset.group)===currentGroup);
+  lightboxImg.src = imgs[currentIndex].src;
+}
+
+prevBtn.onclick = ()=>{
+  const imgs = Array.from(carouselImages).filter(img=>parseInt(img.dataset.group)===currentGroup);
+  currentIndex = (currentIndex-1+imgs.length)%imgs.length;
+  updateLightbox();
+};
+
+nextBtn.onclick = ()=>{
+  const imgs = Array.from(carouselImages).filter(img=>parseInt(img.dataset.group)===currentGroup);
+  currentIndex = (currentIndex+1)%imgs.length;
+  updateLightbox();
+};
+
+closeBtn.onclick = ()=>{
+  lightbox.style.display="none";
+};
+
+/* ===== POPUPS ===== */
+const popupColab = document.getElementById("popupColaborador");
+document.getElementById("colaboradorBtn").onclick = ()=> popupColab.style.display="flex";
+let loginFalhas = 0;
+function registarColaborador(){ alert("Registo enviado com sucesso!"); loginFalhas=0; document.getElementById("recuperarBtn").style.display="none"; }
+function loginColaborador(){ loginFalhas++; alert("Abrir painel de login."); if(loginFalhas>=3) document.getElementById("recuperarBtn").style.display="block"; }
+function recuperarSenha(){ alert("Enviar email para recuperar palavra-passe."); }
+function closeColab(){ popupColab.style.display="none"; }
+
+const popupCliente = document.getElementById("popupCliente");
+document.getElementById("areaClienteBtn").onclick = ()=> popupCliente.style.display="flex";
+let loginFalhasCliente = 0;
+function registrarCliente(){ 
+  const email = document.getElementById("clienteEmail").value;
+  if(!/^\S+@\S+\.\S+$/.test(email)){ alert("Email inválido"); return; }
+  alert("Registo enviado com sucesso!");
+  loginFalhasCliente=0; document.getElementById("recuperarClienteBtn").style.display="none"; 
+}
+function loginCliente(){ loginFalhasCliente++; alert("Abrir painel de login."); if(loginFalhasCliente>=3) document.getElementById("recuperarClienteBtn").style.display="block"; }
+function recuperarSenhaCliente(){ alert("Enviar email para recuperar palavra-passe."); }
+function closeCliente(){ popupCliente.style.display="none"; }
+
+const popupContato = document.getElementById("popupContato");
+document.getElementById("contatoBtn").onclick = ()=> popupContato.style.display="flex";
+document.getElementById("viaWhats").onclick = ()=> document.getElementById("contactInputs").style.display="flex";
+document.getElementById("viaEmail").onclick = ()=> document.getElementById("contactInputs").style.display="flex";
+function enviarMensagem(){ alert("Mensagem enviada com sucesso!"); }
+function closeContato(){ popupContato.style.display="none"; document.getElementById("contactInputs").style.display="none"; }
+
+/* ===== BOTÃO RESERVAR ===== */
+document.getElementById("reserveBtn").addEventListener("click", () => {
+    window.location.href = "index.html";
+});
+
+/* ===== TRADUÇÃO ===== */
+const translations = {
+  pt:{quem:"QUEM SOMOS", colaborador:"COLABORADOR", area:"ÁREA DE CLIENTE", contato:"CONTACTO",
+      reserve:"RESERVAR UMA VIAGEM",
+      qs:"A REALMETROPOLIS é líder em turismo premium, oferecendo experiências inesquecíveis aos nossos clientes.",
+      qs2:"Nosso objetivo é combinar conforto, segurança e aventura em cada viagem.",
+      nome:"Nome", email:"Email", contacto:"Contacto", mensagem:"Mensagem",
+      registar:"REGISTAR", entrar:"ENTRAR", recuperar:"RECUPERAR PALAVRA-PASSE",
+      fechar:"Fechar", viaWhats:"VIA WHATSAPP", viaEmail:"VIA E-MAIL", enviar:"ENVIAR"
+  },
+  en:{quem:"WHO WE ARE", colaborador:"COLLABORATOR", area:"CLIENT AREA", contato:"CONTACT",
+      reserve:"RESERVE A TRIP",
+      qs:"REALMETROPOLIS is a leader in premium tourism, offering unforgettable experiences to our clients.",
+      qs2:"Our goal is to combine comfort, safety, and adventure in every trip.",
+      nome:"Name", email:"Email", contacto:"Contact", mensagem:"Message",
+      registar:"REGISTER", entrar:"LOGIN", recuperar:"RECOVER PASSWORD",
+      fechar:"Close", viaWhats:"VIA WHATSAPP", viaEmail:"VIA EMAIL", enviar:"SEND"
+  },
+  fr:{quem:"QUI SOMMES-NOUS", colaborador:"COLLABORATEUR", area:"ESPACE CLIENT", contato:"CONTACT",
+      reserve:"RÉSERVER UN VOYAGE",
+      qs:"REALMETROPOLIS est un leader du tourisme haut de gamme, offrant des expériences inoubliables à nos clients.",
+      qs2:"Notre objectif est de combiner confort, sécurité et aventure à chaque voyage.",
+      nome:"Nom", email:"Email", contacto:"Contact", mensagem:"Message",
+      registar:"S'INSCRIRE", entrar:"ENTRER", recuperar:"RÉCUPÉRER LE MOT DE PASSE",
+      fechar:"Fermer", viaWhats:"VIA WHATSAPP", viaEmail:"VIA EMAIL", enviar:"ENVOYER"
+  },
+  de:{quem:"WER WIR SIND", colaborador:"MITARBEITER", area:"KUNDENBEREICH", contato:"KONTAKT",
+      reserve:"REISE BUCHEN",
+      qs:"REALMETROPOLIS ist führend im Premium-Tourismus und bietet unseren Kunden unvergessliche Erlebnisse.",
+      qs2:"Unser Ziel ist es, Komfort, Sicherheit und Abenteuer auf jeder Reise zu kombinieren.",
+      nome:"Name", email:"Email", contacto:"Kontakt", mensagem:"Nachricht",
+      registar:"REGISTRIEREN", entrar:"LOGIN", recuperar:"PASSWORT WIEDERHERSTELLEN",
+      fechar:"Schließen", viaWhats:"VIA WHATSAPP", viaEmail:"VIA EMAIL", enviar:"SENDEN"
+  },
+  es:{quem:"QUIÉNES SOMOS", colaborador:"COLABORADOR", area:"ÁREA DE CLIENTE", contato:"CONTACTO",
+      reserve:"RESERVAR VIAJE",
+      qs:"REALMETROPOLIS es líder en turismo premium, ofreciendo experiencias inolvidables a nuestros clientes.",
+      qs2:"Nuestro objetivo es combinar comodidad, seguridad y aventura en cada viaje.",
+      nome:"Nombre", email:"Email", contacto:"Contacto", mensagem:"Mensaje",
+      registar:"REGISTRAR", entrar:"ENTRAR", recuperar:"RECUPERAR CONTRASEÑA",
+      fechar:"Cerrar", viaWhats:"VÍA WHATSAPP", viaEmail:"VÍA EMAIL", enviar:"ENVIAR"
+  }
+};
+
+function traduzirSite(lang){
+  document.getElementById("quemSomosBtn").innerText = translations[lang].quem;
+  document.getElementById("colaboradorBtn").innerText = translations[lang].colaborador;
+  document.getElementById("areaClienteBtn").innerText = translations[lang].area;
+  document.getElementById("contatoBtn").innerText = translations[lang].contato;
+  document.querySelector(".reserve-btn").innerText = translations[lang].reserve;
+
+  const qsP = document.querySelectorAll("#quemSomosPanel p");
+  qsP[0].innerText = translations[lang].qs;
+  qsP[1].innerText = translations[lang].qs2;
+
+  const popupColab = document.getElementById("popupColaborador");
+  popupColab.querySelector("h2").innerText = translations[lang].colaborador;
+  popupColab.querySelector("#colabNome").placeholder = translations[lang].nome;
+  popupColab.querySelector("#colabEmail").placeholder = translations[lang].email;
+  popupColab.querySelector("#colabContacto").placeholder = translations[lang].contacto;
+  popupColab.querySelector("#popupColaborador .popup-btn[onclick*='registarColaborador']").innerText = translations[lang].registar;
+  popupColab.querySelector("#popupColaborador .popup-btn[onclick*='loginColaborador']").innerText = translations[lang].entrar;
+  popupColab.querySelector("#recuperarBtn").innerText = translations[lang].recuperar;
+  popupColab.querySelector(".close-popup").innerText = translations[lang].fechar;
+
+  const popupCliente = document.getElementById("popupCliente");
+  popupCliente.querySelector("h2").innerText = translations[lang].area;
+  popupCliente.querySelector("#clienteNome").placeholder = translations[lang].nome;
+  popupCliente.querySelector("#clienteEmail").placeholder = translations[lang].email;
+  popupCliente.querySelector("#clienteContacto").placeholder = translations[lang].contacto;
+  popupCliente.querySelector(".popup-btn[onclick*='registrarCliente']").innerText = translations[lang].registar;
+  popupCliente.querySelector(".popup-btn[onclick*='loginCliente']").innerText = translations[lang].entrar;
+  popupCliente.querySelector("#recuperarClienteBtn").innerText = translations[lang].recuperar;
+  popupCliente.querySelector(".close-popup").innerText = translations[lang].fechar;
+
+  const popupContato = document.getElementById("popupContato");
+  popupContato.querySelector("h2").innerText = translations[lang].contato;
+  popupContato.querySelector("#viaWhats").innerText = translations[lang].viaWhats;
+  popupContato.querySelector("#viaEmail").innerText = translations[lang].viaEmail;
+  popupContato.querySelector("#contactNome").placeholder = translations[lang].nome;
+  popupContato.querySelector("#contactEmail").placeholder = translations[lang].email;
+  popupContato.querySelector("#contactMsg").placeholder = translations[lang].mensagem;
+  popupContato.querySelector("#contactInputs button").innerText = translations[lang].enviar;
+  popupContato.querySelector(".close-popup").innerText = translations[lang].fechar;
+}
+
+document.querySelectorAll(".flag").forEach(flag=>{
+  flag.addEventListener("click",()=>{ 
+    traduzirSite(flag.dataset.lang); 
+  });
+});
+</script>
+
+</body>
+</html>
