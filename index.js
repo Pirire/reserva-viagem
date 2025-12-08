@@ -1,7 +1,4 @@
-// server.js (ATUALIZADO — substituir o seu arquivo por este)
-// Mantive 100% do seu backend original e apenas adicionei suporte para /obter-valores,
-// CORS aberto e uma função interna para calcular viagem (usada também por /reserva).
-
+// index.js (cole sobre o seu index.js atual — NÃO REMOVER outras rotas que você já possua)
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
@@ -11,12 +8,12 @@ import Reserva from "./models/Reserva.js";
 import Motorista from "./models/Motorista.js";
 import Categoria from "./models/Categoria.js";
 import Config from "./models/Config.js";
+import Colaborador from "./models/Colaborador.js";
 import nodemailer from "nodemailer";
-import paypal from "@paypal/paypal-server-sdk";
+import paypal from "@paypal/checkout-server-sdk";
 import jwt from "jsonwebtoken";
 import cors from "cors";
 import multer from "multer";
-import cron from "node-cron";
 import fetch from "node-fetch";
 
 dotenv.config();
@@ -26,50 +23,46 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ==========================================================
-// 🧩 Conexão MongoDB
+// MongoDB
 // ==========================================================
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log("✅ MongoDB conectado"))
   .catch((err) => console.error("❌ Erro ao conectar no MongoDB", err));
 
-// Habilita CORS para o frontend (Render ou outro domínio)
+// ==========================================================
+// MIDDLEWARE
+// ==========================================================
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/teste", (req, res) => {
-  res.json({ success: true, message: "Backend está funcionando!" });
-});
+// Serve frontend antigo e novo (ajuste caminhos conforme sua estrutura local)
+app.use('/frontend', express.static(path.join(__dirname, '../reserva-frontend/public')));
+app.use(express.static(path.join(__dirname, 'public'))); // seus ativos do backend
+
+app.get("/teste", (req, res) => res.json({ success: true, message: "Backend está funcionando!" }));
 
 // ==========================================================
-// 🧩 SMTP
+// SMTP
 // ==========================================================
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST, // 🔹 Substitua pela sua configuração SMTP
+  host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
   secure: process.env.SMTP_SECURE === "true",
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 });
 
 // ==========================================================
-// 🧩 PayPal client
-// ==========================================================
-const client = new paypal.core.PayPalHttpClient(
+// PayPal client (mantive sua implementação)
+const environment =
   process.env.PAYPAL_MODE === "live"
-    ? new paypal.core.LiveEnvironment(
-        process.env.PAYPAL_CLIENT_ID,
-        process.env.PAYPAL_CLIENT_SECRET
-      )
-    : new paypal.core.SandboxEnvironment(
-        process.env.PAYPAL_CLIENT_ID,
-        process.env.PAYPAL_CLIENT_SECRET
-      )
-);
+    ? new paypal.core.LiveEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET)
+    : new paypal.core.SandboxEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET);
+const client = new paypal.core.PayPalHttpClient(environment);
 
 // ==========================================================
-// 🔐 LOGIN ADMIN
+// ADMIN LOGIN
 // ==========================================================
 const ADMIN_USER_MASTER = process.env.ADMIN_USER_MASTER;
 const ADMIN_PASS_MASTER = process.env.ADMIN_PASS_MASTER;
@@ -92,30 +85,11 @@ app.post("/admin/login", (req, res) => {
 });
 
 // ==========================================================
-// 🔐 MIDDLEWARE AUTENTICAÇÃO
-// ==========================================================
-function autenticarAdmin(tipoNecessario = null) {
-  return (req, res, next) => {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-    if (!token) return res.status(403).json({ message: "Acesso negado!" });
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) return res.status(403).json({ message: "Token inválido!" });
-      if (tipoNecessario && user.tipo !== tipoNecessario) return res.status(403).json({ message: "Permissão insuficiente!" });
-      req.user = user;
-      next();
-    });
-  };
-}
-
-// ==========================================================
-// Função interna para cálculo de viagem (reúne lógica usada em /calcular-viagem)
-// Mantida a mesma lógica — apenas colocada em função reutilizável.
+// Função de cálculo - reaproveitada
 // ==========================================================
 async function calcularViagemInterno({ partida, destino, categoria = null, tempoExtra = null }) {
   if (!partida || !destino) throw { status: 400, message: "Dados incompletos (partida/destino)" };
 
-  // Se categoria for fornecida, busca a categoria; caso contrário, retorna apenas distância+km
   let cat = null;
   if (categoria) {
     cat = await Categoria.findOne({ nome: categoria });
@@ -132,11 +106,7 @@ async function calcularViagemInterno({ partida, destino, categoria = null, tempo
   const resp = await fetch(`https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(partida)}&destinations=${encodeURIComponent(destino)}&key=${googleKey}&mode=driving`);
   const data = await resp.json();
 
-  if (!data.rows?.[0]?.elements?.[0]?.distance?.value) {
-    // Retorna objeto com detalhes do retorno do Google para debug
-    throw { status: 400, message: "Não foi possível calcular distância", extra: data };
-  }
-
+  if (!data.rows?.[0]?.elements?.[0]?.distance?.value) throw { status: 400, message: "Não foi possível calcular distância", extra: data };
   const km = data.rows[0].elements[0].distance.value / 1000;
 
   if (cat) {
@@ -144,22 +114,18 @@ async function calcularViagemInterno({ partida, destino, categoria = null, tempo
     const valorTotal = (parseFloat(valorViagem) + parseFloat(valorTempoExtra)).toFixed(2);
     return { km, valorViagem, valorTempoExtra, valorTotal };
   } else {
-    // Retorna valores por km (sem categoria)
     return { km };
   }
 }
 
 // ==========================================================
-// 🚀 ROTA SEGURA DE CÁLCULO DE VALOR (mantida exatamente como estava)
+// ROTAS EXISTENTES (mantidas)
 // ==========================================================
 app.post("/calcular-viagem", async (req, res) => {
   try {
     const { partida, destino, categoria, tempoExtra } = req.body;
     if (!partida || !destino || !categoria) return res.status(400).json({ error: "Dados incompletos" });
-
-    // Reaproveita a função interna
     const resultado = await calcularViagemInterno({ partida, destino, categoria, tempoExtra });
-    // resultado tem: km, valorViagem, valorTempoExtra, valorTotal
     res.json({ valorViagem: resultado.valorViagem, valorTempoExtra: resultado.valorTempoExtra, valorTotal: resultado.valorTotal });
   } catch (err) {
     console.error("Erro em /calcular-viagem:", err);
@@ -168,28 +134,20 @@ app.post("/calcular-viagem", async (req, res) => {
   }
 });
 
-// ==========================================================
-// 🟩 ROTA /obter-valores (ADICIONADA para o frontend)
-// ==========================================================
 app.post("/obter-valores", async (req, res) => {
   try {
     const { origem, destino } = req.body;
     if (!origem || !destino) return res.status(400).json({ error: "Origem e destino são obrigatórios" });
 
-    // Busca categorias
     const categorias = await Categoria.find();
     if (!categorias || categorias.length === 0) return res.status(500).json({ error: "Nenhuma categoria configurada" });
 
-    // Calcula km com a mesma lógica interna
     const resultadoKm = await calcularViagemInterno({ partida: origem, destino });
     const km = resultadoKm.km;
 
     const resultado = {};
-    categorias.forEach((cat) => {
-      resultado[cat.nome] = (km * cat.precoKm).toFixed(2);
-    });
+    categorias.forEach((cat) => { resultado[cat.nome] = (km * cat.precoKm).toFixed(2); });
 
-    // Também envia tempoExtra (config) para o frontend se precisar
     const config = await Config.findOne();
     const tempoExtraObj = config ? Object.fromEntries(config.tempoExtra) : { "30": 10, "45": 15, "60": 20, "120": 40, "180": 60 };
     resultado._tempoExtra = tempoExtraObj;
@@ -202,14 +160,9 @@ app.post("/obter-valores", async (req, res) => {
   }
 });
 
-// ==========================================================
-// 🚗 CRIAR RESERVA - usa cálculo seguro (AJUSTADO para usar função interna)
-// ==========================================================
 app.post("/reserva", async (req, res) => {
   try {
     const { nome, email, categoria, partida, destino, datahora, tempoExtra, contato, codigo } = req.body;
-
-    // Usa a função interna em vez de fetch para localhost (corrige deploy no Render)
     const resultadoCalc = await calcularViagemInterno({ partida, destino, categoria, tempoExtra });
     const { valorTotal, valorTempoExtra } = resultadoCalc;
 
@@ -235,7 +188,6 @@ app.post("/reserva", async (req, res) => {
              <p>Código: ${codigo}</p>`
     };
 
-    // Envia e-mail (mantendo comportamento original)
     transporter.sendMail(mailOptions, (err, info) => {
       if (err) console.error("Erro ao enviar email de confirmação:", err);
       else console.log("Email enviado:", info && info.response);
@@ -250,61 +202,108 @@ app.post("/reserva", async (req, res) => {
 });
 
 // ==========================================================
-// 🔹 RESTO DAS ROTAS (cancelamento, PayPal, admin, motoristas, categorias, config)
-// Mantidas iguais ao seu backend original — se você tiver outras rotas
-// elas continuam funcionando. Não removi nada.
+// ROTAS DE COLABORADOR (validação, registo, solicitar-registo, recuperar senha)
 // ==========================================================
 
-// -- Exemplo de preservação: se você tiver rotas PayPal como /create-paypal-order e /capture-paypal-order
-// mantenha-as abaixo (ou já estão em outros arquivos importados).
-// Vou adicionar uma verificação simples para evitar erro se não existirem:
+// validar dados do colaborador antes do registro (procura coincidência no banco)
+app.post("/validar-colaborador", async (req, res) => {
+  const { email, nif, contacto } = req.body;
+  try {
+    const colaborador = await Colaborador.findOne({ email, nif, contacto });
+    if (colaborador) return res.json({ success: true });
+    return res.json({ success: false, message: "Colaborador não autorizado." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Erro interno" });
+  }
+});
 
-// Nota: se já existir /create-paypal-order no seu código original, não duplique.
-// Se estiver em outro arquivo, ignore estes blocos.
+// registar colaborador (atualiza senha e marca registado)
+app.post("/registar-colaborador", async (req, res) => {
+  const { email, nif, contacto, pass } = req.body;
+  try {
+    const existe = await Colaborador.findOne({ email, nif, contacto });
+    if (!existe) return res.json({ success: false, message: "Colaborador não autorizado." });
 
-if (!app._router?.stack?.some(layer => layer.route && layer.route.path === "/create-paypal-order")) {
-  app.post("/create-paypal-order", async (req, res) => {
-    // Placeholder mínimo para evitar 404 se frontend chamar e rota não existir.
-    // Recomendo manter sua implementação original aqui (se existir).
-    try {
-      const body = req.body || {};
-      console.warn("POST /create-paypal-order chamado, mas rota real não encontrada. Retornando erro temporário.");
-      return res.status(501).json({ error: "create-paypal-order não implementado no servidor (placeholder)" });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro interno" });
+    existe.senha = pass;
+    existe.registado = true;
+    await existe.save();
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Erro interno" });
+  }
+});
+
+// rota para solicitar registo — envia email para admin com pedido (quando colaborador não pré-existe)
+app.post("/solicitar-registo", async (req, res) => {
+  const { nome, email, contacto } = req.body;
+  if (!email || !nome) return res.status(400).json({ success: false, message: "Dados incompletos" });
+
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+  const mailOptions = {
+    from: process.env.SMTP_USER,
+    to: adminEmail,
+    subject: `Pedido de registo de colaborador: ${nome}`,
+    html: `<p>Recebemos pedido de registo:</p><ul><li>Nome: ${nome}</li><li>Email: ${email}</li><li>Contacto: ${contacto}</li></ul>`
+  };
+
+  transporter.sendMail(mailOptions, (err, info) => {
+    if (err) {
+      console.error("Erro ao enviar email de pedido de registo:", err);
+      return res.status(500).json({ success: false, message: "Erro ao enviar pedido" });
     }
+    return res.json({ success: true, message: "Pedido enviado ao administrador" });
   });
-}
+});
 
-if (!app._router?.stack?.some(layer => layer.route && layer.route.path === "/capture-paypal-order/:orderID")) {
-  app.post("/capture-paypal-order/:orderID", async (req, res) => {
-    try {
-      console.warn("POST /capture-paypal-order/:orderID chamado, mas rota real não encontrada. Retornando erro temporário.");
-      return res.status(501).json({ error: "capture-paypal-order não implementado no servidor (placeholder)" });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro interno" });
-    }
-  });
-}
+// recuperar senha — envia link com token JWT para reset
+app.post("/colaborador/recuperar-senha", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: "Email obrigatório" });
 
-// Também garante que rota de cancelamento exista (placeholder se não existir)
-if (!app._router?.stack?.some(layer => layer.route && layer.route.path === "/pedido-cancelamento")) {
-  app.post("/pedido-cancelamento", async (req, res) => {
-    try {
-      const { codigo, email } = req.body;
-      console.warn("POST /pedido-cancelamento chamado, mas rota real não encontrada. Retornando erro temporário.");
-      return res.status(501).json({ sucesso: false, message: "pedido-cancelamento não implementado no servidor (placeholder)" });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro interno" });
-    }
-  });
-}
+    const col = await Colaborador.findOne({ email });
+    if (!col) return res.json({ success: false, message: "Email não encontrado" });
+
+    // cria token curto
+    const token = jwt.sign({ id: col._id, email }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const frontendUrl = process.env.FRONTEND_URL || `http://localhost:${PORT}/frontend`;
+    const resetLink = `${frontendUrl}/reset-password.html?token=${token}`; // supondo reset page
+
+    const mailOptions = {
+      from: process.env.SMTP_USER,
+      to: email,
+      subject: "Recuperação de senha",
+      html: `<p>Olá,</p><p>Para redefinir a sua senha clique no link abaixo:</p><p><a href="${resetLink}">${resetLink}</a></p><p>O link expira em 1 hora.</p>`
+    };
+
+    transporter.sendMail(mailOptions, (err) => {
+      if (err) { console.error("Erro ao enviar email de recuperação:", err); return res.status(500).json({ success: false, message: "Erro ao enviar email" }); }
+      return res.json({ success: true, message: "Email de recuperação enviado" });
+    });
+  } catch (err) { console.error(err); res.status(500).json({ success: false, message: "Erro interno" }); }
+});
+
+// reset de senha (o frontend chama esta rota com token e nova senha)
+app.post("/colaborador/reset-senha", async (req, res) => {
+  try {
+    const { token, novaSenha } = req.body;
+    if (!token || !novaSenha) return res.status(400).json({ success: false, message: "Dados incompletos" });
+
+    jwt.verify(token, process.env.JWT_SECRET, async (err, payload) => {
+      if (err) return res.status(400).json({ success: false, message: "Token inválido ou expirado" });
+      const col = await Colaborador.findById(payload.id);
+      if (!col) return res.status(404).json({ success: false, message: "Colaborador não encontrado" });
+      col.senha = novaSenha;
+      await col.save();
+      return res.json({ success: true, message: "Senha atualizada" });
+    });
+  } catch (err) { console.error(err); res.status(500).json({ success: false, message: "Erro interno" }); }
+});
 
 // ==========================================================
-// 🔹 SEED INICIAL
+// Seed inicial
 // ==========================================================
 const DEFAULT_CATEGORIAS = [
   { nome: "Confort", precoKm: 0.50 },
@@ -326,5 +325,6 @@ async function seedDefaults() {
 seedDefaults();
 
 // ==========================================================
-// 🚀 INICIAR SERVIDOR
+// iniciar servidor
+// ==========================================================
 app.listen(PORT, () => console.log(`🚀 Servidor rodando em http://localhost:${PORT}`));
