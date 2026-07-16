@@ -1,0 +1,12 @@
+import dotenv from 'dotenv'; 
+dotenv.config(); 
+import { connectDB } from './src/config/db.js'; 
+import mongoose from 'mongoose'; 
+await connectDB(); 
+delete mongoose.models.ConviteParceiro; 
+delete mongoose.modelSchemas.ConviteParceiro; 
+import ConviteParceiro from './src/models/convitesParceiros.js'; 
+const r = await ConviteParceiro.findById('69ed86d4d9a374a6fb9d49ae').select('contactos email').lean(); 
+console.log('schema keys:', Object.keys(ConviteParceiro.schema.paths).join(', ')); 
+console.log('doc:', JSON.stringify(r)); 
+process.exit(0); 

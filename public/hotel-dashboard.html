@@ -1,0 +1,3249 @@
+<!DOCTYPE html>
+<!--
+  REALMETROPOLIS — Hotel Dashboard
+  ════════════════════════════════════════════════════
+  Arquitectura modular — ficheiros:
+
+    css/rm-dashboard.css   → todos os estilos
+    js/rm-core.js          → API, auth, estado global
+    js/rm-map.js           → Google Maps, Nominatim
+    js/rm-share.js         → Partilha, rota, polling
+    js/rm-activity.js      → Atividade, contactos
+    js/rm-ticket.js        → Ticket para hóspede
+    js/rm-stats.js         → Estatísticas + classificações
+    js/rm-sla.js           → Relatório SLA
+    js/rm-events.js        → bindEvents + init + Evento
+    js/rm-payment.js       → Stripe + PayPal
+
+  Para adicionar um novo módulo:
+    1. Criar public/js/rm-novomodulo.js
+    2. Adicionar <script src="js/rm-novomodulo.js"> abaixo
+    3. As funções ficam automaticamente disponíveis no scope global
+-->
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#050507">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- Evita o pedido automático do browser a /favicon.ico (que não
+       existe, gerava 404 em cada carregamento) sem precisar de
+       criar um ficheiro de ícone real agora. -->
+  <link rel="icon" href="data:,">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RM Hotel">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REALMETROPOLIS — Hotel Dashboard</title>
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/rm-dashboard.css">
+
+  <!-- Dependências externas -->
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ═══ MODO CONVIDADO — detecção precoce ═══════════════════════
+     Tem de correr ANTES de qualquer outro script. Se o URL tiver
+     ?invite=...&shareId=..., a pessoa é uma convidada por SMS, não
+     a dona da conta — mesmo que o navegador tenha sessão guardada
+     (ex: testar na mesma janela já autenticada). Em modo convidado:
+     nunca mostrar relatórios, viagens, menu ou qualquer dado da
+     conta — só o convite e, depois de validado, os dados dessa
+     viagem partilhada. -->
+<script>
+  (function () {
+    var params = new URLSearchParams(location.search);
+    var isGuest = !!(params.get('invite') && params.get('shareId'));
+    window.__GUEST_INVITE_MODE__ = isGuest;
+    if (isGuest) document.documentElement.classList.add('guest-invite-mode');
+  })();
+</script>
+<style>
+  /* Em modo convidado, esconder TUDO da app normal — menu, viagens,
+     relatórios, seletor de tipo de viagem — mas manter o MAPA
+     visível (para ver a rota/posição do motorista) e os popups do
+     próprio convite. */
+  html.guest-invite-mode .topbar .top-actions > button:not(#btnEncerrarSessao),
+  html.guest-invite-mode .hamburger-dropdown,
+  html.guest-invite-mode .hamburger-btn,
+  html.guest-invite-mode .trip-type-wrap,
+  html.guest-invite-mode #shareBanner,
+  html.guest-invite-mode .popup-overlay:not(#inviteVerifyPopup),
+  html.guest-invite-mode section.panel,
+  html.guest-invite-mode .floating-shell,
+  html.guest-invite-mode .share-sheet,
+  html.guest-invite-mode #tripTypeWrap {
+    display: none !important;
+  }
+  html.guest-invite-mode body {
+    background: radial-gradient(circle at top, #111319 0%, #070708 38%, #040404 100%);
+  }
+  html.guest-invite-mode .topbar .brand-copy h1,
+  html.guest-invite-mode .topbar .brand-copy p {
+    visibility: hidden; /* esconde nome/empresa da conta, mantém o espaço */
+  }
+  html.guest-invite-mode #inviteBar {
+    display: none !important; /* substituído por #conviteOverlay, abaixo */
+  }
+</style>
+
+<!-- Overlay dedicado ao convite de partilha — único, sem cabeçalho
+     "Para onde vai?", sem nada editável. Mostrado só depois de
+     validar o código SMS. Estrutura 100% própria (não herda nada
+     de .notif) para nunca partir em duas caixas. -->
+<div id="conviteOverlay" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5000;width:min(380px,92vw)">
+  <div style="background:linear-gradient(180deg,rgba(22,25,31,.97),rgba(10,11,14,.98));border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:22px 24px;box-shadow:0 30px 70px rgba(0,0,0,.6);font-family:Inter,Arial,system-ui,sans-serif">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#8b95a2;text-transform:uppercase">Convite de partilha</div>
+      <div id="conviteCategoria" style="display:none;font-size:10px;font-weight:900;letter-spacing:.06em;color:#04140e;background:#1cd68e;border-radius:999px;padding:3px 10px;text-transform:uppercase">—</div>
+    </div>
+
+    <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:18px" id="conviteDe">De —</div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#8b95a2;text-transform:uppercase;margin-bottom:4px">Destino</div>
+      <div style="font-size:15px;font-weight:800;color:#1cd68e;line-height:1.4" id="conviteDestino">—</div>
+    </div>
+
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#8b95a2;text-transform:uppercase;margin-bottom:4px">Data e Hora</div>
+      <div style="font-size:15px;font-weight:800;color:#fff" id="conviteDataHora">—</div>
+    </div>
+
+    <div style="display:flex;gap:18px;margin-top:14px">
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#8b95a2;text-transform:uppercase;margin-bottom:4px">Distância</div>
+        <div style="font-size:14px;font-weight:800;color:#fff" id="conviteKm">—</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#8b95a2;text-transform:uppercase;margin-bottom:4px">Tempo de viagem</div>
+        <div style="font-size:14px;font-weight:800;color:#fff" id="conviteTempo">—</div>
+      </div>
+    </div>
+
+    <div id="convitePagarWrap" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#8b95a2;text-transform:uppercase;margin-bottom:4px">A sua parte</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="font-size:18px;font-weight:900;color:#1cd68e" id="convitePagarValor">—</div>
+        <div style="display:flex;gap:8px">
+          <button id="btnConviteCancelar" type="button" style="background:rgba(255,255,255,.06);color:#cdd2da;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:10px 16px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">CANCELAR</button>
+          <button id="btnConvitePagar" type="button" style="background:#1cd68e;color:#04140e;border:none;border-radius:10px;padding:10px 18px;font-weight:900;font-size:12px;cursor:pointer;font-family:inherit">PAGAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}</style>
+
+<!-- Modal de pagamento do convidado (Stripe) -->
+<div id="convitePagarModal" style="display:none;position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.6);align-items:center;justify-content:center">
+  <div style="width:min(360px,90vw);background:#14171c;border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:22px;font-family:Inter,Arial,system-ui,sans-serif">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:900;color:#fff">PAGAR A SUA PARTE</div>
+      <button id="btnConvitePagarFechar" type="button" style="background:none;border:none;color:#8b95a2;font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <div id="convitePagarCardEl" style="background:#0b0d11;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px;margin-bottom:14px"></div>
+    <button id="btnConvitePagarConfirmar" type="button" style="width:100%;background:#1cd68e;color:#04140e;border:none;border-radius:10px;padding:12px;font-weight:900;font-size:13px;cursor:pointer;font-family:inherit">PAGAR</button>
+  </div>
+</div>
+
+<!-- Falha de pagamento de um participante — perguntar ao organizador -->
+<div id="falhaPagamentoModal" style="display:none;position:fixed;inset:0;z-index:7500;background:rgba(0,0,0,.7);align-items:center;justify-content:center">
+  <div style="width:min(380px,90vw);background:#14171c;border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:24px;font-family:Inter,Arial,system-ui,sans-serif;text-align:center">
+    <div style="font-size:30px;margin-bottom:10px">⚠️</div>
+    <div id="falhaPagamentoTexto" style="font-size:13.5px;color:#cdd2da;line-height:1.5;margin-bottom:20px">Falha no pagamento de um participante. Deseja continuar e refazer um novo cálculo?</div>
+    <div style="display:flex;gap:10px">
+      <button id="btnFalhaPagamentoNao" type="button" style="flex:1;background:#ff3b30;color:#fff;border:none;border-radius:10px;padding:13px;font-weight:900;font-size:12.5px;cursor:pointer;font-family:inherit">NÃO, CANCELAR TUDO</button>
+      <button id="btnFalhaPagamentoSim" type="button" style="flex:1;background:#1cd68e;color:#04140e;border:none;border-radius:10px;padding:13px;font-weight:900;font-size:12.5px;cursor:pointer;font-family:inherit">SIM, RECALCULAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmação de cancelamento — irreversível -->
+<div id="conviteCancelarConfirmModal" style="display:none;position:fixed;inset:0;z-index:7000;background:rgba(0,0,0,.7);align-items:center;justify-content:center">
+  <div style="width:min(360px,90vw);background:#14171c;border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:24px;font-family:Inter,Arial,system-ui,sans-serif;text-align:center">
+    <div style="font-size:30px;margin-bottom:10px">⚠️</div>
+    <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:8px">Cancelar participação?</div>
+    <div style="font-size:12.5px;color:#cdd2da;line-height:1.5;margin-bottom:20px">Esta ação <b>não pode ser revertida</b>. Vai deixar de fazer parte desta viagem partilhada.</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button id="btnConfirmCancelarSim" type="button" style="background:#ff3b30;color:#fff;border:none;border-radius:10px;padding:13px;font-weight:900;font-size:13px;cursor:pointer;font-family:inherit">OK! CANCELAR</button>
+      <button id="btnConfirmCancelarNao" type="button" style="background:#1cd68e;color:#04140e;border:none;border-radius:10px;padding:13px;font-weight:900;font-size:13px;cursor:pointer;font-family:inherit">CONTINUAR</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MAPA DE FUNDO -->
+  <!-- MAPA DE FUNDO -->
+  <div id="map" style="position:fixed;inset:0;z-index:0"></div>
+  <!-- OVERLAY ESCURO sobre o mapa, abaixo da UI -->
+  <div id="mapOverlay" style="position:fixed;inset:0;z-index:1;background:rgba(2,3,5,.55);pointer-events:none"></div>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">RM</div>
+      <div class="brand-copy">
+        <h1 id="nomeUtilizador">A CARREGAR...</h1>
+        <p id="userName">Área do Cliente Premium</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="soft-btn" id="btnSecurityPanel">SEGURANÇA</button>
+      <button class="soft-btn" id="btnPolitica">POLÍTICA</button>
+      <button class="soft-btn viagens-btn" id="btnViagensPendentes">VIAGENS PENDENTES</button>
+      <button class="soft-btn reserva-ativa-btn hidden" id="btnReservaAtiva">RESERVA ATIVA</button>
+      <button class="soft-btn instalar-btn" id="btnInstalarApp" title="Instalar como aplicação"><svg width="11" height="13" viewBox="0 0 11 13" fill="none" style="margin-right:5px;vertical-align:middle"><path d="M5.5 0v8.5M2 6l3.5 3.5L9 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.5 11.5h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>APP</button>
+      <button id="btnEncerrarSessao" title="Encerrar sessão">⏻ SAIR</button>
+      <button class="hamburger-btn" id="btnMenu" aria-label="Menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- DROPDOWN HAMBÚRGUER (canto direito, abaixo do botão) -->
+  <nav class="hamburger-dropdown" id="hamburgerMenu">
+    <button class="drop-btn" id="menuBtnActivity">ATIVIDADE</button>
+    <button class="drop-btn" id="menuBtnTripManager">GESTÃO</button>
+    <button class="drop-btn" id="menuBtnViagensMapa" style="color:var(--ok)">🗺️ VIAGENS ACTIVAS <span id="viagensAtivasContador" style="background:rgba(31,201,125,.15);border:1px solid rgba(31,201,125,.3);border-radius:999px;padding:1px 7px;font-size:9px;margin-left:4px;font-weight:700">0</span></button>
+    <button class="drop-btn" id="menuBtnPartilhas">🚗 VIAGENS PENDENTES <span id="partilhasAtivasContador" style="background:rgba(205,210,218,.12);border:1px solid rgba(205,210,218,.3);border-radius:999px;padding:1px 7px;font-size:9px;margin-left:4px;font-weight:700">0</span></button>
+    <button class="drop-btn" id="menuBtnContactos">MEUS CONTACTOS</button>
+    <button class="drop-btn" id="menuBtnEstatisticas">ESTATÍSTICAS</button>
+    <button class="drop-btn" id="menuBtnClassificacoes">CLASSIFICAÇÕES</button>
+    <button class="drop-btn" id="menuBtnSLA">RELATÓRIO SLA</button>
+  </nav>
+
+  <!-- SELETOR DE MODO -->
+  <div class="trip-type-wrap" id="tripTypeWrap">
+    <button class="trip-type-btn" id="btnSemPartilha">RESERVAR</button>
+    <button class="trip-type-btn" id="btnPartilharAmigos">PARTILHAR VIAGEM</button>
+  </div>
+
+  <!-- NOTIFICAÇÕES -->
+  <div class="notif" id="shareBanner"></div>
+  <div class="notif" id="toast"></div>
+  <div class="notif" id="inviteBar"></div>
+
+  <!-- Badge de rota (km · duração) — topo centrado, igual a reserva.html -->
+  <div id="rmRouteInfo">
+    <span id="rmRiKm">—</span>
+    <span class="rm-ri-sep">·</span>
+    <span id="rmRiMin">—</span>
+  </div>
+
+  <!-- Botão VER ROTA — canto inferior esquerdo, igual a reserva.html -->
+  <button id="rmBtnVerRota">🗺 VER ROTA</button>
+
+  <!-- Botão VOLTAR AO FORMULÁRIO — aparece quando mapa está a descoberto -->
+  <button id="rmBtnVoltarFormulario">↑ VOLTAR AO FORMULÁRIO</button>
+
+  <!-- PAINEL DE RESERVA PRIVADA -->
+  <div class="floating-shell">
+    <section class="panel hidden" id="tripPanel">
+      <div class="panel-head">
+        <div>
+          <h2>RESERVA PRIVADA</h2>
+          <p id="rmStepSub">Para onde vai?</p>
+        </div>
+        <button class="close-btn" id="btnCloseTrip">✕</button>
+      </div>
+      <div class="panel-body">
+
+        <!-- STEP 1: Endereços + Data/Hora -->
+        <div class="rm-step" id="rmStep1">
+          <div class="form-row">
+            <div class="nm-wrap" style="position:relative"><span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:#1cd68e;box-shadow:0 0 0 3px rgba(28,214,142,.18);z-index:2;pointer-events:none"></span><input class="field" id="inputPartida" type="text" placeholder="Local de Partida" autocomplete="new-password" style="padding-right:44px;padding-left:32px"><button id="geoPartidaBtn" title="Usar a minha localização" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;line-height:1;opacity:.55;transition:opacity .2s;padding:0" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.55'">📍</button><div class="nm-dropdown" id="nmPartida"></div></div>
+            <div class="nm-wrap" style="position:relative"><span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:#ff6b6b;box-shadow:0 0 0 3px rgba(255,107,107,.18);z-index:2;pointer-events:none"></span><input class="field" id="inputDestino" type="text" placeholder="Endereço de Destino" autocomplete="new-password" style="padding-left:32px"><div class="nm-dropdown" id="nmDestino"></div></div>
+            <input class="field" id="inputDateTime" type="datetime-local">
+          </div>
+          <div class="form-row rm-hospede-row" style="margin-top:10px">
+            <input class="field rm-hospede-field" id="inputNomeHospede" type="text" placeholder="Nome do hóspede" autocomplete="off">
+            <input class="field rm-hospede-field" id="inputContactoHospede" type="tel" placeholder="Contacto do hóspede (para SMS)" autocomplete="off">
+            <input class="field rm-hospede-field" id="inputEmailHospede" type="email" placeholder="Email do hóspede (para o email de confirmação)" autocomplete="off">
+          </div>
+
+          <!-- "+ Convidar mais pessoas" — opcional, escondido por
+               defeito. Ao usar, esta reserva passa a ter vários
+               participantes, cada um com o seu próprio destino,
+               cada um a receber o link de pagamento da sua parte.
+               Sem isto ligado, o formulário funciona exactamente
+               como sempre funcionou — uma pessoa, um destino. -->
+          <button type="button" id="btnConvidarMaisPessoas" style="background:transparent;border:none;color:var(--silver-2);font-size:11px;font-weight:700;letter-spacing:.03em;cursor:pointer;padding:8px 0;text-align:left;text-decoration:underline">
+            + Convidar mais pessoas
+          </button>
+          <div id="rmParticipantesExtra" style="display:none;flex-direction:column;gap:10px;margin-top:6px"></div>
+
+          <div class="rm-step1-actions">
+            <button class="action-btn secondary" id="btnPreferencia">ADICIONAR PREFERÊNCIA</button>
+            <button class="rm-step-next" id="rmBtnStep1Next" type="button">CONTINUAR</button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Categoria (preço já calculado) + Preferência -->
+        <div class="rm-step" id="rmStep2" style="display:none">
+          <button class="rm-step-back" id="rmBtnStep2Back" type="button">← Voltar</button>
+
+          <div class="category-row">
+            <button class="cat-btn selected" data-category="economica">
+              <span class="cat-ico-wrap" style="background:rgba(205,210,218,.08);border:1px solid rgba(205,210,218,.20)"><span class="cat-ico">🚗</span></span>
+              <span class="cat-info">
+                <span class="cat-name">ECONÓMICA</span>
+                <span class="cat-metas">
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="cat-meta-dur">—</span></span>
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="cat-meta-km">—</span></span>
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>1–4</span>
+                </span>
+              </span>
+              <span class="cat-price-col">
+                <span class="cat-price">—</span>
+                <span class="cat-price-sub">por viagem</span>
+              </span>
+            </button>
+            <button class="cat-btn" data-category="confort">
+              <span class="cat-ico-wrap" style="background:rgba(74,142,240,.08);border:1px solid rgba(74,142,240,.2)"><span class="cat-ico">🚙</span></span>
+              <span class="cat-info">
+                <span class="cat-name">CONFORTO</span>
+                <span class="cat-metas">
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="cat-meta-dur">—</span></span>
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="cat-meta-km">—</span></span>
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>1–4</span>
+                </span>
+              </span>
+              <span class="cat-price-col">
+                <span class="cat-price" style="color:#4a8ef0">—</span>
+                <span class="cat-price-sub">por viagem</span>
+              </span>
+            </button>
+            <button class="cat-btn" data-category="executive">
+              <span class="cat-ico-wrap" style="background:rgba(184,150,90,.08);border:1px solid rgba(184,150,90,.2)"><span class="cat-ico">🏎</span></span>
+              <span class="cat-info">
+                <span class="cat-name">EXECUTIVA</span>
+                <span class="cat-metas">
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="cat-meta-dur">—</span></span>
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="cat-meta-km">—</span></span>
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>1–4</span>
+                </span>
+              </span>
+              <span class="cat-price-col">
+                <span class="cat-price" style="color:#b8965a">—</span>
+                <span class="cat-price-sub">por viagem</span>
+              </span>
+            </button>
+            <button class="cat-btn" data-category="luxo">
+              <span class="cat-ico-wrap" style="background:rgba(212,212,212,.06);border:1px solid rgba(212,212,212,.2)"><span class="cat-ico">✦</span></span>
+              <span class="cat-info">
+                <span class="cat-name">LUXO</span>
+                <span class="cat-metas">
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="cat-meta-dur">—</span></span>
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="cat-meta-km">—</span></span>
+                  <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>1–4</span>
+                </span>
+              </span>
+              <span class="cat-price-col">
+                <span class="cat-price" style="color:#d4d4d4">—</span>
+                <span class="cat-price-sub">por viagem</span>
+              </span>
+            </button>
+            <!-- Grupo: botão custom com estrutura idêntica às outras
+                 categorias. O select original fica oculto mas funcional
+                 para que grupoReservaChanged() e getCategoryValue()
+                 continuem a operar sem alteração. -->
+            <select class="cat-btn cat-select" id="grupoSelect" onchange="grupoReservaChanged(this)" style="display:none">
+              <option value="">GRUPO</option>
+              <option value="grupo6">ATÉ 6 PESSOAS</option>
+              <option value="grupo8">ATÉ 8 PESSOAS</option>
+              <option value="grupo17">ATÉ 17 PESSOAS</option>
+            </select>
+
+            <!-- Botão visual do grupo -->
+            <div class="cat-grupo-wrap" id="catGrupoWrap">
+              <button class="cat-btn cat-btn-grupo" id="catBtnGrupo" type="button">
+                <span class="cat-ico-wrap" style="background:rgba(205,210,218,.08);border:1px solid rgba(205,210,218,.20)">
+                  <span class="cat-ico">👥</span>
+                </span>
+                <span class="cat-info">
+                  <span class="cat-name" id="catGrupoNome">GRUPO</span>
+                  <span class="cat-metas">
+                    <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="cat-meta-dur" id="catGrupoDur">—</span></span>
+                    <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="cat-meta-km" id="catGrupoKm">—</span></span>
+                    <span class="cat-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span id="catGrupoPass">6–17</span></span>
+                  </span>
+                </span>
+                <span class="cat-price-col">
+                  <span class="cat-price" id="catGrupoPreco">—</span>
+                  <span class="cat-price-sub">por viagem</span>
+                </span>
+              </button>
+              <!-- Sub-opções de tamanho — só visíveis após clicar -->
+              <div class="cat-grupo-opts" id="catGrupoOpts">
+                <button class="cat-grupo-opt" data-val="grupo6" type="button">
+                  <span>👥</span><span class="opt-lbl">ATÉ 6</span>
+                  <span class="opt-price" id="optPreco6">—</span>
+                </button>
+                <button class="cat-grupo-opt" data-val="grupo8" type="button">
+                  <span>👨‍👩‍👧‍👦</span><span class="opt-lbl">ATÉ 8</span>
+                  <span class="opt-price" id="optPreco8">—</span>
+                </button>
+                <button class="cat-grupo-opt" data-val="grupo17" type="button">
+                  <span>🚌</span><span class="opt-lbl">ATÉ 17</span>
+                  <span class="opt-price" id="optPreco17">—</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="req-esp-label">Requisitos especiais</div>
+          <div class="req-esp-row">
+            <button class="req-esp-btn" id="reqOvo" data-req="ovo" data-label="Ovo para bebé" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 14a7 7 0 0 1 14 0v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Z"/><path d="M7 8c0-2 2-4 5-4s5 2 5 4"/></svg>
+              <span class="req-esp-lbl">OVO</span>
+              <span class="req-esp-qty">1</span>
+            </button>
+            <button class="req-esp-btn" id="reqCadeirinha" data-req="cadeirinha" data-label="Cadeirinha para bebé" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="7" rx="2"/><path d="M8 21v-6a4 4 0 0 1 4-4h0a4 4 0 0 1 4 4v6"/><path d="M7 21h10"/></svg>
+              <span class="req-esp-lbl">CADEIRINHA</span>
+              <span class="req-esp-qty">1</span>
+            </button>
+            <button class="req-esp-btn" id="reqElevacao" data-req="elevacao" data-label="Assento de elevação" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="13" width="16" height="6" rx="2.5"/><path d="M7 13v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>
+              <span class="req-esp-lbl">ELEVAÇÃO</span>
+              <span class="req-esp-qty">1</span>
+            </button>
+          </div>
+          <button class="rm-step-next" id="rmBtnStep2Next" type="button">CONTINUAR</button>
+        </div>
+
+        <!-- Popup de quantidade dos requisitos especiais -->
+        <div id="reqQtyOverlay">
+          <div id="reqQtyBox">
+            <h4 id="reqQtyTitle">Quantidade</h4>
+            <div id="reqQtyStepper">
+              <button type="button" id="reqQtyMinus">−</button>
+              <span id="reqQtyVal">1</span>
+              <button type="button" id="reqQtyPlus">+</button>
+            </div>
+            <div class="req-qty-actions">
+              <button type="button" id="reqQtyCancel" style="background:#0c0d10!important;color:#cdd2da!important;border:1px solid rgba(205,210,218,.25)!important">Cancelar</button>
+              <button type="button" id="reqQtyOk" style="background:#0c0d10!important;color:#cdd2da!important;border:1px solid rgba(205,210,218,.25)!important">Confirmar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4: Slots de preferência de motorista
+             Acessível apenas via botão "ADICIONAR PREFERÊNCIA" do Step 1.
+             Nunca aparece junto com as categorias. -->
+        <div class="rm-step" id="rmStep4" style="display:none">
+          <button class="rm-step-back" id="rmBtnStep4Back" type="button">← Voltar</button>
+
+          <div class="info-note">
+            Estes 5 cartões formam o seu grupo de motoristas preferidos. Os que adicionar aqui ficam registados — em qualquer viagem futura, se algum estiver próximo e disponível, é-lhe atribuído automaticamente.
+          </div>
+          <button class="rm-step-back rm-slot-back" id="rmBtnSlotBack" type="button">← Voltar</button>
+          <div class="driver-grid" id="driverGrid">
+            <!-- Cartão 1 -->
+            <article class="driver-card" data-card-index="1">
+              <div class="driver-top">
+                <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+                <div><strong>Slot 1</strong><span>Categoria atual: —</span></div>
+              </div>
+              <div class="driver-meta">
+                <span><b>Veículo:</b> —</span>
+                <span><b>Matrícula:</b> —</span>
+                <span><b>Tipo:</b> —</span>
+              </div>
+              <div class="mini-chip">Livre</div>
+              <button class="card-action pref-action-btn">ADICIONAR</button>
+            </article>
+            <!-- Cartão 2 -->
+            <article class="driver-card" data-card-index="2">
+              <div class="driver-top">
+                <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+                <div><strong>Slot 2</strong><span>Categoria atual: —</span></div>
+              </div>
+              <div class="driver-meta">
+                <span><b>Veículo:</b> —</span><span><b>Matrícula:</b> —</span><span><b>Tipo:</b> —</span>
+              </div>
+              <div class="mini-chip">Livre</div>
+              <button class="card-action pref-action-btn">ADICIONAR</button>
+            </article>
+            <!-- Cartão 3 -->
+            <article class="driver-card" data-card-index="3">
+              <div class="driver-top">
+                <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+                <div><strong>Slot 3</strong><span>Categoria atual: —</span></div>
+              </div>
+              <div class="driver-meta">
+                <span><b>Veículo:</b> —</span><span><b>Matrícula:</b> —</span><span><b>Tipo:</b> —</span>
+              </div>
+              <div class="mini-chip">Livre</div>
+              <button class="card-action pref-action-btn">ADICIONAR</button>
+            </article>
+            <!-- Cartão 4 -->
+            <article class="driver-card" data-card-index="4">
+              <div class="driver-top">
+                <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+                <div><strong>Slot 4</strong><span>Categoria atual: —</span></div>
+              </div>
+              <div class="driver-meta">
+                <span><b>Veículo:</b> —</span><span><b>Matrícula:</b> —</span><span><b>Tipo:</b> —</span>
+              </div>
+              <div class="mini-chip">Livre</div>
+              <button class="card-action pref-action-btn">ADICIONAR</button>
+            </article>
+            <!-- Cartão 5 -->
+            <article class="driver-card" data-card-index="5">
+              <div class="driver-top">
+                <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+                <div><strong>Slot 5</strong><span>Categoria atual: —</span></div>
+              </div>
+              <div class="driver-meta">
+                <span><b>Veículo:</b> —</span><span><b>Matrícula:</b> —</span><span><b>Tipo:</b> —</span>
+              </div>
+              <div class="mini-chip">Livre</div>
+              <button class="card-action pref-action-btn">ADICIONAR</button>
+            </article>
+          </div>
+
+          <div class="preference-panel" id="preferencePanel">
+            <div class="preference-head">ÚLTIMAS 2 VIAGENS PARA PREFERÊNCIA</div>
+            <div class="last-trips-row">
+              <article class="last-trip-card" id="lastTripCard1">
+                <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="última viagem 1">
+                <div><strong>Sem registo</strong><span>Assim que existir histórico, aparecerá aqui.</span></div>
+              </article>
+              <article class="last-trip-card" id="lastTripCard2">
+                <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="última viagem 2">
+                <div><strong>Sem registo</strong><span>Assim que existir histórico, aparecerá aqui.</span></div>
+              </article>
+            </div>
+          </div>
+          <button id="rmBtnFecharPreferencia" type="button">✕ FECHAR PREFERÊNCIA</button>
+        </div>
+
+        <!-- STEP 3: Resumo da viagem + Reservar (dados do passageiro já vêm da sessão) -->
+        <div class="rm-step" id="rmStep3" style="display:none">
+          <button class="rm-step-back" id="rmBtnStep3Back" type="button">← Voltar</button>
+
+          <div class="rm-trip-summary">
+            <div class="rm-trip-line">
+              <span class="rm-dot rm-dot-o"></span>
+              <div>
+                <div class="rm-trip-lbl">Partida</div>
+                <div class="rm-trip-val" id="rmSumPartida">—</div>
+              </div>
+            </div>
+            <div class="rm-trip-vline"></div>
+            <div class="rm-trip-line">
+              <span class="rm-dot rm-dot-d"></span>
+              <div>
+                <div class="rm-trip-lbl">Destino</div>
+                <div class="rm-trip-val" id="rmSumDestino">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rm-stats-row">
+            <div class="rm-stat-box">
+              <div class="rm-stat-val" id="rmSumData">—</div>
+              <div class="rm-stat-lbl">Data e Hora</div>
+            </div>
+            <div class="rm-stat-box">
+              <div class="rm-stat-val" id="rmSumCategoria">—</div>
+              <div class="rm-stat-lbl">Categoria</div>
+            </div>
+            <div class="rm-stat-box rm-stat-total">
+              <div class="rm-stat-val" id="rmSumTotal">—</div>
+              <div class="rm-stat-lbl">Total</div>
+            </div>
+          </div>
+          <div id="rmSumRequisitosWrap" style="display:none;margin-top:10px">
+            <div class="rm-trip-label" style="font-size:10px;color:var(--silver-3,#545d68);margin-bottom:4px">Requisitos especiais</div>
+            <div class="rm-trip-val" id="rmSumRequisitos" style="font-size:13px">—</div>
+          </div>
+
+          <button class="action-btn primary" id="btnReservar">RESERVAR VIAGEM</button>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+
+  <!-- FOLHA DE PARTILHA -->
+  <section class="share-sheet hidden" id="shareSheet">
+    <!-- Pilha de cartões de participante (gerada por buildShareCards) -->
+    <div class="share-stack">
+      <div class="stack-wrap" id="shareStackWrap"></div>
+    </div>
+    <!-- Barra de configuração -->
+    <div class="share-topbar">
+      <div class="share-cat-pills" id="shareCatPills">
+        <button class="share-cat-pill" data-sharecat="economica">ECONÓMICA</button>
+        <button class="share-cat-pill" data-sharecat="confort">CONFORTO</button>
+        <button class="share-cat-pill" data-sharecat="executive">EXECUTIVA</button>
+        <button class="share-cat-pill" data-sharecat="luxo">LUXO</button>
+        <select class="share-cat-pill cat-select" id="shareGrupoSelect" onchange="shareGrupoChanged(this)">
+          <option value="">GRUPO</option>
+          <option value="grupo6">ATÉ 6 PESSOAS</option>
+          <option value="grupo8">ATÉ 8 PESSOAS</option>
+          <option value="grupo17">ATÉ 17 PESSOAS</option>
+        </select>
+      </div>
+      <div class="share-fields-row">
+        <div class="nm-wrap"><input class="field" id="shareRecolha" type="text" placeholder="Endereço 1ª Recolha" autocomplete="new-password"><div class="nm-dropdown" id="nmRecolha"></div></div>
+        <div class="nm-wrap"><input class="field" id="shareDestino" type="text" placeholder="Destino final" autocomplete="new-password"><div class="nm-dropdown" id="nmShareDestino"></div></div>
+        <input class="field" id="shareDateTime" type="datetime-local">
+        <button class="action-btn primary" id="btnEnviarConvites" disabled>PARTILHAR</button>
+      </div>
+      <!-- Painel de preço estimado — aparece após calcular -->
+      <div class="share-preco-panel" id="sharePrecoPanel">
+        <div class="share-preco-linha">
+          <span class="share-preco-km" id="sharePrecoKm">—</span>
+          <span class="share-preco-sep">·</span>
+          <span class="share-preco-tempo" id="sharePrecoTempo">—</span>
+          <div class="share-preco-portagens" id="sharePrecoPortagens"></div>
+        </div>
+        <div class="share-preco-total-valor" id="sharePrecoValor">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAINEL DE EVENTO — mesmo local, destinos diferentes ───── -->
+  <section class="share-sheet hidden" id="eventoSheet">
+    <div class="share-topbar">
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:900;letter-spacing:.1em;color:#fff;text-transform:uppercase">🎉 Criar Evento — Destinos Múltiplos</div>
+      </div>
+      <button class="action-btn secondary" id="btnCloseEvento" style="min-width:unset;padding:0 14px">✕</button>
+    </div>
+    <div class="share-topbar" style="flex-direction:column;gap:10px;padding-top:0">
+      <!-- Linha 1: Partida + Data/Hora -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%">
+        <div class="nm-wrap">
+          <input class="field" id="evtPartida" type="text" placeholder="Local do evento (partida comum)" autocomplete="new-password"/>
+          <div class="nm-dropdown" id="nmEvtPartida"></div>
+        </div>
+        <input class="field" id="evtDateTime" type="datetime-local"/>
+      </div>
+      <!-- Linha 2: Categoria -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="share-cat-pill evt-cat active selected" data-evtcat="economica">ECONÓMICA</button>
+        <button class="share-cat-pill evt-cat" data-evtcat="confort">CONFORTO</button>
+        <button class="share-cat-pill evt-cat" data-evtcat="executive">EXECUTIVA</button>
+        <button class="share-cat-pill evt-cat" data-evtcat="luxury">LUXO</button>
+        <select class="share-cat-pill evt-cat-grupo" id="evtGrupoSelect" onchange="evtGrupoChanged(this)" style="cursor:pointer;padding:0 10px;appearance:none;-webkit-appearance:none;text-align:center">
+          <option value="">GRUPO</option>
+          <option value="grupo6">ATÉ 6 PESSOAS</option>
+          <option value="grupo8">ATÉ 8 PESSOAS</option>
+          <option value="grupo17">ATÉ 17 PESSOAS</option>
+        </select>
+      </div>
+      <!-- Linha 3: Mesmo veículo -->
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b95a2;cursor:pointer">
+        <input type="checkbox" id="evtMesmoVeiculo" style="accent-color:#19d68b"/>
+        Participantes preferem o mesmo veículo
+      </label>
+      <!-- Linha 4: Data de validade do bilhete -->
+      <div style="display:flex;flex-direction:column;gap:6px;width:100%">
+        <label for="evtValidUntil" style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#c4c9d4;font-weight:800;letter-spacing:.02em">
+          🎫 Data de validade do bilhete
+          <button type="button" id="evtValidInfoBtn" title="Como funciona a validade"
+            style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1px solid rgba(196,201,212,.4);background:transparent;color:#c4c9d4;font-size:11px;font-weight:900;cursor:pointer;padding:0;line-height:1">ⓘ</button>
+        </label>
+        <input class="field" id="evtValidUntil" type="datetime-local"/>
+      </div>
+      <!-- Linha 5: Canal de notificação -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:11px;color:#8b95a2;font-weight:700;margin-right:4px">Notificar por:</span>
+        <button class="share-cat-pill evt-notif active selected" data-evtnotif="sms" type="button">SMS</button>
+        <button class="share-cat-pill evt-notif" data-evtnotif="email" type="button">EMAIL</button>
+        <button class="share-cat-pill evt-notif" data-evtnotif="ambos" type="button">AMBOS</button>
+      </div>
+      <!-- Linha 6: Quem paga -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:11px;color:#8b95a2;font-weight:700;margin-right:4px">Quem paga:</span>
+        <button class="share-cat-pill evt-pagador active selected" data-evtpagador="hospede" type="button">CADA CONVIDADO</button>
+        <button class="share-cat-pill evt-pagador" data-evtpagador="hotel" type="button">O HOTEL</button>
+      </div>
+      <!-- Participantes -->
+      <div id="evtParticipantes" style="display:flex;flex-direction:column;gap:8px;width:100%"></div>
+      <button class="action-btn secondary" id="btnAddEvtParticipante" style="font-size:11px;padding:8px 14px">+ ADICIONAR CONTACTO</button>
+      <button class="action-btn primary" id="btnEnviarEvento" disabled>🎉 ENVIAR CONVITES</button>
+      <div id="evtMsg" style="font-size:12px;margin-top:4px;display:none"></div>
+    </div>
+  </section>
+
+    <!-- PAINEL DE TICKET (hotel) ─────────────────────────────── -->
+  <section class="share-sheet hidden" id="ticketSheet">
+    <div class="share-topbar">
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:900;letter-spacing:.1em;color:#fff;text-transform:uppercase">🎫 Criar Ticket para Hóspede</div>
+      </div>
+      <button class="action-btn secondary" id="btnCloseTicket" style="min-width:unset;padding:0 14px">✕</button>
+    </div>
+
+    <div class="share-topbar" style="flex-direction:column;gap:10px;padding-top:0">
+
+      <!-- Linha 1: Nome do Hóspede, Contacto, Email -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;width:100%">
+        <input class="field" id="tkNome" type="text"
+          placeholder="NOME DO HÓSPEDE *"
+          style="font-weight:700;letter-spacing:.04em"
+          autocomplete="off">
+        <input class="field" id="tkTelefone" type="tel"
+          placeholder="CONTACTO"
+          style="font-weight:700;letter-spacing:.04em"
+          autocomplete="off">
+        <input class="field" id="tkEmail" type="email"
+          placeholder="EMAIL *"
+          style="font-weight:700;letter-spacing:.04em"
+          autocomplete="off">
+      </div>
+
+      <!-- Linha 2: Partida (geo), Destino, Data/Hora -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;width:100%">
+        <div class="nm-wrap" style="position:relative">
+          <input class="field" id="tkPartida" type="text"
+            placeholder="LOCAL DE PARTIDA *"
+            style="font-weight:700;letter-spacing:.04em;padding-right:38px"
+            autocomplete="new-password">
+          <button id="tkGeoBtn" title="Usar localização actual"
+            style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:16px;cursor:pointer;padding:0;line-height:1;opacity:.6;transition:opacity .15s"
+            onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">📍</button>
+          <div class="nm-dropdown" id="nmTkPartida"></div>
+        </div>
+        <div class="nm-wrap">
+          <input class="field" id="tkDestino" type="text"
+            placeholder="DESTINO *"
+            style="font-weight:700;letter-spacing:.04em"
+            autocomplete="new-password">
+          <div class="nm-dropdown" id="nmTkDestino"></div>
+        </div>
+        <input class="field" id="tkDatahora" type="datetime-local"
+          style="font-weight:700">
+      </div>
+
+      <!-- Categorias — mesmo padrão do Partilhar Viagem -->
+      <div class="share-cat-pills" id="tkCatPills">
+        <button class="share-cat-pill tk-cat-btn" data-tkcat="economica">ECÓNOMICA</button>
+        <button class="share-cat-pill tk-cat-btn" data-tkcat="confort">CONFORTO</button>
+        <button class="share-cat-pill tk-cat-btn" data-tkcat="executive">EXECUTIVA</button>
+        <button class="share-cat-pill tk-cat-btn" data-tkcat="luxury">LUXO</button>
+        <select class="share-cat-pill tk-grupo-select" id="tkGrupoSelect" onchange="tkGrupoChanged(this)" style="cursor:pointer;padding:0 10px;appearance:none;-webkit-appearance:none;text-align:center">
+          <option value="">GRUPO</option>
+          <option value="grupo6">ATÉ 6 PESSOAS</option>
+          <option value="grupo8">ATÉ 8 PESSOAS</option>
+          <option value="grupo17">ATÉ 17 PESSOAS</option>
+        </select>
+      </div>
+      <!-- spans de preço ocultos para _tkCalcAllPrices -->
+      <span id="tkp_economica" style="display:none"></span>
+      <span id="tkp_confort"   style="display:none"></span>
+      <span id="tkp_executive" style="display:none"></span>
+      <span id="tkp_luxury"    style="display:none"></span>
+      <span id="tkp_GRUPO6"    style="display:none"></span>
+      <span id="tkp_GRUPO8"    style="display:none"></span>
+      <span id="tkp_GRUPO17"   style="display:none"></span>
+
+      <!-- Prazo limite para confirmar/pagar (opcional) -->
+      <div style="display:flex;flex-direction:column;gap:4px;width:100%;margin-top:8px">
+        <label style="font-size:11px;color:#8b95a2;font-weight:700">Prazo limite para confirmar/pagar (opcional)</label>
+        <input class="field" id="tkValidUntil" type="datetime-local"/>
+      </div>
+      <!-- Canal de notificação -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <span style="font-size:11px;color:#8b95a2;font-weight:700;margin-right:4px">Notificar por:</span>
+        <button class="share-cat-pill tk-notif" data-tknotif="sms" type="button">SMS</button>
+        <button class="share-cat-pill tk-notif active selected" data-tknotif="email" type="button">EMAIL</button>
+        <button class="share-cat-pill tk-notif" data-tknotif="ambos" type="button">AMBOS</button>
+      </div>
+      <!-- Quem paga -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <span style="font-size:11px;color:#8b95a2;font-weight:700;margin-right:4px">Quem paga:</span>
+        <button class="share-cat-pill tk-pagador active selected" data-tkpagador="hospede" type="button">O HÓSPEDE</button>
+        <button class="share-cat-pill tk-pagador" data-tkpagador="hotel" type="button">O HOTEL</button>
+      </div>
+
+      <!-- Botão gerar -->
+      <button class="action-btn primary" id="btnTkGerar" style="width:100%;margin-top:8px" disabled>🎫 GERAR TICKET</button>
+
+      <div class="msg" id="tkMsg" style="display:none;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:800"></div>
+
+      <!-- Resultado -->
+      <div id="tkResultado" style="display:none;width:100%;padding:16px;background:rgba(25,214,139,.06);border:1px solid rgba(25,214,139,.25);border-radius:18px">
+        <div style="font-size:12px;font-weight:900;color:var(--green);letter-spacing:.1em;margin-bottom:12px">TICKET GERADO ✓</div>
+        <div id="tkLinkInfo" style="font-size:12px;color:var(--silver-2);line-height:1.8;margin-bottom:14px"></div>
+        <button id="btnTkEmail" style="width:100%;padding:13px;border-radius:16px;border:none;background:linear-gradient(180deg,#19d68b,#12a869);color:#000;font-size:13px;font-weight:900;letter-spacing:.06em;cursor:pointer">
+          ✉ ENVIAR TICKET POR EMAIL AO HÓSPEDE
+        </button>
+        <div class="msg" id="tkEmailMsg" style="display:none;margin-top:10px;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:800"></div>
+        <button id="btnTkNovo" style="margin-top:10px;width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--silver-2);font-size:12px;font-weight:900;cursor:pointer">+ CRIAR NOVO TICKET</button>
+      </div>
+
+    </div>
+  </section>
+  <div class="share-aguarda-overlay" id="shareAguardaOverlay">
+    <div class="share-aguarda-card" style="position:relative">
+      <button id="btnFecharAguardaOverlay" type="button" title="Fechar" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,.08);border:none;color:#cdd2da;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;line-height:1">✕</button>
+      <div class="aguarda-pulse">📡</div>
+      <div class="aguarda-titulo">AGUARDANDO RESPOSTA DOS UTILIZADORES</div>
+      <div class="aguarda-sub" id="aguardaSub">Convites enviados. A aguardar confirmação dos participantes.</div>
+      <div class="aguarda-participantes" id="aguardaParticipantes"></div>
+      <button class="aguarda-btn-cancelar" id="aguardaBtnCancelar">CANCELAR PARTILHA</button>
+    </div>
+  </div>
+
+  <!-- OVERLAY DE ROTA AO VIVO: aparece quando todos aceitam -->
+  <div class="share-rota-overlay" id="shareRotaOverlay">
+    <div class="share-rota-card" style="position:relative">
+      <button id="btnFecharRotaOverlay" type="button" title="Fechar (a partilha continua a decorrer)" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,.08);border:none;color:#cdd2da;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;z-index:2">✕</button>
+      <div class="rota-titulo">PARTILHA EM CURSO — ROTA AO VIVO</div>
+      <div class="rota-participantes" id="rotaParticipantes"></div>
+      <div class="rota-destino">
+        <span class="rota-destino-icon">📍</span>
+        <span class="rota-destino-texto" id="rotaDestinoTexto">—</span>
+      </div>
+      <button id="btnCancelarViagemDespachada" type="button" style="margin-top:14px;width:100%;background:rgba(255,107,107,.12);color:#ffb4b4;border:1px solid rgba(255,107,107,.3);border-radius:10px;padding:10px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">CANCELAR VIAGEM</button>
+    </div>
+  </div>
+
+  <!-- POPUP: CONFIGURAR CATEGORIA (Luxo / Grupo) -->
+  <div class="popup-overlay" id="categoryPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3 id="categoryPopupTitle">CONFIGURAR CATEGORIA</h3>
+        <p id="categoryPopupText">Indique a quantidade pretendida.</p>
+      </div>
+      <div class="popup-body">
+        <input id="categoryPopupInput" type="number">
+        <div class="popup-hint" id="categoryPopupHint"></div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnPopupCancel">CANCELAR</button>
+          <button class="action-btn primary"    id="btnPopupConfirm">CONFIRMAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: ACESSO À PARTILHA VIA CONVITE SMS -->
+  <div class="popup-overlay" id="inviteVerifyPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>RESERVA FLEXÍVEL</h3>
+        <p>Introduza o código para confirmarmos a sua Reserva Flexível e chamarmos o seu motorista.</p>
+      </div>
+      <div class="popup-body">
+        <input id="inviteOtpInput" type="text" placeholder="000000" maxlength="6" inputmode="numeric" style="display:block;width:160px;height:64px;margin:0 auto;text-align:center;font-size:28px;font-weight:900;letter-spacing:.25em;border-radius:14px;background:#0b0d11;border:1px solid rgba(255,255,255,.18);color:#fff;font-family:inherit">
+        <style>#inviteOtpInput::placeholder{letter-spacing:.25em;color:#555a64;font-weight:700}</style>
+        <div class="popup-hint">Depois de validar, a sua localização será enviada em tempo real.</div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnInviteClose">FECHAR</button>
+          <button class="action-btn primary"    id="btnInviteVerify">VALIDAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: ATIVIDADE -->
+  <div class="popup-overlay" id="activityPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>ATIVIDADE</h3>
+        <p>Escolha a ação que pretende realizar.</p>
+      </div>
+      <div class="popup-body">
+        <div class="activity-actions">
+          <button class="activity-btn" id="btnLostItem">RECUPERAR ARTIGO PERDIDO</button>
+          <button class="activity-btn" id="btnSecurityProblem">PROBLEMA DE SEGURANÇA</button>
+          <button class="activity-btn" id="btnInvoice">SOLICITAR FATURA</button>
+        </div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnCloseActivity">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: ARTIGO PERDIDO -->
+  <div class="popup-overlay" id="lostItemPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>RECUPERAR ARTIGO PERDIDO</h3>
+        <p>Descreva o item perdido e os detalhes relevantes da viagem.</p>
+      </div>
+      <div class="popup-body">
+        <input id="lostItemTitle" type="text" placeholder="Nome do item">
+        <textarea id="lostItemDescription" placeholder="Descreva o artigo, cor, tamanho, local provável e qualquer detalhe útil."></textarea>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnLostCancel">CANCELAR</button>
+          <button class="action-btn primary"    id="btnLostSend">ENVIAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: PROBLEMA DE SEGURANÇA -->
+  <div class="popup-overlay" id="securityPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>PROBLEMA DE SEGURANÇA</h3>
+        <p>Selecione o problema principal e descreva o ocorrido.</p>
+      </div>
+      <div class="popup-body">
+        <div class="popup-options" id="securityOptions">
+          <button class="option-pill" data-value="solicitou_meu_contato">SOLICITOU MEU CONTATO</button>
+          <button class="option-pill" data-value="conducao_perigosa">CONDUÇÃO PERIGOSA</button>
+          <button class="option-pill" data-value="veiculo_diferente">VEÍCULO DIFERENTE</button>
+          <button class="option-pill" data-value="motorista_diferente">O MOTORISTA NÃO É O MESMO</button>
+        </div>
+        <textarea id="securityDescription" placeholder="Informações adicionais sobre o problema."></textarea>
+        <div class="security-panel">
+          O painel de segurança rastreia a viagem em tempo real pela localização do utilizador e do motorista.
+        </div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnSecurityCancel">CANCELAR</button>
+          <button class="action-btn primary"    id="btnSecuritySend">ENVIAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: SOLICITAR FATURA -->
+  <div class="popup-overlay" id="invoicePopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>SOLICITAR FATURA</h3>
+        <p>Selecione a viagem pretendida. O sistema usa o nome completo do utilizador registado.</p>
+      </div>
+      <div class="popup-body">
+        <div class="invoice-list" id="invoiceList"></div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnInvoiceCancel">CANCELAR</button>
+          <button class="action-btn primary"    id="btnInvoiceSend">SOLICITAR FATURA</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: GESTÃO DE VIAGENS -->
+  <div class="popup-overlay" id="tripManagerPopup">
+    <div class="popup-card" style="width:min(980px,100%)">
+      <div class="popup-head">
+        <h3>GESTÃO DE VIAGENS</h3>
+        <p>Controlo da reserva atual, preferência, início e conclusão de viagem.</p>
+      </div>
+      <div class="popup-body">
+        <div class="manager-grid">
+          <div class="manager-card">
+            <h4>RESERVA EM CURSO</h4>
+            <p id="managerCurrentTrip">Sem viagem ativa.</p>
+          </div>
+          <div class="manager-card">
+            <h4>PREFERÊNCIA APLICADA</h4>
+            <p id="managerPreferenceInfo">Nenhuma preferência aplicada.</p>
+          </div>
+          <div class="trip-flow-card">
+            <strong>INÍCIO DE VIAGEM</strong>
+            <span>Confirme quando o motorista iniciar a recolha.</span>
+            <div class="status-pill live">PRONTO PARA INICIAR</div>
+            <button class="action-btn primary" id="btnStartTripFlow">INICIAR VIAGEM</button>
+          </div>
+          <div class="trip-flow-card">
+            <strong>FIM DE VIAGEM</strong>
+            <span>Confirme quando o trajeto terminar com sucesso.</span>
+            <div class="status-pill warn">AGUARDA ENCERRAMENTO</div>
+            <button class="action-btn secondary" id="btnEndTripFlow">FINALIZAR VIAGEM</button>
+          </div>
+        </div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnCloseTripManager">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: PAINEL DE SEGURANÇA AO VIVO -->
+  <div class="popup-overlay" id="securityLivePopup">
+    <div class="popup-card" style="width:min(980px,100%)">
+      <div class="popup-head">
+        <h3>PAINEL DE SEGURANÇA</h3>
+        <p>Monitorização em tempo real da viagem.</p>
+      </div>
+      <div class="popup-body">
+        <div class="security-panel">
+          Este painel recebe do backend a posição em tempo real, rota prevista, estado da viagem e alertas de divergência.
+        </div>
+        <div class="manager-grid">
+          <div class="manager-card">
+            <h4>LOCALIZAÇÃO DO UTILIZADOR</h4>
+            <p id="securityUserLocation">A aguardar geolocalização.</p>
+          </div>
+          <div class="manager-card">
+            <h4>LOCALIZAÇÃO DO MOTORISTA</h4>
+            <p id="securityDriverLocation">A aguardar posição do motorista.</p>
+          </div>
+          <div class="manager-card">
+            <h4>ESTADO DE VIAGEM</h4>
+            <p id="securityTripState">Ainda sem dados em tempo real.</p>
+          </div>
+          <div class="manager-card">
+            <h4>ALERTA DE SEGURANÇA</h4>
+            <p>Desvios, paragens fora de rota ou falha de contacto são destacados automaticamente.</p>
+          </div>
+        </div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnCloseSecurityLive">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: MEUS CONTACTOS -->
+  <div class="popup-overlay" id="meusContactosPopup">
+    <div class="popup-card" style="width:min(540px,100%)">
+      <div class="popup-head">
+        <h3>MEUS CONTACTOS</h3>
+        <p>Guarde contactos para usar rapidamente na partilha.</p>
+      </div>
+      <div class="popup-body">
+        <div class="meus-contactos-lista" id="meusContactosLista">
+          <p style="color:var(--silver-2);font-size:13px;text-align:center;padding:16px 0">Sem contactos guardados.</p>
+        </div>
+        <div class="add-contacto-row" style="margin-top:12px">
+          <input type="text" id="novoContactoNome" placeholder="Nome">
+          <input type="text" id="novoContactoTel" placeholder="Ex: +351, +44, +1..." inputmode="tel">
+          <button class="action-btn primary" id="btnAdicionarContacto">ADICIONAR</button>
+        </div>
+        <div class="popup-actions" style="margin-top:12px">
+          <button class="action-btn secondary" id="btnFecharMeusContactos">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: POLÍTICA DE UTILIZAÇÃO -->
+  <div class="popup-overlay" id="politicaPopup">
+    <div class="popup-card" style="width:min(640px,100%);max-height:85vh;display:flex;flex-direction:column">
+      <div class="popup-head">
+        <h3>POLÍTICA DE UTILIZAÇÃO</h3>
+        <p>Termos e condições do serviço REALMETROPOLIS.</p>
+      </div>
+      <div class="popup-body" style="overflow-y:auto;flex:1">
+        <div style="color:var(--silver-2);font-size:13px;line-height:1.7">
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">1. SERVIÇO</p>
+          <p style="margin-bottom:14px">A REALMETROPOLIS presta serviços de transporte particular mediante reserva prévia. O serviço está sujeito a disponibilidade e condições climáticas e de tráfego.</p>
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">2. CANCELAMENTO</p>
+          <p style="margin-bottom:14px">Cancelamento gratuito até 30 minutos antes da hora marcada. Cancelamentos tardios podem incorrer em taxa.</p>
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">3. PARTILHA DE VIAGEM</p>
+          <p style="margin-bottom:14px">O sistema de partilha distribui o custo entre os participantes confirmados. O organizador é responsável pela exatidão dos contactos inseridos.</p>
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">4. PRIVACIDADE</p>
+          <p style="margin-bottom:14px">Os dados pessoais são tratados de acordo com o RGPD. A localização é usada apenas durante a viagem ativa.</p>
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">5. RESPONSABILIDADE</p>
+          <p>A REALMETROPOLIS não se responsabiliza por atrasos causados por fatores externos. Em caso de reclamação, contacte o suporte no prazo de 48 horas após a viagem.</p>
+        </div>
+        <div class="popup-actions" style="margin-top:16px">
+          <button class="action-btn primary" id="btnFecharPolitica">ACEITAR E FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY DO MOTORISTA ATRIBUÍDO -->
+  <div class="motorista-overlay" id="motoristaOverlay">
+    <div class="motorista-overlay-bg"></div>
+    <div class="motorista-card">
+      <div class="motorista-card-header">
+        <h3>MOTORISTA ATRIBUÍDO</h3>
+        <div class="rm-badge">RM</div>
+      </div>
+      <div class="motorista-card-body">
+        <div class="motorista-info-row">
+          <div class="motorista-dados">
+            <div class="motorista-matricula" id="ovMatricula">—</div>
+            <div class="motorista-modelo"    id="ovModelo">—</div>
+            <div class="motorista-nome"      id="ovNome">—</div>
+            <div class="motorista-rating">
+              <span class="stars" id="ovStars">★★★★★</span>
+              <span class="rating-val" id="ovRating">5.0</span>
+            </div>
+          </div>
+          <div class="motorista-foto-wrap">
+            <div class="motorista-foto-placeholder" id="ovFotoWrap">👤</div>
+          </div>
+        </div>
+        <div class="motorista-eta">
+          <div class="motorista-eta-dot"></div>
+          <span>A caminho — estimativa:&nbsp;</span>
+          <strong id="ovEta">A calcular...</strong>
+        </div>
+        <div class="motorista-mapa" id="ovMapaWrap">
+          <div class="motorista-mapa-label">LOCALIZAÇÃO DO MOTORISTA</div>
+          <div id="ovMapa" style="width:100%;height:100%"></div>
+        </div>
+        <button class="btn-cancelar-viagem" id="btnCancelarViagemOverlay">CANCELAR VIAGEM</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: VIAGENS PENDENTES -->
+  <div class="popup-overlay" id="viajensPendentesPopup">
+    <div class="popup-card" style="width:min(640px,100%);max-height:82vh;display:flex;flex-direction:column">
+      <div class="popup-head">
+        <h3>VIAGENS PENDENTES</h3>
+        <p>Reservas aguardando confirmação ou atribuição de motorista.</p>
+      </div>
+      <div class="popup-body" style="overflow-y:auto;flex:1">
+        <div class="viagens-pendentes-lista" id="viajensPendentesLista">
+          <p style="color:var(--silver-2);font-size:13px;text-align:center;padding:24px 0">A carregar viagens...</p>
+        </div>
+        <div class="popup-actions" style="margin-top:16px">
+          <button class="action-btn secondary" id="btnFecharViagensPendentes">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: ESTATÍSTICAS ──────────────────────────────────────── -->
+  <div class="popup-overlay" id="estatisticasPopup">
+    <div class="popup-card" style="width:min(760px,92vw)">
+      <div class="popup-head">
+        <h3>ESTATÍSTICAS</h3>
+        <p>Evolução dos pedidos de viagem — selecione o período</p>
+      </div>
+      <div class="popup-body">
+
+        <!-- Period tabs — reutiliza cat-btn + category-row existentes -->
+        <div class="category-row" style="grid-template-columns:repeat(4,1fr)" id="statsPeriodRow">
+          <button class="cat-btn selected" data-period="ano">ANO</button>
+          <button class="cat-btn" data-period="mes">MÊS</button>
+          <button class="cat-btn" data-period="semana">SEMANA</button>
+          <button class="cat-btn" data-period="dia">DIA</button>
+        </div>
+
+        <!-- Gráfico de barras -->
+        <div class="stats-chart-box"><canvas id="statsChart"></canvas></div>
+
+        <!-- KPI — reutiliza manager-grid + manager-card existentes -->
+        <div class="manager-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="manager-card" style="border-color:rgba(31,201,125,.22);background:rgba(31,201,125,.03)">
+            <h4>FINALIZADAS</h4>
+            <p id="kpiFinalizadas" style="font-size:22px;font-weight:900;color:var(--ok);margin-bottom:3px">—</p>
+            <p id="kpiFinalizadasSub" style="font-size:10px;color:var(--silver-3)">a carregar...</p>
+          </div>
+          <div class="manager-card" style="border-color:rgba(240,80,80,.22);background:rgba(240,80,80,.03)">
+            <h4>CANCELADAS</h4>
+            <p id="kpiCanceladas" style="font-size:22px;font-weight:900;color:var(--bad);margin-bottom:3px">—</p>
+            <p id="kpiCanceladasSub" style="font-size:10px;color:var(--silver-3)">a carregar...</p>
+          </div>
+          <div class="manager-card" style="border-color:rgba(240,200,50,.22);background:rgba(240,200,50,.03)">
+            <h4>TOTAL FATURADO</h4>
+            <p id="kpiFaturado" style="font-size:22px;font-weight:900;color:#ffd060;margin-bottom:3px">—</p>
+            <p id="kpiFaturadoSub" style="font-size:10px;color:var(--silver-3)">a carregar...</p>
+          </div>
+        </div>
+
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnFecharEstatisticas">FECHAR</button>
+          <button class="action-btn primary"   id="btnVerClassificacoes">★ VER CLASSIFICAÇÕES</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: CLASSIFICAÇÕES ────────────────────────────────────── -->
+  <div class="popup-overlay" id="classificacoesPopup">
+    <div class="popup-card" style="width:min(620px,92vw)">
+      <div class="popup-head">
+        <h3>CLASSIFICAÇÕES</h3>
+        <p>Avaliações reais dos hóspedes — actualização em tempo real</p>
+      </div>
+      <div class="popup-body">
+
+        <!-- Filtros: período + ordenação -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <div class="category-row" style="grid-template-columns:repeat(5,1fr);flex:1;min-width:0" id="classifPeriodRow">
+            <button class="cat-btn selected" data-cperiod="all">TUDO</button>
+            <button class="cat-btn" data-cperiod="ano">ANO</button>
+            <button class="cat-btn" data-cperiod="mes">MÊS</button>
+            <button class="cat-btn" data-cperiod="semana">SEMANA</button>
+            <button class="cat-btn" data-cperiod="dia">DIA</button>
+          </div>
+          <select id="classifOrdem" style="min-height:34px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--silver-2);font-size:10px;font-weight:700;padding:0 10px;font-family:inherit;letter-spacing:.05em;appearance:none;cursor:pointer">
+            <option value="recente">RECENTES</option>
+            <option value="melhor">MELHOR NOTA</option>
+            <option value="pior">PIOR NOTA</option>
+          </select>
+        </div>
+
+        <!-- Média + distribuição -->
+        <div class="rating-avg-wrap" id="ratingsAvgWrap">
+          <div style="color:var(--silver-3);font-size:11px;padding:8px 0">A carregar avaliações...</div>
+        </div>
+
+        <!-- Médias por categoria -->
+        <div id="ratingsCatGrid" style="display:none"></div>
+
+        <!-- Lista de avaliações -->
+        <div class="ratings-scroll" id="ratingsList"></div>
+
+        <!-- Carregar mais -->
+        <div id="classifLoadMoreWrap" style="display:none">
+          <button class="action-btn secondary" id="btnClassifLoadMore" style="width:100%">CARREGAR MAIS</button>
+        </div>
+
+        <div id="classifErro" style="display:none;font-size:11px;color:var(--bad);padding:8px 0;text-align:center"></div>
+
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnFecharClassificacoes">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- POPUP: RELATÓRIO SLA ─────────────────────────────────── -->
+  <div class="popup-overlay" id="slaPopup">
+    <div class="popup-card" style="width:min(780px,94vw);max-height:92vh">
+      <div class="popup-head">
+        <div>
+          <h3>RELATÓRIO SLA</h3>
+          <p>Relatório profissional completo — viagem, despesas, estatísticas semanais</p>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="action-btn primary" id="btnSlaGerarPDF" style="font-size:10px;min-height:30px;padding:0 12px">⬇ PDF</button>
+          <button class="close-btn" id="btnSlaFechar">✕</button>
+        </div>
+      </div>
+      <div class="popup-body">
+
+        <!-- Seletor de viagem — escolher qual relatório ver -->
+        <div style="margin-bottom:4px">
+          <select id="slaSeletorViagem" style="width:100%;min-height:38px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--silver-2);font-size:12px;font-weight:700;padding:0 12px;font-family:inherit;appearance:none;cursor:pointer">
+            <option value="">A carregar viagens…</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px;align-items:start">
+          <!-- Mapa -->
+          <div class="sla-map-wrap">
+            <div id="slaMapInner"></div>
+            <div id="slaMapLabel" style="position:absolute;top:8px;left:8px;font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--silver-3);background:rgba(0,0,0,.7);padding:3px 8px;border-radius:5px;backdrop-filter:blur(4px)">ROTA DA VIAGEM</div>
+          </div>
+          <!-- KPIs coluna -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="sla-kpi" style="border-color:rgba(31,201,125,.22);background:rgba(31,201,125,.04)">
+              <div class="sla-kpi-label">Distância</div>
+              <div class="sla-kpi-value" id="slaKm" style="color:var(--ok)">—</div>
+              <div class="sla-kpi-sub">quilómetros percorridos</div>
+            </div>
+            <div class="sla-kpi">
+              <div class="sla-kpi-label">Tempo de Viagem</div>
+              <div class="sla-kpi-value" id="slaDuracao">—</div>
+              <div class="sla-kpi-sub">duração total</div>
+            </div>
+            <div class="sla-kpi" style="border-color:rgba(245,197,96,.22);background:rgba(245,197,96,.04)">
+              <div class="sla-kpi-label">Valor da Viagem</div>
+              <div class="sla-kpi-value" id="slaValor" style="color:#ffd060">—</div>
+              <div class="sla-kpi-sub" id="slaCategoria">—</div>
+            </div>
+            <div class="sla-kpi">
+              <div class="sla-kpi-label">Data & Hora</div>
+              <div class="sla-kpi-value" id="slaData" style="font-size:14px">—</div>
+              <div class="sla-kpi-sub" id="slaDia">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SECÇÃO 2: DETALHES VIAGEM ── -->
+        <div>
+          <div class="sla-section-title">Detalhes da Viagem</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+            <div>
+              <div class="sla-detail-row"><span>Passageiro</span><span id="slaPassageiro">—</span></div>
+              <div class="sla-detail-row"><span>Partida</span><span id="slaPartida">—</span></div>
+              <div class="sla-detail-row"><span>Destino</span><span id="slaDestino">—</span></div>
+              <div class="sla-detail-row"><span>Início</span><span id="slaInicio">—</span></div>
+              <div class="sla-detail-row"><span>Fim</span><span id="slaFim">—</span></div>
+            </div>
+            <div style="border-left:1px solid rgba(255,255,255,.04);padding-left:14px">
+              <div class="sla-detail-row"><span>Motorista</span><span id="slaMotorista">—</span></div>
+              <div class="sla-detail-row"><span>Veículo</span><span id="slaVeiculo">—</span></div>
+              <div class="sla-detail-row"><span>Portagens</span><span id="slaPortagens">—</span></div>
+              <div class="sla-detail-row"><span>Código Reserva</span><span id="slaCodigo">—</span></div>
+              <div class="sla-detail-row"><span>Estado</span><span id="slaEstado" style="color:var(--ok);font-weight:700">FINALIZADA</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SECÇÃO 3: DESPESAS ── -->
+        <div>
+          <div class="sla-section-title">Resumo de Despesas</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <div class="sla-kpi">
+              <div class="sla-kpi-label">Tarifa Base</div>
+              <div class="sla-kpi-value" id="slaBase" style="font-size:15px">—</div>
+            </div>
+            <div class="sla-kpi">
+              <div class="sla-kpi-label">Portagens</div>
+              <div class="sla-kpi-value" id="slaPortagensVal" style="font-size:15px;color:var(--warn)">—</div>
+            </div>
+            <div class="sla-kpi">
+              <div class="sla-kpi-label">Extras</div>
+              <div class="sla-kpi-value" id="slaExtras" style="font-size:15px">—</div>
+            </div>
+            <div class="sla-kpi" style="border-color:rgba(245,197,96,.28);background:rgba(245,197,96,.06)">
+              <div class="sla-kpi-label">Total</div>
+              <div class="sla-kpi-value" id="slaTotal" style="color:#ffd060">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SECÇÃO 4: GRÁFICO SEMANAL ── -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="sla-section-title" style="margin-bottom:0">Estatísticas Semanais do Hotel</div>
+            <div style="display:flex;gap:10px;font-size:10px">
+              <span style="color:var(--ok)">● Finalizadas</span>
+              <span style="color:var(--bad)">● Canceladas</span>
+              <span style="color:#ffd060">● Faturado (€)</span>
+            </div>
+          </div>
+          <div style="height:160px;background:rgba(255,255,255,.025);border-radius:12px;border:1px solid var(--line);padding:14px;position:relative">
+            <canvas id="slaWeekChart"></canvas>
+          </div>
+          <!-- Stats semanais em 3 caixas -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+            <div class="sla-kpi" style="border-color:rgba(31,201,125,.20);background:rgba(31,201,125,.04)">
+              <div class="sla-kpi-label">Viagens Finalizadas</div>
+              <div class="sla-kpi-value" id="slaWeekFin" style="color:var(--ok)">—</div>
+              <div class="sla-kpi-sub">esta semana</div>
+            </div>
+            <div class="sla-kpi" style="border-color:rgba(240,80,80,.20);background:rgba(240,80,80,.04)">
+              <div class="sla-kpi-label">Viagens Canceladas</div>
+              <div class="sla-kpi-value" id="slaWeekCan" style="color:var(--bad)">—</div>
+              <div class="sla-kpi-sub">esta semana</div>
+            </div>
+            <div class="sla-kpi" style="border-color:rgba(245,197,96,.20);background:rgba(245,197,96,.04)">
+              <div class="sla-kpi-label">Total Faturado</div>
+              <div class="sla-kpi-value" id="slaWeekFat" style="color:#ffd060">—</div>
+              <div class="sla-kpi-sub">esta semana</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SECÇÃO 5: ENVIAR POR EMAIL ── -->
+        <div>
+          <div class="sla-section-title">Enviar Relatório PDF por Email</div>
+          <div class="sla-email-row">
+            <input type="email" id="slaEmailInput" placeholder="email@destino.com" autocomplete="email">
+            <button class="action-btn primary" id="btnSlaEnviarEmail">ENVIAR PDF</button>
+          </div>
+          <div class="sla-status" id="slaEmailStatus"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- SCRIPTS EXTERNOS -->
+  
+
+  
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL DE PAGAMENTO — REALMETROPOLIS
+════════════════════════════════════════════════════════════ -->
+
+
+<!-- Overlay pagamento -->
+<div id="rmPagOverlay">
+  <div id="rmPagModal">
+    <div class="rmpag-header">
+      <div>
+        <div class="rmpag-brand">REALMETROPOLIS</div>
+        <div class="rmpag-title">PAGAMENTO</div>
+      </div>
+      <button class="rmpag-close" id="rmBtnFechar" style="display:none">✕</button>
+    </div>
+
+    <div class="rmpag-codigo">
+      <small>Código de Reserva</small>
+      <span id="rmCodigo">—</span>
+    </div>
+
+    <div class="rmpag-resumo" id="rmResumo"></div>
+
+    <div class="rmpag-tabs">
+      <button class="rmpag-tab active" id="rmTabCard" onclick="_rmPag.tab('card')">💳 Cartão</button>
+      <button class="rmpag-tab"        id="rmTabPP"   onclick="_rmPag.tab('pp')">🅿 PayPal</button>
+    </div>
+
+    <div id="rmPaneCard">
+      <div id="rmStripeEl"></div>
+      <div id="rmStripeErr"></div>
+      <button class="rmpag-btn-stripe" id="rmBtnStripe">PAGAR COM CARTÃO</button>
+    </div>
+    <div id="rmPanePP" style="display:none">
+      <div id="rmPPBtns"></div>
+    </div>
+
+    <button class="rmpag-btn-fechar" id="rmBtnFechar2">CANCELAR PAGAMENTO E FECHAR</button>
+  </div>
+</div>
+
+<!-- Toast de sucesso — SÓ confirmação de pagamento. O botão "Estou
+     Pronto" NÃO aparece aqui de propósito: essa decisão é do
+     hóspede, não do hotel — ele já recebe o link certo por SMS/email
+     no telemóvel dele (ver estou-pronto.html). Mostrá-lo aqui também
+     seria redundante e confuso (o hotel a decidir "estou pronto" por
+     um hóspede que ainda nem chegou perto do carro). -->
+<div id="rmSuccessToast" style="
+  position:fixed !important;top:50% !important;left:50% !important;right:auto !important;bottom:auto !important;
+  transform:translate(-50%,-50%) !important;
+  width:calc(100vw - 48px) !important;max-width:360px !important;
+  padding:28px 24px !important;border-radius:20px !important;
+  box-sizing:border-box !important;
+">
+  <button type="button" id="rmBtnFecharToast" aria-label="Fechar" style="
+    position:absolute;top:10px;right:10px;width:26px;height:26px;border:none;border-radius:50%;
+    background:rgba(255,255,255,.08);color:#8b95a2;font-size:14px;cursor:pointer;line-height:1;
+  ">✕</button>
+  <div class="rmst-icon">✅</div>
+  <div class="rmst-title">PAGAMENTO EFETUADO</div>
+  <div class="rmst-sub">A reserva foi confirmada com sucesso.<br>O hóspede vai receber um SMS/email para chamar o motorista quando estiver pronto.</div>
+  <div class="rmst-codigo" id="rmStCodigo"></div>
+</div>
+
+
+  <!-- POPUP: VIAGENS ACTIVAS -->
+  <div class="popup-overlay" id="viagensAtivasPopup">
+    <div class="popup-card" style="width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column">
+      <div class="popup-head" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h3>🗺️ VIAGENS ACTIVAS</h3>
+          <p>Todas as viagens dos hóspedes em curso — actualização automática</p>
+        </div>
+        <button class="close-btn" onclick="fecharViagensMapa()">&#x2715;</button>
+      </div>
+      <div class="popup-body" style="overflow-y:auto;flex:1;padding-top:8px">
+        <div id="viagensAtivasLista">
+          <div style="padding:32px;text-align:center;color:var(--silver-3);font-size:11px">A carregar...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTILHAS ACTIVAS -->
+  <div class="popup-overlay" id="partilhasAtivasPopup">
+    <div class="popup-card" style="width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column">
+      <div class="popup-head" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h3>🚗 VIAGENS PENDENTES</h3>
+          <p>Todas as viagens e partilhas que criou, ainda por concluir</p>
+        </div>
+        <button class="close-btn" onclick="fecharPartilhasAtivas()">&#x2715;</button>
+      </div>
+      <div class="popup-body" style="overflow-y:auto;flex:1;padding-top:8px">
+        <div id="partilhasAtivasLista">
+          <div style="padding:32px;text-align:center;color:var(--silver-3);font-size:11px">A carregar...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAPA DO GRUPO — todas as rotas dos participantes -->
+  <div id="mapaGrupoOverlay" style="display:none;position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,.85);backdrop-filter:blur(10px)">
+    <div style="display:flex;height:100%">
+      <div style="flex:1;position:relative">
+        <div id="mapaGrupoDiv" style="width:100%;height:100%"></div>
+        <button onclick="fecharMapaGrupo()" style="position:absolute;top:16px;left:16px;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.6);color:#fff;font-size:14px;cursor:pointer">&#x2715;</button>
+      </div>
+      <div style="width:300px;flex-shrink:0;background:#0c0d10;border-left:1px solid rgba(255,255,255,.1);padding:18px;overflow-y:auto">
+        <div id="mapaGrupoTitulo" style="font-size:14px;font-weight:900;color:#fff;margin-bottom:14px">Grupo</div>
+        <div id="mapaGrupoLista"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="tripMonitorOverlay" style="display:none;position:fixed;inset:0;z-index:9000;align-items:stretch;justify-content:stretch;background:rgba(0,0,0,.85);backdrop-filter:blur(18px);opacity:0;transition:opacity .28s ease">
+
+    <button onclick="fecharMonitorViagem()" style="position:absolute;top:16px;right:16px;z-index:1;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:var(--silver-2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" onmouseover="this.style.background='rgba(255,255,255,.14)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.color='var(--silver-2)'">&#x2715;</button>
+
+    <div style="display:grid;grid-template-columns:300px 1fr;width:100%;height:100%">
+
+      <!-- ESQUERDA: cards -->
+      <div style="display:flex;flex-direction:column;gap:12px;padding:52px 16px 20px 20px;overflow-y:auto;background:rgba(6,7,10,.96);border-right:1px solid rgba(255,255,255,.06)">
+        <div style="margin-bottom:4px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.18em;color:var(--silver-3);margin-bottom:3px">MONITORIZACAO</div>
+          <div style="font-size:15px;font-weight:900;color:#fff">Viagem em Curso</div>
+          <div style="font-size:10px;color:var(--silver-3);margin-top:2px">Actualiza a cada 10 segundos</div>
+        </div>
+
+        <!-- Card Motorista -->
+        <div id="monitorCardMotorista" style="background:rgba(31,201,125,.04);border:1px solid rgba(31,201,125,.18);border-radius:16px;padding:16px">
+          <div style="color:var(--silver-3);font-size:10px">A carregar...</div>
+        </div>
+
+        <!-- Card Hospede -->
+        <div id="monitorCardHospede" style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px">
+          <div style="color:var(--silver-3);font-size:10px">A carregar...</div>
+        </div>
+      </div>
+
+      <!-- DIREITA: mapa -->
+      <div id="monitorMapDiv" style="width:100%;height:100%"></div>
+    </div>
+  </div>
+  <style>#tripMonitorOverlay.show{opacity:1!important}</style>
+
+  <!-- POPUP: CONFIRMAR APLICAÇÃO DE PREFERÊNCIA -->
+  <div class="popup-overlay" id="rmPrefConfirmPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>CONFIRMAR PREFERÊNCIA</h3>
+        <p id="rmPrefConfirmText">Aplicar este motorista ao cartão selecionado?</p>
+      </div>
+      <div class="popup-body">
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="rmPrefBtnCancelar">CANCELAR</button>
+          <button class="action-btn primary" id="rmPrefBtnAplicar">APLICAR E CONCLUIR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PAINEL "RESERVA PRIVADA" — fluxo em 3 passos (modelo reserva.html)
+       ──────────────────────────────────────────────────────────
+       Apenas aparência + navegação entre passos. Nenhum id, classe,
+       atributo data-* ou handler de evento existente foi removido —
+       togglePreferenceMode(), reservarViagem(), setSelectedCategory(),
+       updateCardActionStates() e bindTargetSelection() (rm-core.js /
+       rm-events.js) continuam a funcionar exactamente como antes.
+       Os dados do passageiro (nome/email/contacto) não aparecem no
+       Step 3 porque já vêm da sessão autenticada (currentUser).
+  ══════════════════════════════════════════════════════════════ -->
+  <style>
+    /* ── Badge de rota (km · duração) — igual a reserva.html ── */
+    #rmRouteInfo {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1150;
+      background: rgba(9,9,12,.90);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      padding: 7px 16px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(12px);
+      font-size: 11px;
+      color: #cdd2da;
+      font-weight: 600;
+      pointer-events: none;
+    }
+    #rmRouteInfo.show { display: flex; }
+    .rm-ri-sep { color: rgba(160,170,185,.45); }
+
+    /* ── Botão VER ROTA — canto inferior esquerdo, pulsante ── */
+    #rmBtnVerRota {
+      position: fixed;
+      bottom: 108px;   /* acima do floating-shell (bottom:24px + ~80px) */
+      left: 16px;
+      z-index: 1150;
+      display: none;
+      height: 46px;
+      padding: 0 22px;
+      border-radius: 999px;
+      background: #1fc97d;
+      border: none;
+      color: #06120d;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      cursor: pointer;
+      transition: .18s ease;
+      font-family: inherit;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 24px rgba(31,201,125,.45), 0 2px 8px rgba(0,0,0,.5);
+      animation: rmRoutePulse 2.2s ease-in-out infinite;
+    }
+    @keyframes rmRoutePulse {
+      0%,100% { box-shadow: 0 4px 24px rgba(31,201,125,.45), 0 2px 8px rgba(0,0,0,.5); }
+      50%      { box-shadow: 0 4px 32px rgba(31,201,125,.75), 0 0 0 6px rgba(31,201,125,.12), 0 2px 8px rgba(0,0,0,.5); }
+    }
+    #rmBtnVerRota.show { display: flex; }
+    #rmBtnVerRota:hover  { background: #22e08a; transform: translateY(-2px); }
+    #rmBtnVerRota:active { transform: scale(.97); animation: none; }
+
+    /* ── Botão VOLTAR AO FORMULÁRIO — centrado, aparece quando painel oculto ── */
+    #rmBtnVoltarFormulario {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1150;
+      display: none;
+      height: 42px;
+      padding: 0 20px;
+      border-radius: 999px;
+      background: rgba(9,9,12,.95);
+      border: 1px solid rgba(255,255,255,.14);
+      color: #cdd2da;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      cursor: pointer;
+      transition: .18s ease;
+      font-family: inherit;
+      align-items: center;
+      gap: 7px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0,0,0,.6);
+    }
+    #rmBtnVoltarFormulario.show { display: flex; }
+    #rmBtnVoltarFormulario:hover { border-color: rgba(31,201,125,.4); color: #1fc97d; }
+
+    #tripPanel .panel-body {
+      gap: 12px;
+    }
+    #tripPanel .panel-head p {
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    /* ── Botão "CONTINUAR" entre passos ── */
+    #tripPanel .rm-step-next {
+      width: 100%;
+      height: 48px;
+      margin-top: 12px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, #1fc97d, #16a363);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .07em;
+      cursor: pointer;
+      transition: .15s ease;
+      font-family: inherit;
+    }
+    #tripPanel .rm-step-next:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    #tripPanel .rm-step-next:active { transform: scale(.97); }
+    #tripPanel .rm-step-next:disabled { opacity: .35; cursor: not-allowed; transform: none; filter: none; }
+
+    /* ── Botão "Voltar" ── */
+    #tripPanel .rm-step-back {
+      background: none;
+      border: none;
+      color: var(--silver-3, #545d68);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0 0 8px;
+      transition: .14s;
+      font-family: inherit;
+    }
+    #tripPanel .rm-step-back:hover { color: var(--silver, #cdd2da); }
+
+    /* ── Step 1: campos em coluna, igual ao reserva.html ── */
+    #tripPanel .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #tripPanel .form-row .nm-wrap { width: 100%; }
+    /* CAUSA REAL do "datetime centralizado": o .field nunca tinha
+       width:100% fora do .nm-wrap. inputPartida/inputDestino estão
+       dentro de .nm-wrap (que já tinha 100%), mas inputDateTime está
+       solto no form-row — sem largura própria definida, manteve a
+       largura intrínseca/estreita do controlo nativo do navegador,
+       sobrando espaço dos dois lados que parecia "centralização". */
+    #tripPanel .form-row > .field {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Campos de dados do hóspede — estilo próprio, forte e
+       autocontido (não depende do css/rm-dashboard.css externo),
+       para nunca ficarem discretos/pouco visíveis dentro do painel
+       escuro, independentemente do que o resto do formulário faça. */
+    .rm-hospede-row { display: flex; flex-direction: column; gap: 10px; }
+    .rm-hospede-field {
+      background: #1a1c20 !important;
+      border: 1.5px solid rgba(196,201,212,.4) !important;
+      border-radius: 10px !important;
+      color: #f4f6f8 !important;
+      padding: 13px 14px !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+    }
+    .rm-hospede-field::placeholder {
+      color: #8b95a2 !important;
+      font-weight: 500 !important;
+    }
+    .rm-hospede-field:focus {
+      border-color: #c4c9d4 !important;
+      outline: none !important;
+      background: #22252b !important;
+    }
+
+    /* O input datetime-local distribui o seu conteúdo interno
+       nativo (segmentos dia/mês/ano/hora) centralizado dentro do
+       espaço disponível sempre que o campo é mais largo do que o
+       texto precisa — isto é independente de text-align, porque
+       esse conteúdo não é texto simples. display:flex aplicado ao
+       próprio input + justify-content:flex-start força esse
+       conteúdo interno a colar à esquerda mesmo com largura extra,
+       igual aos campos de endereço ao lado. */
+    /* Clicar em QUALQUER parte de um campo de data/hora abre o
+       seletor nativo — aplica-se a todos os campos datetime-local
+       do sistema (reserva privada, partilha, criar evento, ticket),
+       não só ao do painel de reserva. */
+    input[type="datetime-local"] {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      cursor: pointer;
+      position: relative;
+    }
+    /* Área do ícone nativo do calendário expandida a 100% do campo,
+       invisível, garante que não há ponto morto onde o clique não
+       reage. */
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+    }
+
+    /* O CSS original (.floating-shell .nm-dropdown) já abre o
+       dropdown para CIMA dentro do painel — correto, pois o painel
+       é um bottom-sheet ancorado na base do ecrã, com pouco espaço
+       livre abaixo dos campos. As minhas regras anteriores forçavam
+       abertura para baixo com !important, o que conflituava com
+       esse comportamento e escondia as sugestões do campo Destino.
+       Removidas — o comportamento nativo já está correto. */
+
+    /* ── "Adicionar Preferência" + "Continuar" na mesma linha,
+       lado a lado, ocupando o espaço onde antes só estava o
+       Continuar — não aumenta a altura do painel. ── */
+    #tripPanel .rm-step1-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    #tripPanel .rm-step1-actions #btnPreferencia {
+      flex: 1;
+      min-width: 0;
+      margin-top: 0;
+    }
+    #tripPanel .rm-step1-actions #rmBtnStep1Next {
+      flex: 1;
+      min-width: 0;
+      margin-top: 0;
+    }
+
+    /* ── Step 2: categorias como cartões (nome + metadados + preço) ── */
+    #tripPanel .category-row {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-bottom: 4px;
+    }
+    #tripPanel .cat-btn {
+      width: 100%;
+      height: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(200,210,225,.15);
+      background: rgba(255,255,255,.04);
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: .15s ease;
+      font-family: inherit;
+      text-align: left;
+    }
+    #tripPanel .cat-btn:hover {
+      border-color: rgba(255,255,255,.28);
+      background: rgba(255,255,255,.07);
+    }
+    #tripPanel .cat-btn.selected {
+      border-color: rgba(31,201,125,.5);
+      background: rgba(31,201,125,.08);
+    }
+    #tripPanel .cat-ico-wrap {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    #tripPanel .cat-ico { font-size: 20px; line-height: 1; }
+    #tripPanel .cat-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    #tripPanel .cat-btn .cat-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #f0f2f5;
+      letter-spacing: .04em;
+    }
+    #tripPanel .cat-metas {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    #tripPanel .cat-meta {
+      font-size: 11px;
+      color: #8a939f;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 500;
+    }
+    #tripPanel .cat-meta svg {
+      width: 12px;
+      height: 12px;
+      opacity: .75;
+      flex-shrink: 0;
+    }
+    #tripPanel .cat-price-col {
+      text-align: right;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+    #tripPanel .cat-btn .cat-price {
+      font-size: 19px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -.02em;
+    }
+    #tripPanel .cat-price-sub {
+      font-size: 10px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    #tripPanel select.cat-btn.cat-select {
+      color: #8a939f;
+      font-size: 13px;
+      font-weight: 700;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      letter-spacing: .04em;
+    }
+    #tripPanel select.cat-btn.cat-select.selected {
+      border-color: rgba(205,210,218,.5);
+      background: rgba(205,210,218,.08);
+      color: var(--silver, #cdd2da);
+    }
+
+    /* ── Botão Grupo custom ─────────────────────────────────────
+       Mesma estrutura das outras categorias mas com sub-opções
+       (6/8/17 pessoas) que aparecem ao clicar. */
+    #tripPanel .cat-grupo-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #tripPanel .cat-btn-grupo {
+      width: 100%;
+    }
+    #tripPanel .cat-btn-grupo.selected {
+      border-color: rgba(205,210,218,.5);
+      background: rgba(205,210,218,.08);
+    }
+    #tripPanel .cat-grupo-opts {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    #tripPanel .cat-grupo-opts.open {
+      display: grid;
+    }
+    #tripPanel .cat-grupo-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(200,210,225,.15);
+      background: rgba(255,255,255,.04);
+      cursor: pointer;
+      font-family: inherit;
+      transition: .15s ease;
+      font-size: 9px;
+      color: var(--silver, #cdd2da);
+    }
+    #tripPanel .cat-grupo-opt:hover {
+      border-color: rgba(205,210,218,.4);
+      background: rgba(205,210,218,.07);
+    }
+    #tripPanel .cat-grupo-opt.selected {
+      border-color: rgba(205,210,218,.55);
+      background: rgba(205,210,218,.12);
+      color: var(--silver, #cdd2da);
+    }
+    #tripPanel .cat-grupo-opt > span:first-child { font-size: 18px; }
+    #tripPanel .opt-lbl {
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: var(--silver, #cdd2da);
+    }
+    #tripPanel .opt-price {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--silver, #cdd2da);
+    }
+
+    /* ── Requisitos especiais — mesma dimensão dos cat-grupo-opt, 3 lado a lado ── */
+    #tripPanel .req-esp-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #8a939f;
+      margin: 10px 2px 6px;
+    }
+    #tripPanel .req-esp-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    #tripPanel .req-esp-row { overflow: visible; }
+    #tripPanel .req-esp-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(200,210,225,.15) !important;
+      background: rgba(255,255,255,.04) !important;
+      cursor: pointer;
+      font-family: inherit;
+      transition: .15s ease;
+      position: relative;
+      overflow: visible;
+    }
+    #tripPanel .req-esp-btn svg { width: 18px; height: 18px; color: #cdd2da; }
+    #tripPanel .req-esp-btn:hover { border-color: rgba(205,210,218,.4) !important; background: rgba(205,210,218,.07) !important; }
+    #tripPanel .req-esp-btn.sel,
+    #tripPanel .req-esp-btn.selected {
+      border-color: rgba(205,210,218,.5) !important;
+      background: #000 !important;
+      box-shadow: 0 0 0 2px rgba(205,210,218,.25) !important;
+    }
+    #tripPanel .req-esp-btn.sel svg,
+    #tripPanel .req-esp-btn.selected svg { color: #cdd2da !important; filter: none; }
+    #tripPanel .req-esp-btn.sel .req-esp-lbl,
+    #tripPanel .req-esp-btn.selected .req-esp-lbl { color: #cdd2da !important; }
+    #tripPanel .req-esp-lbl { font-size: 9.5px; font-weight: 800; letter-spacing: .04em; color: var(--silver, #cdd2da); }
+    #tripPanel .req-esp-qty {
+      position: absolute; top: -7px; right: -7px;
+      width: 19px; height: 19px; border-radius: 50%;
+      background: #cdd2da !important; color: #000 !important; font-size: 10.5px; font-weight: 900;
+      display: none; align-items: center; justify-content: center;
+      border: 2px solid #0b0c10; z-index: 5;
+    }
+    #tripPanel .req-esp-btn.sel .req-esp-qty,
+    #tripPanel .req-esp-btn.selected .req-esp-qty { display: flex !important; }
+
+    /* Popup de quantidade */
+    #reqQtyOverlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      z-index: 9999; align-items: center; justify-content: center;
+    }
+    #reqQtyOverlay.open { display: flex; }
+    #reqQtyBox {
+      background: #14171c; border: 1px solid rgba(200,210,225,.2);
+      border-radius: 18px; padding: 22px; width: 260px; text-align: center;
+    }
+    #reqQtyBox h4 { color: #f0f2f5; font-size: 14px; margin-bottom: 14px; }
+    #reqQtyStepper { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 18px; }
+    #reqQtyStepper button {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(200,210,225,.25);
+      background: rgba(255,255,255,.05); color: #cdd2da; font-size: 18px; cursor: pointer;
+    }
+    #reqQtyStepper span { font-size: 18px; font-weight: 800; color: #fff; min-width: 24px; }
+    #reqQtyBox .req-qty-actions { display: flex; gap: 8px; }
+    #reqQtyBox .req-qty-actions button {
+      flex: 1; height: 38px; border-radius: 10px; border: none; cursor: pointer;
+      font-weight: 800; font-size: 12px; font-family: inherit;
+    }
+    #reqQtyCancel { background: rgba(255,255,255,.06); color: #cdd2da; }
+    #reqQtyOk { background: #cdd2da; color: #000; }
+
+    /* Botão fechar preferência — sempre visível no Step 4 */
+    #rmBtnFecharPreferencia {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      width: 100%;
+      height: 38px;
+      margin-top: 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(200,210,225,.15);
+      background: rgba(255,255,255,.04);
+      color: var(--silver, #cdd2da);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s;
+    }
+    #rmBtnFecharPreferencia:hover { background: rgba(255,255,255,.09); }
+
+    /* Grade de slots no Step 4 — 5 colunas compactas */
+    #tripPanel #driverGrid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 5px;
+    }
+    /* Cartões compactos a 5 colunas (~86px cada) */
+    #tripPanel #driverGrid .driver-card {
+      padding: 6px 4px;
+      gap: 3px;
+      min-height: unset;
+    }
+    #tripPanel #driverGrid .driver-top {
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      text-align: center;
+    }
+    #tripPanel #driverGrid .driver-top img {
+      width: 28px;
+      height: 28px;
+    }
+    #tripPanel #driverGrid .driver-top strong {
+      font-size: 7.5px;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    #tripPanel #driverGrid .driver-top span,
+    #tripPanel #driverGrid .driver-meta {
+      display: none;
+    }
+    #tripPanel #driverGrid .mini-chip {
+      font-size: 6.5px;
+      padding: 1px 3px;
+      width: 100%;
+      justify-content: center;
+    }
+    #tripPanel #driverGrid .card-action {
+      font-size: 7px;
+      padding: 4px 2px;
+      letter-spacing: 0;
+      min-height: 22px;
+    }
+
+    /* Fundo escurecido atrás do conjunto flutuante, reforça destaque */
+    body:has(.driver-card.selected-target)::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 1999;
+      animation: rmBackdropIn .2s ease;
+    }
+    @keyframes rmBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ── UX de selecção de preferência (slot → escolha → confirmação)
+       1) Clicar "ADICIONAR" no slot (bindTargetSelection, rm-core.js)
+          adiciona .selected-target ao cartão. #rmSlotFloatWrap (pai
+          comum do cartão e do #preferencePanel) torna-se um painel
+          fixo, centrado, em flex-column — o cartão amplia dentro
+          dele e as 2 últimas viagens aparecem logo a seguir, ambos
+          dentro do MESMO fluxo de layout (flexbox), por isso nunca
+          se sobrepõem, seja qual for o conteúdo real (com ou sem
+          motorista atribuído, 1 ou 2 colunas de viagens, etc.) —
+          ao contrário de posições fixas calculadas por percentagem,
+          que dependiam de presumir alturas e desalinhavam-se.
+       2) Clicar numa das 2 viagens (onclick já existente em
+          renderLastTrips) define selectedPreferenceTrip e marca
+          .selected no cartão da viagem — um observer (script
+          abaixo) abre o popup de confirmação nesse momento.
+       3) "APLICAR E CONCLUIR" no popup chama
+          applyPreferenceToSelectedCard() (mesma função que o botão
+          original já usava) e fecha popup + volta ao painel normal.
+       4) "CANCELAR" no popup fecha tudo via closeTripPanel(), que já
+          chama resetPreferenceSelection() e remove .selected-target.
+       5) "← Voltar" fica FORA do wrapper, fixo numa faixa reservada
+          na base do ecrã — nunca compete por espaço com o conteúdo.
+       Tudo reage apenas a classes que rm-core.js já gere — nenhuma
+       função de negócio foi alterada. */
+    body:has(.driver-card.selected-target) #driverGrid .driver-card:not(.selected-target) {
+      opacity: .25;
+      filter: blur(1px);
+      pointer-events: none;
+      transition: .25s ease;
+    }
+    .driver-card.selected-target {
+      position: fixed;
+      top: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(92vw, 380px);
+      max-height: 38vh;
+      overflow-y: auto;
+      z-index: 2000;
+      background: rgba(17,19,23,.99);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 0 2px rgba(31,201,125,.4);
+      animation: rmCardFloatIn .22s ease;
+      border-radius: 12px;
+    }
+    @keyframes rmCardFloatIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* Faixa fixa e conservadora, sempre abaixo do cartão (que nunca
+       excede 38vh a partir de 84px do topo) e sempre acima do botão
+       voltar (que ocupa os últimos ~80px do ecrã) — valores fixos
+       testados para nunca colidir, em vez de medições em tempo real
+       que se mostraram frágeis com vários frames de atraso. */
+    body:has(.driver-card.selected-target) > #preferencePanel.show {
+      position: fixed;
+      top: calc(84px + 38vh + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(92vw, 380px);
+      max-height: calc(100vh - 84px - 38vh - 10px - 80px);
+      overflow-y: auto;
+      z-index: 2001;
+      background: rgba(13,15,18,.97);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.6);
+      animation: rmCardFloatIn .22s ease .05s backwards;
+    }
+
+    /* Botão "← Voltar" — aparece só com um slot seleccionado/
+       ampliado, fixo numa faixa reservada na base do ecrã (80px,
+       valor usado também no cálculo do max-height acima). Desfaz a
+       selecção (clearTargetStyles(), já existente) sem cancelar
+       todo o modo preferência. */
+    #rmBtnSlotBack {
+      display: none;
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(92vw, 380px);
+      height: 48px;
+      z-index: 2002;
+      text-align: center;
+      background: rgba(13,15,18,.97);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    }
+
+
+    /* Botão "ADICIONAR PREFERÊNCIA" — secundário, sempre visível */
+    #tripPanel #btnPreferencia {
+      width: 100%;
+      height: 48px;
+      border-radius: 14px;
+      border: 1px solid rgba(200,210,225,.18);
+      background: rgba(255,255,255,.04);
+      color: var(--silver, #cdd2da);
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      cursor: pointer;
+      transition: .15s ease;
+      font-family: inherit;
+    }
+    #tripPanel #btnPreferencia:hover {
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.28);
+    }
+    #tripPanel #btnPreferencia.active {
+      border-color: rgba(205,210,218,.45);
+      background: rgba(205,210,218,.08);
+      color: var(--silver, #cdd2da);
+    }
+
+    /* ── Step 3: resumo da viagem ── */
+    #tripPanel .rm-trip-summary {
+      display: flex;
+      flex-direction: column;
+    }
+    #tripPanel .rm-trip-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    #tripPanel .rm-dot {
+      width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+    }
+    #tripPanel .rm-dot-o { background: #1fc97d; }
+    #tripPanel .rm-dot-d { background: #ef4444; }
+    #tripPanel .rm-trip-vline {
+      width: 1.5px; height: 16px; background: rgba(255,255,255,.1); margin-left: 4px;
+    }
+    #tripPanel .rm-trip-lbl {
+      font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--silver-3, #545d68); margin-bottom: 1px;
+    }
+    #tripPanel .rm-trip-val {
+      font-size: 12px; color: var(--silver, #cdd2da); font-weight: 500; line-height: 1.35;
+    }
+    #tripPanel .rm-stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+      margin: 14px 0;
+    }
+    #tripPanel .rm-stat-box {
+      background: rgba(255,255,255,.035);
+      border: 1px solid rgba(200,210,225,.10);
+      border-radius: 11px;
+      padding: 9px 8px;
+      text-align: center;
+    }
+    #tripPanel .rm-stat-box.rm-stat-total {
+      border-color: rgba(31,201,125,.2);
+      background: rgba(31,201,125,.04);
+    }
+    #tripPanel .rm-stat-val {
+      font-size: 13px; font-weight: 800; color: #e8eaed; line-height: 1.25; margin-bottom: 3px;
+      word-break: break-word;
+    }
+    #tripPanel .rm-stat-box.rm-stat-total .rm-stat-val { color: var(--silver, #cdd2da); }
+    #tripPanel .rm-stat-lbl {
+      font-size: 8px; color: var(--silver-3, #545d68); letter-spacing: .1em;
+      text-transform: uppercase; font-weight: 600;
+    }
+
+    /* Botão "RESERVAR VIAGEM" — prata sólida sobre fundo preto,
+       consistente com o resto das etapas (sem gradiente verde). */
+    #tripPanel #btnReservar {
+      width: 100%;
+      height: 50px;
+      border-radius: 14px;
+      border: none;
+      background: var(--silver, #cdd2da);
+      color: #000;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .07em;
+      cursor: pointer;
+      transition: .15s ease;
+      font-family: inherit;
+    }
+    #tripPanel #btnReservar:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+    #tripPanel #btnReservar:active {
+      transform: scale(.97);
+    }
+    #tripPanel #btnReservar:disabled {
+      opacity: .35;
+      cursor: not-allowed;
+      transform: none;
+      filter: none;
+    }
+
+    /* ── Tamanho do painel — igual ao bottom-sheet de reserva.html:
+       largura total só até 480px, sempre centrado horizontalmente,
+       em vez de ocupar todo o ecrã. ── */
+    .floating-shell {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      z-index: 50;
+    }
+    #tripPanel.panel {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      border-radius: 22px 22px 0 0;
+      box-shadow: -40px 0 80px rgba(0,0,0,.5), 40px 0 80px rgba(0,0,0,.5), 0 -8px 40px rgba(0,0,0,.6);
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      /* Fundo preto sólido em todas as etapas (Step 1 a 4) — substitui
+         o rgba(9,11,14,.93) semi-transparente do CSS externo. */
+      background: #000;
+      backdrop-filter: none;
+    }
+    /* CRÍTICO: a regra acima (display:flex) tem mais especificidade
+       que a classe .hidden do CSS externo (ID > classe), por isso
+       teria de ser explicitamente repetida aqui — caso contrário o
+       painel ficaria sempre visível, ignorando .hidden. */
+    #tripPanel.panel.hidden {
+      display: none;
+    }
+    /* Scroll no corpo do painel quando o conteúdo exceder a altura
+       (ex: grade de 5 cartões no passo 2) — o dropdown de endereços
+       já lida com isto nativamente via z-index:999999 e abertura
+       para cima (regra .floating-shell .nm-dropdown do CSS externo). */
+    #tripPanel.panel .panel-body {
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       ETAPAS DO BOTÃO "RESERVAR" — fundo preto + paleta só em prata
+       ──────────────────────────────────────────────────────────────
+       Aplica-se às 4 etapas (#rmStep1 a #rmStep4), todas dentro de
+       #tripPanel. Fundo preto sólido já definido em #tripPanel.panel
+       acima; aqui uniformiza-se cada elemento interno (cartões,
+       botões, textos, ícones) para tons de prata, removendo os
+       acentos coloridos pontuais que existiam (verde do preço
+       seleccionado, roxo do grupo, branco puro de alguns nomes) —
+       a hierarquia visual passa a vir da INTENSIDADE do cinza/prata,
+       não da cor. Não afecta outros painéis do sistema (tickets,
+       estatísticas, contactos, etc.), só o que está dentro de
+       #tripPanel. */
+    #tripPanel, #tripPanel * {
+      color: var(--silver, #cdd2da);
+    }
+    #tripPanel .panel-head h2 {
+      color: var(--silver, #cdd2da);
+    }
+    #tripPanel .panel-head p,
+    #tripPanel .cat-price-sub,
+    #tripPanel .cat-meta,
+    #tripPanel .driver-top span,
+    #tripPanel .driver-meta,
+    #tripPanel .last-trip-card span,
+    #tripPanel .info-note {
+      color: var(--silver-3, #545d68) !important;
+    }
+    #tripPanel .cat-name,
+    #tripPanel .opt-lbl,
+    #tripPanel strong {
+      color: var(--silver, #cdd2da) !important;
+    }
+    /* Cartões e cartões-botão: fundo preto, borda em prata translúcida */
+    #tripPanel .cat-btn,
+    #tripPanel .driver-card,
+    #tripPanel .last-trip-card,
+    #tripPanel .preference-panel,
+    #tripPanel .cat-grupo-opt,
+    #tripPanel #rmBtnFecharPreferencia {
+      background: #000 !important;
+      border-color: rgba(205,210,218,.18) !important;
+    }
+    #tripPanel .cat-btn:hover,
+    #tripPanel .cat-grupo-opt:hover,
+    #tripPanel .driver-card:hover {
+      background: rgba(205,210,218,.06) !important;
+      border-color: rgba(205,210,218,.32) !important;
+    }
+    #tripPanel .cat-btn.selected,
+    #tripPanel .cat-btn-grupo.selected,
+    #tripPanel .cat-grupo-opt.selected,
+    #tripPanel select.cat-btn.cat-select.selected {
+      background: rgba(205,210,218,.10) !important;
+      border-color: var(--silver, #cdd2da) !important;
+      color: var(--silver, #cdd2da) !important;
+    }
+    /* Preço, ícones e acentos — antes verde/roxo, agora prata */
+    #tripPanel .cat-price,
+    #tripPanel .opt-price,
+    #tripPanel #catGrupoPreco {
+      color: var(--silver, #cdd2da) !important;
+    }
+    #tripPanel .cat-ico-wrap {
+      background: rgba(205,210,218,.08) !important;
+      border-color: rgba(205,210,218,.18) !important;
+    }
+    #tripPanel .mini-chip {
+      background: rgba(205,210,218,.06) !important;
+      color: var(--silver-2, #8a939f) !important;
+    }
+    /* Botão CONTINUAR / REQUEST — mantém-se sólido mas em prata sobre preto */
+    #tripPanel .rm-step-next {
+      background: var(--silver, #cdd2da) !important;
+      color: #000 !important;
+    }
+    #tripPanel .rm-step-back,
+    #tripPanel #rmBtnSlotBack {
+      color: var(--silver-2, #8a939f) !important;
+    }
+    /* Campos de endereço/data — fundo preto, texto prata */
+    #tripPanel input,
+    #tripPanel select {
+      background: #000 !important;
+      color: var(--silver, #cdd2da) !important;
+      border-color: rgba(205,210,218,.18) !important;
+    }
+    /* Campo activo (em foco) — qualquer campo do painel, incluindo
+       Partida, Destino e Data/Hora, fica claramente destacado em
+       prata ao ser seleccionado/clicado. */
+    #tripPanel input:focus,
+    #tripPanel select:focus,
+    #tripPanel #inputDateTime:focus {
+      border-color: var(--silver, #cdd2da) !important;
+      box-shadow: 0 0 0 3px rgba(205,210,218,.18) !important;
+      outline: none !important;
+    }
+    #tripPanel input::placeholder {
+      color: var(--silver-3, #545d68) !important;
+    }
+    /* Resumo da viagem (Step 3) */
+    #tripPanel .rm-trip-val,
+    #tripPanel .rm-stat-val {
+      color: var(--silver, #cdd2da) !important;
+    }
+    #tripPanel .rm-trip-label,
+    #tripPanel .rm-stat-label {
+      color: var(--silver-3, #545d68) !important;
+    }
+    #tripPanel .rm-stat-box.rm-stat-total .rm-stat-val {
+      color: var(--silver, #cdd2da) !important;
+    }
+    #tripPanel .rm-dot-o {
+      background: #1fc97d !important;
+    }
+    #tripPanel .rm-dot-d {
+      background: #ef4444 !important;
+    }
+    /* Cartão de motorista seleccionado (Step 4) — glow em prata, não verde */
+    #tripPanel .driver-card.selected-target {
+      box-shadow: 0 24px 70px rgba(0,0,0,.65), 0 0 0 2px rgba(205,210,218,.45) !important;
+      background: #000 !important;
+      border-color: rgba(205,210,218,.3) !important;
+    }
+    #tripPanel .driver-card.oscilar {
+      animation: none !important;
+      border-color: rgba(205,210,218,.3) !important;
+    }
+    /* Botão CONTINUAR — gradiente removido a favor de prata sólida */
+    #tripPanel .rm-step-next,
+    #tripPanel button[class*="rm-step-next"] {
+      background: var(--silver, #cdd2da) !important;
+      background-image: none !important;
+      color: #000 !important;
+    }
+
+ 
+    #mapOverlay {
+      z-index: 3 !important;
+      background: rgba(2,3,5,.45) !important;
+    }
+    #map {
+      filter: brightness(1.10) saturate(1.10) contrast(1.10);
+    }
+
+    /* Impressão do Relatório SLA — activada via
+       document.body.classList.add('sla-printing') antes de
+       window.print(). Esconde tudo o resto da página, deixa só o
+       popup visível, e remove os controlos que não fazem sentido
+       numa folha impressa (seletor, botões, envio de email). */
+    @media print {
+      body.sla-printing * { visibility: hidden; }
+      body.sla-printing #slaPopup,
+      body.sla-printing #slaPopup * { visibility: visible; }
+      body.sla-printing #slaPopup {
+        position: absolute; inset: 0; width: 100%; max-height: none;
+        background: #fff; color: #000;
+      }
+      body.sla-printing #slaSeletorViagem,
+      body.sla-printing #btnSlaGerarPDF,
+      body.sla-printing #btnSlaFechar,
+      body.sla-printing .sla-email-row,
+      body.sla-printing #slaEmailStatus,
+      body.sla-printing .sla-section-title + p { display: none !important; }
+    }
+  </style>
+
+  <script>
+    // ════════════════════════════════════════════════════════════
+    // Navegação entre os 3 passos do painel "RESERVA PRIVADA".
+    // Puramente visual (display:none/flex) — não interfere em
+    // nenhuma função de rm-core.js / rm-events.js. Os campos e
+    // botões originais (inputPartida, inputDestino, inputDateTime,
+    // cat-btn, btnPreferencia, btnReservar) continuam os mesmos
+    // elementos do DOM, só mudam de passo visível.
+    // ════════════════════════════════════════════════════════════
+    (function () {
+      function go(stepNum) {
+        const subs = {
+          1: 'Para onde vai?',
+          2: 'Escolha a categoria',
+          3: 'Confirme e reserve',
+          4: 'Preferência de motorista',
+        };
+        [1, 2, 3, 4].forEach(n => {
+          const stepEl = document.getElementById('rmStep' + n);
+          if (stepEl) stepEl.style.display = (n === stepNum) ? '' : 'none';
+        });
+        const sub = document.getElementById('rmStepSub');
+        if (sub) sub.textContent = subs[stepNum] || '';
+      }
+
+      // Lê os requisitos especiais directamente dos botões seleccionados
+      // no ecrã (em vez de confiar só na variável global) — garante que
+      // o resumo mostra exactamente o que está visivelmente seleccionado,
+      // mesmo que algo tenha falhado a sincronizar window.requisitosEspeciais.
+      function lerRequisitosSelecionados() {
+        const out = {};
+        document.querySelectorAll('.req-esp-btn').forEach(btn => {
+          const sel = btn.classList.contains('sel') || btn.classList.contains('selected');
+          if (!sel) return;
+          const key = btn.dataset.req;
+          if (!key) return;
+          const qtyEl = btn.querySelector('.req-esp-qty');
+          out[key] = qtyEl ? (parseInt(qtyEl.textContent, 10) || 1) : 1;
+        });
+        return out;
+      }
+
+      function fillSummary() {
+        const partida  = document.getElementById('inputPartida')?.value?.trim()  || '—';
+        const destino  = document.getElementById('inputDestino')?.value?.trim()  || '—';
+        const dt       = document.getElementById('inputDateTime')?.value || '';
+        let dtLabel = '—';
+        if (dt) {
+          try {
+            dtLabel = new Date(dt).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          } catch (_) { dtLabel = dt; }
+        }
+        const selBtn = document.querySelector('#tripPanel .cat-btn.selected .cat-name');
+        const grupoSel = document.getElementById('grupoSelect');
+        let catLabel = selBtn ? selBtn.textContent : '—';
+        if (grupoSel && grupoSel.classList.contains('selected')) {
+          catLabel = grupoSel.options[grupoSel.selectedIndex]?.text || catLabel;
+        }
+        const selPrice = document.querySelector('#tripPanel .cat-btn.selected .cat-price');
+        const totalLabel = (selPrice && selPrice.textContent !== '—' && selPrice.textContent !== '…') ? selPrice.textContent : '—';
+
+        const pEl = document.getElementById('rmSumPartida');
+        const dEl = document.getElementById('rmSumDestino');
+        const dtEl = document.getElementById('rmSumData');
+        const cEl = document.getElementById('rmSumCategoria');
+        const tEl = document.getElementById('rmSumTotal');
+        if (pEl) pEl.textContent = partida;
+        if (dEl) dEl.textContent = destino;
+        if (dtEl) dtEl.textContent = dtLabel;
+        if (cEl) cEl.textContent = catLabel;
+        if (tEl) tEl.textContent = totalLabel;
+
+        // Requisitos especiais — só mostra a linha se houver algum seleccionado
+        const reqWrap = document.getElementById('rmSumRequisitosWrap');
+        const reqEl   = document.getElementById('rmSumRequisitos');
+        const reqLabels = { ovo: 'Ovo', cadeirinha: 'Cadeirinha', elevacao: 'Elevação' };
+        window.requisitosEspeciais = lerRequisitosSelecionados();
+        const reqAtivos = Object.entries(window.requisitosEspeciais).filter(([, q]) => Number(q) > 0);
+        if (reqWrap && reqEl) {
+          if (reqAtivos.length) {
+            reqEl.textContent = reqAtivos.map(([k, q]) => `${reqLabels[k] || k} ×${q}`).join(', ');
+            reqWrap.style.display = '';
+          } else {
+            reqWrap.style.display = 'none';
+          }
+        }
+      }
+
+      function bind() {
+        // Clicar em QUALQUER parte de um campo de data/hora abre o
+        // seletor nativo — por padrão, alguns browsers só abrem o
+        // seletor se o clique acertar exactamente no ícone do
+        // calendário (área muito pequena). showPicker() é chamado
+        // sempre que o campo recebe foco ou é clicado, garantindo
+        // acesso a partir de qualquer ponto do campo. Aplica-se a
+        // TODOS os campos de data/hora do sistema — reserva privada
+        // (inputDateTime), partilha (shareDateTime), criar evento
+        // (evtDateTime), ticket (tkDatahora) e quaisquer outros que
+        // existam ou venham a existir, sem precisar de listar IDs.
+        document.querySelectorAll('input[type="datetime-local"], input[type="date"], input[type="time"]').forEach(dtInput => {
+          if (typeof dtInput.showPicker !== 'function') return;
+          const abrirSeletor = () => {
+            try { dtInput.showPicker(); } catch (_) {}
+          };
+          dtInput.addEventListener('click', abrirSeletor);
+          dtInput.addEventListener('focus', abrirSeletor);
+        });
+
+        document.getElementById('rmBtnStep1Next')?.addEventListener('click', async (e) => {
+          const partida  = document.getElementById('inputPartida')?.value?.trim();
+          const destino  = document.getElementById('inputDestino')?.value?.trim();
+          const dt       = document.getElementById('inputDateTime')?.value;
+          if (!partida || !destino || !dt) {
+            if (typeof showToast === 'function') showToast('Preencha local de partida, destino e data/hora.');
+            return;
+          }
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          btn.textContent = 'A calcular…';
+          try {
+            if (typeof tentarCalcularPrecos === 'function') await tentarCalcularPrecos();
+          } catch (_) {}
+          btn.disabled = false;
+          btn.textContent = 'CONTINUAR';
+          go(2);
+        });
+        document.getElementById('rmBtnStep2Back')?.addEventListener('click', () => {
+          if (document.getElementById('btnPreferencia')?.classList.contains('active')) {
+            if (typeof togglePreferenceMode === 'function') togglePreferenceMode(false);
+            if (typeof clearTargetStyles === 'function') clearTargetStyles();
+          }
+          go(1);
+        });
+        document.getElementById('rmBtnStep2Next')?.addEventListener('click', () => { fillSummary(); go(3); });
+        document.getElementById('rmBtnStep3Back')?.addEventListener('click', () => go(2));
+
+        // "ADICIONAR PREFERÊNCIA" abre o Step 4 (slots) — separado das categorias (Step 2)
+        document.getElementById('btnPreferencia')?.addEventListener('click', () => {
+          if (typeof togglePreferenceMode === 'function') togglePreferenceMode(true);
+          go(4);
+        });
+
+        // Voltar do Step 4 vai para Step 1 (endereços)
+        document.getElementById('rmBtnStep4Back')?.addEventListener('click', () => {
+          if (typeof togglePreferenceMode === 'function') togglePreferenceMode(false);
+          if (typeof clearTargetStyles === 'function') clearTargetStyles();
+          go(1);
+        });
+
+        // Manter o resumo actualizado se o utilizador voltar e mudar algo
+        document.getElementById('btnReservar')?.addEventListener('click', fillSummary);
+
+        // ── Botão grupo custom ──────────────────────────────────────
+        // O <select id="grupoSelect"> fica oculto mas é o que o código
+        // existente (grupoReservaChanged, getCategoryValue, etc.) lê.
+        // O botão visual chama grupoReservaChanged() e sincroniza o select.
+        const catBtnGrupo = document.getElementById('catBtnGrupo');
+        const catGrupoOpts = document.getElementById('catGrupoOpts');
+        const grupoSelectEl = document.getElementById('grupoSelect');
+
+        catBtnGrupo?.addEventListener('click', () => {
+          catGrupoOpts?.classList.toggle('open');
+        });
+
+        // Fechar sub-opções ao clicar fora
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('#catGrupoWrap')) {
+            catGrupoOpts?.classList.remove('open');
+          }
+        }, { capture: true });
+
+        // Cada sub-opção (6/8/17)
+        catGrupoOpts?.querySelectorAll('.cat-grupo-opt').forEach(opt => {
+          opt.addEventListener('click', () => {
+            const val = opt.dataset.val; // "grupo6" | "grupo8" | "grupo17"
+            if (!grupoSelectEl) return;
+            grupoSelectEl.value = val;
+            grupoSelectEl.classList.add('selected');
+            // Chamar a função existente que trata setSelectedCategory + tentarCalcularPrecos
+            if (typeof grupoReservaChanged === 'function') grupoReservaChanged(grupoSelectEl);
+            // Actualizar UI do botão visual
+            const lblMap = { grupo6: 'GRUPO — ATÉ 6', grupo8: 'GRUPO — ATÉ 8', grupo17: 'GRUPO — ATÉ 17' };
+            const passMap = { grupo6: '6',  grupo8: '8',  grupo17: '17' };
+            const nomeEl = document.getElementById('catGrupoNome');
+            const passEl = document.getElementById('catGrupoPass');
+            if (nomeEl) nomeEl.textContent = lblMap[val] || 'GRUPO';
+            if (passEl) passEl.textContent = `até ${passMap[val]}`;
+            // Marcar botão principal como selected e desmarcar outros
+            catBtnGrupo?.classList.add('selected');
+            document.querySelectorAll('#tripPanel .cat-btn[data-category]').forEach(b => b.classList.remove('selected'));
+            catGrupoOpts?.querySelectorAll('.cat-grupo-opt').forEach(o => o.classList.toggle('selected', o.dataset.val === val));
+            catGrupoOpts?.classList.remove('open');
+          });
+        });
+
+        // Sincronizar preços do grupo no botão visual quando tentarCalcularPrecos os actualiza
+        // O rm-core.js actualiza os options do select; observamos isso para reflectir no custom.
+        if ('MutationObserver' in window && grupoSelectEl) {
+          new MutationObserver(() => {
+            const optPrecos = {
+              grupo6:  grupoSelectEl.options[1]?.text,
+              grupo8:  grupoSelectEl.options[2]?.text,
+              grupo17: grupoSelectEl.options[3]?.text,
+            };
+            // Extrair preço de "ATÉ 6 PESSOAS — €12.50" → "€12.50"
+            const extractPrice = t => t?.includes('—') ? t.split('—').slice(1).join('—').trim() : '—';
+            const p6  = extractPrice(optPrecos.grupo6);
+            const p8  = extractPrice(optPrecos.grupo8);
+            const p17 = extractPrice(optPrecos.grupo17);
+            // Actualizar preços nas sub-opções
+            const el6  = document.getElementById('optPreco6');
+            const el8  = document.getElementById('optPreco8');
+            const el17 = document.getElementById('optPreco17');
+            if (el6)  el6.textContent  = p6;
+            if (el8)  el8.textContent  = p8;
+            if (el17) el17.textContent = p17;
+            // Actualizar preço no botão principal (usa o do grupo seleccionado)
+            const grupoVal = grupoSelectEl.value;
+            const priceMap = { grupo6: p6, grupo8: p8, grupo17: p17 };
+            const mainPreco = document.getElementById('catGrupoPreco');
+            if (mainPreco && grupoVal && priceMap[grupoVal] !== '—') {
+              mainPreco.textContent = priceMap[grupoVal];
+            } else if (mainPreco && !grupoVal) {
+              // Mostrar o mais barato como referência quando nenhum está seleccionado
+              const first = [p6, p8, p17].find(p => p && p !== '—');
+              if (first) mainPreco.textContent = first + '+';
+            }
+          }).observe(grupoSelectEl, { subtree: true, characterData: true, childList: true });
+        }
+
+        // Actualizar também metas de km/duração do grupo (mesmos valores das outras categorias)
+        if ('MutationObserver' in window) {
+          const refDur = document.querySelector('#tripPanel .cat-btn[data-category="economica"] .cat-meta-dur');
+          const refKm  = document.querySelector('#tripPanel .cat-btn[data-category="economica"] .cat-meta-km');
+          if (refDur) {
+            new MutationObserver(() => {
+              const durEl = document.getElementById('catGrupoDur');
+              if (durEl) durEl.textContent = refDur.textContent;
+            }).observe(refDur, { characterData: true, childList: true });
+          }
+          if (refKm) {
+            new MutationObserver(() => {
+              const kmEl = document.getElementById('catGrupoKm');
+              if (kmEl) kmEl.textContent = refKm.textContent;
+            }).observe(refKm, { characterData: true, childList: true });
+          }
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bind);
+      } else {
+        bind();
+      }
+
+      // Sempre que o painel "RESERVA PRIVADA" é reaberto (classe
+      // .hidden removida por openTripPanel em rm-core.js), reiniciar
+      // a visualização no passo 1 — sem tocar em openTripPanel().
+      const tripPanelEl = document.getElementById('tripPanel');
+      if (tripPanelEl && 'MutationObserver' in window) {
+        let wasHidden = tripPanelEl.classList.contains('hidden');
+        new MutationObserver(() => {
+          const isHidden = tripPanelEl.classList.contains('hidden');
+          if (wasHidden && !isHidden) go(1);
+          wasHidden = isHidden;
+        }).observe(tripPanelEl, { attributes: true, attributeFilter: ['class'] });
+      }
+
+      // Botão fechar preferência — vai para Step 1 (endereços/destinos)
+      document.getElementById('rmBtnFecharPreferencia')?.addEventListener('click', () => {
+        if (typeof togglePreferenceMode === 'function') togglePreferenceMode(false);
+        if (typeof clearTargetStyles === 'function') clearTargetStyles();
+        go(1);
+      });
+
+      // ──────────────────────────────────────────────────────────
+      // Dropdown de autocomplete (#nmPartida/#nmDestino) — dois
+      // problemas a resolver, nenhum deles na lógica de busca:
+      // 1) .panel tem overflow-y:auto, que recorta o dropdown;
+      // 2) .panel tem backdrop-filter, que cria um "containing
+      //    block" para position:fixed — os cálculos relativos à
+      //    viewport ficavam errados enquanto o dropdown permanecia
+      //    dentro do painel.
+      // Solução: ao abrir (classe .open, aplicada por
+      // renderNmDropdown em rm-map.js — não alterado), o dropdown é
+      // temporariamente movido para o <body>, posicionado via
+      // coordenadas reais do campo, e devolvido ao lugar original
+      // quando fecha. Não interfere na lógica de busca/seleção.
+      function repositionNmDropdown(dropdown, originalParent, originalNext) {
+        const wrap = originalParent;
+        if (!wrap) return;
+        const r = wrap.getBoundingClientRect();
+        const opensUp = true; // painel é bottom-sheet — sempre há mais espaço acima
+        dropdown.style.position = 'fixed';
+        dropdown.style.left = r.left + 'px';
+        dropdown.style.width = r.width + 'px';
+        dropdown.style.right = 'auto';
+        if (opensUp) {
+          dropdown.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+          dropdown.style.top = 'auto';
+          dropdown.style.maxHeight = Math.max(120, r.top - 70) + 'px';
+        } else {
+          dropdown.style.top = (r.bottom + 6) + 'px';
+          dropdown.style.bottom = 'auto';
+          dropdown.style.maxHeight = Math.max(120, window.innerHeight - r.bottom - 20) + 'px';
+        }
+      }
+      ['nmPartida', 'nmDestino'].forEach(id => {
+        const dropdown = document.getElementById(id);
+        if (!dropdown || !('MutationObserver' in window)) return;
+        const originalParent = dropdown.parentElement;
+        const originalNext   = dropdown.nextSibling;
+        new MutationObserver(() => {
+          const isOpen = dropdown.classList.contains('open');
+          if (isOpen) {
+            if (dropdown.parentElement !== document.body) {
+              document.body.appendChild(dropdown);
+            }
+            repositionNmDropdown(dropdown, originalParent, originalNext);
+          } else {
+            if (dropdown.parentElement === document.body) {
+              if (originalNext) originalParent.insertBefore(dropdown, originalNext);
+              else originalParent.appendChild(dropdown);
+              dropdown.style.position = '';
+              dropdown.style.left = '';
+              dropdown.style.right = '';
+              dropdown.style.top = '';
+              dropdown.style.bottom = '';
+              dropdown.style.width = '';
+              dropdown.style.maxHeight = '';
+            }
+          }
+        }).observe(dropdown, { attributes: true, attributeFilter: ['class'] });
+        // Reajustar em scroll/resize enquanto estiver aberto e fora do lugar
+        ['scroll', 'resize'].forEach(evt => {
+          window.addEventListener(evt, () => {
+            if (dropdown.classList.contains('open') && dropdown.parentElement === document.body) {
+              repositionNmDropdown(dropdown, originalParent, originalNext);
+            }
+          }, { passive: true });
+        });
+      });
+
+      // ──────────────────────────────────────────────────────────
+      // Popup de confirmação ao escolher uma das "últimas 2 viagens"
+      // para preferência. Fluxo: clicar ADICIONAR no slot (já
+      // existente, bindTargetSelection em rm-core.js) → o cartão
+      // amplia (.selected-target, CSS abaixo) com as 2 viagens
+      // visíveis → clicar numa viagem (onclick já existente em
+      // renderLastTrips define selectedPreferenceTrip e adiciona
+      // .selected ao cartão da viagem) → este observer deteta essa
+      // seleção e abre o popup de confirmação.
+      // "APLICAR E CONCLUIR": chama applyPreferenceToSelectedCard()
+      // + togglePreferenceMode(false) + clearTargetStyles() — a
+      // mesma sequência que o botão original já fazia — e fecha só
+      // o popup, devolvendo ao painel de reserva normal.
+      // "CANCELAR": chama closeTripPanel() (já existente), que
+      // esconde o painel inteiro e mostra de novo os 5 botões de
+      // tipo de viagem, e já chama resetPreferenceSelection().
+      const rmPrefPopup    = document.getElementById('rmPrefConfirmPopup');
+      const rmPrefBtnOk    = document.getElementById('rmPrefBtnAplicar');
+      const rmPrefBtnCancel= document.getElementById('rmPrefBtnCancelar');
+      const rmPrefText     = document.getElementById('rmPrefConfirmText');
+
+      function openPrefConfirmPopup() {
+        if (!rmPrefPopup) return;
+        const motorista = (typeof selectedPreferenceTrip !== 'undefined' && selectedPreferenceTrip)
+          ? (selectedPreferenceTrip.motorista || 'este motorista') : 'este motorista';
+        if (rmPrefText) rmPrefText.textContent = `Aplicar a preferência de ${motorista} ao cartão selecionado?`;
+        rmPrefPopup.classList.add('show');
+      }
+      function closePrefConfirmPopup() {
+        if (rmPrefPopup) rmPrefPopup.classList.remove('show');
+      }
+
+      ['lastTripCard1', 'lastTripCard2'].forEach(id => {
+        const card = document.getElementById(id);
+        if (!card || !('MutationObserver' in window)) return;
+        new MutationObserver(() => {
+          if (card.classList.contains('selected')) openPrefConfirmPopup();
+        }).observe(card, { attributes: true, attributeFilter: ['class'] });
+      });
+
+      rmPrefBtnOk?.addEventListener('click', async () => {
+        if (typeof applyPreferenceToSelectedCard !== 'function' || typeof selectedPreferenceTrip === 'undefined') {
+          closePrefConfirmPopup();
+          return;
+        }
+        const ok = await applyPreferenceToSelectedCard(selectedPreferenceTrip);
+        if (!ok) { closePrefConfirmPopup(); return; } // erro já mostrado via showToast
+        if (typeof clearTargetStyles === 'function') clearTargetStyles();
+        if (typeof showToast === 'function') showToast('Motorista adicionado ao grupo de preferência.');
+        closePrefConfirmPopup();
+      });
+
+      rmPrefBtnCancel?.addEventListener('click', () => {
+        closePrefConfirmPopup();
+        if (typeof closeTripPanel === 'function') closeTripPanel();
+      });
+
+      // Botão "← Voltar" do slot ampliado — desfaz apenas a selecção
+      // do cartão (clearTargetStyles, já existente em rm-core.js),
+      // mantendo o modo preferência aberto para escolher outro slot.
+      const rmBtnSlotBack = document.getElementById('rmBtnSlotBack');
+      rmBtnSlotBack?.addEventListener('click', () => {
+        if (typeof clearTargetStyles === 'function') clearTargetStyles();
+      });
+
+      // ──────────────────────────────────────────────────────────
+      // #tripPanel tem backdrop-filter e .floating-shell tem
+      // transform — qualquer um destes cria um "containing block"
+      // para os filhos com position:fixed, fazendo top/left serem
+      // relativos a ELES em vez da viewport real (o mesmo problema
+      // já resolvido antes nesta página para o dropdown de
+      // endereços). #preferencePanel e #rmBtnSlotBack são movidos
+      // para o <body> enquanto o slot está ampliado, e devolvidos
+      // ao lugar exacto de onde saíram quando a selecção termina.
+      const prefPanelEl = document.getElementById('preferencePanel');
+      const prefOriginalParent = prefPanelEl ? prefPanelEl.parentElement : null;
+      const prefOriginalNext   = prefPanelEl ? prefPanelEl.nextSibling   : null;
+
+      function moveFloatingPiecesOut() {
+        const card = document.querySelector('.driver-card.selected-target');
+        if (card && card.parentElement !== document.body) {
+          card.dataset.rmOriginalNext = '';
+          card._rmOriginalParent = card.parentElement;
+          card._rmOriginalNext = card.nextSibling;
+          document.body.appendChild(card);
+        }
+        if (prefPanelEl && prefPanelEl.parentElement !== document.body) {
+          document.body.appendChild(prefPanelEl);
+        }
+        if (rmBtnSlotBack && rmBtnSlotBack.parentElement !== document.body) {
+          document.body.appendChild(rmBtnSlotBack);
+        }
+      }
+      function moveFloatingPiecesBack() {
+        // O cartão pode já ter sido devolvido por clearTargetStyles
+        // ter removido a classe — procurar por qualquer cartão que
+        // ainda esteja "perdido" directamente no body.
+        document.querySelectorAll('body > .driver-card').forEach(card => {
+          if (card._rmOriginalParent) {
+            if (card._rmOriginalNext) card._rmOriginalParent.insertBefore(card, card._rmOriginalNext);
+            else card._rmOriginalParent.appendChild(card);
+          }
+        });
+        if (prefPanelEl && prefPanelEl.parentElement === document.body && prefOriginalParent) {
+          if (prefOriginalNext) prefOriginalParent.insertBefore(prefPanelEl, prefOriginalNext);
+          else prefOriginalParent.appendChild(prefPanelEl);
+        }
+        // rmBtnSlotBack volta para o seu lugar original no markup —
+        // antes de #driverGrid, dentro de #rmStep2.
+        const driverGridEl = document.getElementById('driverGrid');
+        if (rmBtnSlotBack && rmBtnSlotBack.parentElement === document.body && driverGridEl) {
+          driverGridEl.parentElement.insertBefore(rmBtnSlotBack, driverGridEl);
+        }
+      }
+
+      if ('MutationObserver' in window) {
+        new MutationObserver(() => {
+          const hasTarget = document.querySelector('.driver-card.selected-target');
+          if (rmBtnSlotBack) rmBtnSlotBack.style.display = hasTarget ? 'block' : 'none';
+          if (hasTarget) moveFloatingPiecesOut();
+          else moveFloatingPiecesBack();
+        }).observe(document.getElementById('driverGrid') || document.body, {
+          attributes: true, attributeFilter: ['class'], subtree: true
+        });
+      }
+
+      // ──────────────────────────────────────────────────────────
+      // Reset completo da reserva — usado quando o utilizador clica
+      // "CANCELAR PAGAMENTO E FECHAR" (rmBtnFechar2, rm-payment.js).
+      // Limpa campos de endereço/data, coordenadas guardadas em
+      // dataset, categoria seleccionada, preços/distância calculados
+      // e qualquer selecção de preferência — para o utilizador
+      // recomeçar do zero. As variáveis (selectedCategory,
+      // _kmCalculado, etc.) são declaradas com "let" no nível
+      // superior de rm-core.js (sem IIFE), por isso são acessíveis
+      // directamente aqui, no mesmo realm global da página — não é
+      // necessário (nem possível) usar window.selectedCategory.
+      function resetReservaCompleta() {
+        ['inputPartida', 'inputDestino'].forEach(id => {
+          const inp = document.getElementById(id);
+          if (!inp) return;
+          inp.value = '';
+          delete inp.dataset.lat;
+          delete inp.dataset.lng;
+        });
+        const dt = document.getElementById('inputDateTime');
+        if (dt) dt.value = '';
+
+        if (typeof selectedCategory !== 'undefined') selectedCategory = 'economica';
+        if (typeof _kmCalculado !== 'undefined') _kmCalculado = 0;
+        if (typeof _precosCalculados !== 'undefined') _precosCalculados = {};
+        if (typeof _portagensMap !== 'undefined') _portagensMap = {};
+        if (typeof luxoSeats !== 'undefined') luxoSeats = 4;
+        if (typeof grupoSeats !== 'undefined') grupoSeats = 6;
+
+        // Repor visual dos botões de categoria ao estado inicial
+        document.querySelectorAll('#tripPanel .cat-btn[data-category]').forEach(b => {
+          b.classList.toggle('selected', b.dataset.category === 'economica');
+          const priceEl = b.querySelector('.cat-price');
+          if (priceEl) priceEl.textContent = '—';
+          const durEl = b.querySelector('.cat-meta-dur');
+          const kmEl  = b.querySelector('.cat-meta-km');
+          if (durEl) durEl.textContent = '—';
+          if (kmEl) kmEl.textContent = '—';
+        });
+        const grupoSel = document.getElementById('grupoSelect');
+        if (grupoSel) { grupoSel.value = ''; grupoSel.classList.remove('selected'); }
+
+        // NOTA: resetPreferenceSelection() NÃO é chamada aqui de
+        // propósito — preferências já aplicadas e concluídas devem
+        // manter-se mesmo após cancelar o pagamento e reiniciar o
+        // trajeto. Só os campos de endereço/data/categoria (que
+        // dizem respeito ao percurso e preço) são limpos.
+        if (typeof go === 'function') go(1);
+      }
+
+      // Liga-se ao botão existente sem substituir o seu comportamento
+      // original (fechar() em rm-payment.js continua a correr).
+      document.getElementById('rmBtnFechar2')?.addEventListener('click', resetReservaCompleta);
+    })();
+  </script>
+
+  <script>
+    /* ================================================================
+       ROTA NO MAPA — igual a reserva.html, adaptado para Google Maps.
+       Usa OSRM para calcular a polyline (overview=full&geometries=geojson)
+       com as mesmas coordenadas que rm-core.js já guardou nos campos
+       de endereço (dataset.lat / dataset.lng). Não toca em rm-map.js
+       nem em rm-core.js.
+    ================================================================ */
+    (function () {
+      let _rmPoly = null;   // google.maps.Polyline activa
+
+      function _fmtKm(m)  {
+        const km = m / 1000;
+        return km >= 10 ? Math.round(km) + ' km' : km.toFixed(1) + ' km';
+      }
+      function _fmtMin(s) {
+        const m = Math.round(s / 60);
+        return m >= 60 ? Math.floor(m/60) + 'h' + String(m%60).padStart(2,'0') : m + ' min';
+      }
+
+      async function drawRoute() {
+        const inp  = document.getElementById('inputPartida');
+        const ind  = document.getElementById('inputDestino');
+        if (!inp?.dataset.lat || !ind?.dataset.lat) return;
+
+        const pLat = inp.dataset.lat, pLng = inp.dataset.lng;
+        const dLat = ind.dataset.lat, dLng = ind.dataset.lng;
+
+        try {
+          const url  = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+          const data = await fetch(url).then(r => r.json());
+          if (data.code !== 'Ok' || !data.routes?.length) return;
+
+          const route  = data.routes[0];
+          const coords = route.geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+
+          // Aguardar Google Maps estar pronto
+          const gmap = typeof map !== 'undefined' ? map : null;
+          if (!gmap) return;
+
+          // Remover polyline anterior
+          if (_rmPoly) { _rmPoly.setMap(null); _rmPoly = null; }
+
+          _rmPoly = new google.maps.Polyline({
+            path: coords,
+            geodesic: true,
+            strokeColor: '#1fc97d',
+            strokeOpacity: 0.88,
+            strokeWeight: 4,
+            map: gmap,
+          });
+
+          // Ajustar mapa à rota
+          const bounds = new google.maps.LatLngBounds();
+          coords.forEach(c => bounds.extend(c));
+          gmap.fitBounds(bounds, { top: 90, right: 40, bottom: 120, left: 40 });
+
+          // Badge km · duração
+          document.getElementById('rmRiKm').textContent  = _fmtKm(route.distance);
+          document.getElementById('rmRiMin').textContent = _fmtMin(route.duration);
+          document.getElementById('rmRouteInfo').classList.add('show');
+
+          // Mostrar botão VER ROTA
+          document.getElementById('rmBtnVerRota').classList.add('show');
+
+        } catch (e) {
+          console.warn('[RM rota]', e.message);
+        }
+      }
+
+      // Observar quando os campos ganham coordenadas (dataset.lat definido
+      // por rm-map.js ao seleccionar sugestão Nominatim)
+      ['inputPartida', 'inputDestino'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        new MutationObserver(() => {
+          const p = document.getElementById('inputPartida');
+          const d = document.getElementById('inputDestino');
+          if (p?.dataset.lat && d?.dataset.lat) drawRoute();
+        }).observe(el, { attributes: true, attributeFilter: ['data-lat'] });
+      });
+
+      // ── Botão VER ROTA ──────────────────────────────────────────
+      document.getElementById('rmBtnVerRota')?.addEventListener('click', () => {
+        // Ocultar o painel flutuante para ver o mapa
+        const shell = document.querySelector('.floating-shell');
+        if (shell) shell.style.display = 'none';
+        document.getElementById('rmBtnVerRota').classList.remove('show');
+        document.getElementById('rmBtnVoltarFormulario').classList.add('show');
+        // Reajustar mapa à rota
+        if (_rmPoly) {
+          const bounds = new google.maps.LatLngBounds();
+          _rmPoly.getPath().forEach(p => bounds.extend(p));
+          (typeof map !== 'undefined' ? map : null)?.fitBounds(bounds, { top: 80, right: 40, bottom: 80, left: 40 });
+        }
+      });
+
+      // ── Botão VOLTAR AO FORMULÁRIO ──────────────────────────────
+      document.getElementById('rmBtnVoltarFormulario')?.addEventListener('click', () => {
+        const shell = document.querySelector('.floating-shell');
+        if (shell) shell.style.display = '';
+        document.getElementById('rmBtnVoltarFormulario').classList.remove('show');
+        // Só mostrar VER ROTA se ainda houver rota traçada
+        if (_rmPoly) document.getElementById('rmBtnVerRota').classList.add('show');
+      });
+
+      // ── Limpar rota ao fechar o painel ─────────────────────────
+      document.getElementById('btnCloseTrip')?.addEventListener('click', () => {
+        if (_rmPoly) { _rmPoly.setMap(null); _rmPoly = null; }
+        document.getElementById('rmRouteInfo').classList.remove('show');
+        document.getElementById('rmBtnVerRota').classList.remove('show');
+        document.getElementById('rmBtnVoltarFormulario').classList.remove('show');
+        const shell = document.querySelector('.floating-shell');
+        if (shell) shell.style.display = '';
+      });
+    })();
+  </script>
+
+
+
+
+  <style>
+    .instalar-btn {
+      border-color: rgba(31,201,125,.3) !important;
+      color: var(--ok) !important;
+      background: rgba(31,201,125,.07) !important;
+    }
+    .instalar-btn:hover {
+      background: rgba(31,201,125,.15) !important;
+      border-color: rgba(31,201,125,.5) !important;
+    }
+  </style>
+
+  <script>
+    (function () {
+      let _pwaPrompt = null;
+      const btn = document.getElementById('btnInstalarApp');
+      if (!btn) return;
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        _pwaPrompt = e;
+      });
+
+      window.addEventListener('appinstalled', () => { _pwaPrompt = null; });
+
+      btn.addEventListener('click', async () => {
+        if (_pwaPrompt) {
+          _pwaPrompt.prompt();
+          const { outcome } = await _pwaPrompt.userChoice;
+          _pwaPrompt = null;
+        } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+          if (typeof showToast === 'function')
+            showToast('Safari → Partilhar → "Adicionar ao ecrã inicial"', 5000);
+        } else {
+          if (typeof showToast === 'function')
+            showToast('Chrome → menu ⋮ → "Instalar aplicação"', 4000);
+        }
+      });
+    })();
+  </script>
+
+  <!-- ══ MÓDULOS JS (ordem de dependência) ══════════════════ -->
+  <script src="js/rm-core.js?v=2"></script>
+  <script src="js/rm-requisitos.js"></script>
+  <script src="js/rm-map.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/rm-share.js?v=21"></script>
+  <script src="js/rm-activity.js"></script>
+  <script src="js/rm-ticket.js"></script>
+  <script src="js/rm-stats.js"></script>
+  <script src="js/rm-sla.js"></script>
+  <script src="js/rm-events.js?v=9"></script>
+  <script src="js/rm-payment.js"></script>
+  <script src="js/rm-viagens.js"></script>
+  <script src="js/rm-convidado.js?v=4"></script>
+
+  <!-- Google Maps — mesmo padrão do seguradora.html -->
+  <script>
+    window._rmMapsReady = function () {
+      try { initMap(); } catch (e) { console.error('[RM] initMap:', e); }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+          try { init(); } catch (e) { console.error('[RM] init:', e); }
+        });
+      } else {
+        try { init(); } catch (e) { console.error('[RM] init:', e); }
+      }
+    };
+  </script>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ6XoeSWUFGWFwPPgOQXZA1zfGpy1ECTg&loading=async&libraries=geometry&callback=_rmMapsReady"
+    async defer></script>
+
+<div style="position:fixed;right:14px;bottom:14px;z-index:400">
+  <div style="font-size:12px;font-family:Inter,Arial,system-ui,sans-serif;color:#9aa1ab;background:rgba(8,10,13,.72);backdrop-filter:blur(10px);padding:9px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px">
+    <span style="opacity:.7">&copy; REALMETROPOLIS</span>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('privacidade');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Privacidade</a>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('cookies');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Cookies</a>
+  </div>
+</div>
+
+<!-- Overlay translúcido — Privacidade / Cookies -->
+<div id="legalOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(4,5,7,.72);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:24px">
+  <div style="width:min(720px,94vw);max-height:86vh;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(22,25,31,.92),rgba(10,11,14,.96));border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:0 40px 100px rgba(0,0,0,.6);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;text-transform:uppercase">REALMETROPOLIS</div>
+      <button onclick="fecharLegalOverlay()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#cdd2da;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;line-height:1">&times;</button>
+    </div>
+    <iframe id="legalOverlayFrame" src="" style="flex:1;border:none;width:100%;background:transparent;min-height:60vh"></iframe>
+  </div>
+</div>
+<script>
+function abrirLegalOverlay(tipo){
+  var url = tipo === 'cookies' ? '/cookies.html' : '/privacidade.html';
+  document.getElementById('legalOverlayFrame').src = url;
+  document.getElementById('legalOverlay').style.display = 'flex';
+}
+function fecharLegalOverlay(){
+  document.getElementById('legalOverlay').style.display = 'none';
+  document.getElementById('legalOverlayFrame').src = '';
+}
+document.getElementById('legalOverlay')?.addEventListener('click', function(e){
+  if (e.target.id === 'legalOverlay') fecharLegalOverlay();
+});
+</script>
+
+</body>
+</html>

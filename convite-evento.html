@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>REALMETROPOLIS — Convite de Viagem</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --bg:#050507;--surface:#0e1012;--card:#14171d;
+  --line:rgba(196,201,212,.12);--line2:rgba(196,201,212,.22);
+  --silver:#c4c9d4;--silver2:#8b95a2;--silver3:#434a55;
+  --ok:#19d68b;--bad:#ff5a5a;--warn:#ffa03c;
+  --accent:#5b9bf7;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--bg);font-family:Arial,system-ui,sans-serif;color:var(--silver)}
+body{display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 48px;min-height:100vh}
+
+.card{
+  width:min(520px,96vw);
+  background:linear-gradient(180deg,#0e1012,#08090b);
+  border:1px solid var(--line2);border-radius:22px;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);overflow:hidden;
+}
+
+/* ── HEADER ── */
+.hd{
+  padding:20px 24px 16px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);
+  display:flex;align-items:center;gap:12px;
+}
+.rm{
+  width:42px;height:42px;border-radius:50%;
+  border:1.5px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:900;color:var(--silver);
+  flex-shrink:0;
+}
+.hd-text .brand{font-size:10px;font-weight:900;letter-spacing:.14em;color:var(--silver3);text-transform:uppercase}
+.hd-text .title{font-size:15px;font-weight:900;color:#fff;margin-top:2px}
+
+/* ── STEPS ── */
+.step{display:none;padding:22px 24px}
+.step.active{display:block}
+
+.step-label{
+  font-size:9px;font-weight:900;letter-spacing:.14em;
+  color:var(--silver3);text-transform:uppercase;margin-bottom:14px;
+}
+
+/* Info da partida */
+.partida-box{
+  background:rgba(25,214,139,.06);border:1px solid rgba(25,214,139,.2);
+  border-radius:14px;padding:14px 16px;margin-bottom:18px;
+}
+.partida-label{font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(25,214,139,.7);text-transform:uppercase;margin-bottom:4px}
+.partida-addr{font-size:14px;font-weight:700;color:#fff}
+.partida-hora{font-size:12px;color:var(--silver2);margin-top:3px}
+
+/* OTP */
+.otp-hint{font-size:12px;color:var(--silver2);margin-bottom:14px;line-height:1.5}
+.otp-input{
+  display:flex;gap:10px;justify-content:center;margin-bottom:18px;
+}
+.otp-digit{
+  width:48px;height:58px;border-radius:12px;
+  border:1.5px solid var(--line2);background:#0d1014;
+  color:#fff;font-size:24px;font-weight:900;
+  text-align:center;outline:none;transition:.15s;
+}
+.otp-digit:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,155,247,.12)}
+
+/* Destino search */
+.nm-wrap{position:relative;margin-bottom:14px}
+.nm-input{
+  width:100%;padding:13px 14px;border-radius:12px;
+  border:1.5px solid var(--line2);background:#0d1014;
+  color:#fff;font-size:14px;outline:none;transition:.15s;
+}
+.nm-input:focus{border-color:rgba(196,201,212,.45);box-shadow:0 0 0 3px rgba(196,201,212,.07)}
+.nm-input::placeholder{color:var(--silver3)}
+.nm-dropdown{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#1a1e26;border:1px solid var(--line2);border-radius:12px;
+  z-index:200;overflow:hidden;display:none;
+}
+.nm-item{
+  padding:11px 14px;font-size:13px;color:var(--silver);cursor:pointer;
+  border-bottom:1px solid var(--line);transition:.12s;
+}
+.nm-item:last-child{border-bottom:none}
+.nm-item:hover{background:rgba(91,155,247,.1);color:#fff}
+
+/* Mapa mini */
+#mini-map{height:180px;border-radius:14px;overflow:hidden;margin-bottom:18px;border:1px solid var(--line);display:none}
+
+/* Resumo preço */
+.preco-box{
+  background:rgba(196,201,212,.05);border:1px solid var(--line2);
+  border-radius:14px;overflow:hidden;margin-bottom:18px;
+}
+.preco-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 16px;border-bottom:1px solid var(--line);
+}
+.preco-row:last-child{border-bottom:none}
+.preco-key{font-size:11px;color:var(--silver2)}
+.preco-val{font-size:13px;font-weight:700;color:#fff}
+.preco-total .preco-key{color:var(--ok);font-weight:900}
+.preco-total .preco-val{font-size:18px;color:var(--ok)}
+
+/* Tabs pagamento */
+.pay-tabs{display:flex;gap:8px;margin-bottom:14px}
+.pay-tab{
+  flex:1;padding:10px;border-radius:10px;border:1px solid var(--line2);
+  background:transparent;color:var(--silver2);font-size:11px;font-weight:900;
+  letter-spacing:.07em;cursor:pointer;transition:.15s;text-align:center;
+}
+.pay-tab.active{border-color:var(--accent);background:rgba(91,155,247,.08);color:var(--accent)}
+
+.pay-area{display:none}
+.pay-area.active{display:block}
+#pp-btns{min-height:44px}
+
+/* Stripe */
+#card-element{
+  padding:14px;border-radius:12px;border:1.5px solid var(--line2);
+  background:#0d1014;margin-bottom:12px;
+}
+
+/* Botões gerais */
+.btn{
+  width:100%;padding:14px;border-radius:13px;border:none;
+  background:linear-gradient(180deg,#e0e4ea,#bec6d1);
+  color:#07080a;font-weight:900;font-size:13px;letter-spacing:.06em;
+  cursor:pointer;transition:.18s;
+  box-shadow:0 4px 16px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.6);
+}
+.btn:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-ghost{
+  background:transparent;border:1px solid var(--line2);color:var(--silver2);
+  box-shadow:none;
+}
+.btn-ghost:hover{border-color:var(--line2);background:rgba(255,255,255,.04);filter:none;transform:none}
+
+.msg{
+  margin-top:12px;padding:12px 14px;border-radius:11px;
+  font-size:13px;font-weight:600;display:none;
+}
+.msg.show{display:block}
+.msg.ok{background:rgba(25,214,139,.07);border:1px solid rgba(25,214,139,.2);color:#7fffc4}
+.msg.err{background:rgba(255,80,80,.07);border:1px solid rgba(255,80,80,.2);color:#ff9999}
+
+.loader{
+  display:none;margin:14px auto;width:24px;height:24px;
+  border:2px solid var(--line2);border-top-color:var(--silver);
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Sucesso */
+.success-icon{font-size:52px;text-align:center;margin-bottom:12px}
+.success-title{font-size:22px;font-weight:900;color:#fff;text-align:center;margin-bottom:8px}
+.success-sub{font-size:13px;color:var(--silver2);text-align:center;line-height:1.6}
+.success-codigo{
+  background:rgba(25,214,139,.07);border:1px solid rgba(25,214,139,.22);
+  border-radius:12px;padding:14px 16px;margin:18px 0;text-align:center;
+}
+.success-codigo .label{font-size:10px;font-weight:900;letter-spacing:.12em;color:rgba(25,214,139,.7);text-transform:uppercase;margin-bottom:4px}
+.success-codigo .valor{font-size:20px;font-weight:900;color:var(--ok);letter-spacing:.1em}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="hd">
+    <div class="rm">RM</div>
+    <div class="hd-text">
+      <div class="brand">REALMETROPOLIS</div>
+      <div class="title">Convite de Viagem em Grupo</div>
+    </div>
+  </div>
+
+  <!-- STEP 1: Verificar OTP -->
+  <div class="step active" id="step-otp">
+    <div class="step-label">Passo 1 de 3 — Verificar identidade</div>
+
+    <div class="partida-box">
+      <div class="partida-label">📍 Local de Partida (fixo)</div>
+      <div class="partida-addr" id="partida-addr">A carregar…</div>
+      <div class="partida-hora" id="partida-hora"></div>
+    </div>
+
+    <div class="otp-hint" id="otp-hint">
+      Insira o código de 6 dígitos recebido por SMS para confirmar a sua identidade.
+    </div>
+
+    <div class="otp-input" id="otp-container">
+      <input class="otp-digit" type="tel" maxlength="1" inputmode="numeric" data-idx="0"/>
+      <input class="otp-digit" type="tel" maxlength="1" inputmode="numeric" data-idx="1"/>
+      <input class="otp-digit" type="tel" maxlength="1" inputmode="numeric" data-idx="2"/>
+      <input class="otp-digit" type="tel" maxlength="1" inputmode="numeric" data-idx="3"/>
+      <input class="otp-digit" type="tel" maxlength="1" inputmode="numeric" data-idx="4"/>
+      <input class="otp-digit" type="tel" maxlength="1" inputmode="numeric" data-idx="5"/>
+    </div>
+
+    <button class="btn" id="btn-otp" onclick="confirmarOtp()">VERIFICAR CÓDIGO</button>
+    <div class="loader" id="loader-otp"></div>
+    <div class="msg" id="msg-otp"></div>
+  </div>
+
+  <!-- STEP 2: Definir destino -->
+  <div class="step" id="step-destino">
+    <div class="step-label">Passo 2 de 3 — O seu destino</div>
+
+    <div class="partida-box">
+      <div class="partida-label">📍 Partida (fixo — local do evento)</div>
+      <div class="partida-addr" id="partida-addr-2">—</div>
+    </div>
+
+    <div class="nm-wrap">
+      <input class="nm-input" id="input-destino" type="text" placeholder="Para onde vai? (rua, cidade…)" autocomplete="off"/>
+      <div class="nm-dropdown" id="nm-dropdown"></div>
+    </div>
+
+    <div id="mini-map"></div>
+
+    <div class="msg" id="msg-destino"></div>
+
+    <button class="btn" id="btn-destino" onclick="calcularPreco()" disabled>CALCULAR PREÇO</button>
+    <div class="loader" id="loader-destino"></div>
+  </div>
+
+  <!-- STEP 3: Pagamento -->
+  <div class="step" id="step-pagamento">
+    <div class="step-label">Passo 3 de 3 — Confirmar e pagar</div>
+
+    <div class="preco-box" id="preco-box">
+      <div class="preco-row">
+        <span class="preco-key">Partida</span>
+        <span class="preco-val" id="res-partida">—</span>
+      </div>
+      <div class="preco-row">
+        <span class="preco-key">Destino</span>
+        <span class="preco-val" id="res-destino">—</span>
+      </div>
+      <div class="preco-row">
+        <span class="preco-key">Distância</span>
+        <span class="preco-val" id="res-dist">—</span>
+      </div>
+      <div class="preco-row">
+        <span class="preco-key">Categoria</span>
+        <span class="preco-val" id="res-cat">—</span>
+      </div>
+      <div class="preco-row preco-total">
+        <span class="preco-key">TOTAL</span>
+        <span class="preco-val" id="res-preco">—</span>
+      </div>
+    </div>
+
+    <div class="pay-tabs">
+      <button class="pay-tab active" onclick="mudarTab('stripe')">💳 Cartão</button>
+      <button class="pay-tab" onclick="mudarTab('paypal')">🅿️ PayPal</button>
+    </div>
+
+    <!-- Stripe -->
+    <div class="pay-area active" id="area-stripe">
+      <div id="card-element"></div>
+      <button class="btn" id="btn-stripe" onclick="pagarStripe()">PAGAR COM CARTÃO</button>
+    </div>
+
+    <!-- PayPal -->
+    <div class="pay-area" id="area-paypal">
+      <div id="pp-btns"></div>
+    </div>
+
+    <div class="loader" id="loader-pag"></div>
+    <div class="msg" id="msg-pag"></div>
+  </div>
+
+  <!-- STEP 4: Sucesso -->
+  <div class="step" id="step-sucesso">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Viagem Confirmada!</div>
+    <div class="success-sub">O pagamento foi processado com sucesso.<br>O motorista será atribuído antes da hora marcada.</div>
+    <div class="success-codigo">
+      <div class="label">Referência</div>
+      <div class="valor" id="ref-codigo">—</div>
+    </div>
+    <div class="success-sub" style="font-size:11px;margin-top:8px">
+      Guarde esta referência para eventual cancelamento.
+    </div>
+  </div>
+</div>
+
+<!-- PayPal SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id=test&currency=EUR" onerror="console.warn('PayPal SDK não carregou')"></script>
+<!-- Stripe -->
+<script src="https://js.stripe.com/v3/"></script>
+
+<script>
+(function() {
+'use strict';
+
+const API = location.origin;
+const token = new URLSearchParams(location.search).get('token') || '';
+
+// Estado
+let inviteId   = null;
+let eventoId   = null;
+let otpValido  = null;
+let destinoSeleccionado = null;  // { address, lat, lng }
+let precoInfo  = null;
+let miniMap    = null;
+let miniMarkerP = null;
+let miniMarkerD = null;
+let stripeInst = null;
+let stripeCard = null;
+
+/* ── OTP input behaviour ──────────────────────────────────── */
+const otpDigits = document.querySelectorAll('.otp-digit');
+otpDigits.forEach((inp, i) => {
+  inp.addEventListener('input', () => {
+    inp.value = inp.value.replace(/\D/g, '').slice(-1);
+    if (inp.value && i < 5) otpDigits[i + 1].focus();
+    if (getOtp().length === 6) confirmarOtp();
+  });
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !inp.value && i > 0) otpDigits[i - 1].focus();
+  });
+  inp.addEventListener('paste', (e) => {
+    const txt = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+    if (txt.length === 6) {
+      txt.split('').forEach((d, j) => { otpDigits[j].value = d; });
+      confirmarOtp();
+    }
+    e.preventDefault();
+  });
+});
+
+function getOtp() {
+  return Array.from(otpDigits).map(d => d.value).join('');
+}
+
+/* ── Inicializar ─────────────────────────────────────────── */
+function init() {
+  if (!token) {
+    mostrarMsg('msg-otp', 'err', '❌ Link inválido. Verifique o SMS recebido.');
+    return;
+  }
+  // Tentar decodificar token para mostrar info de partida
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const b64 = parts[1].replace(/-/g,'+').replace(/_/g,'/');
+      const pad = b64 + '='.repeat((4 - b64.length % 4) % 4);
+      const payload = JSON.parse(atob(pad));
+      eventoId = payload.eventoId || null;
+      inviteId = payload.inviteId || null;
+    }
+  } catch(_) {}
+
+  // Carregar info do evento
+  if (eventoId) {
+    fetch(`${API}/api/partilha/evento/status/${eventoId}`, { credentials: 'include' })
+      .then(r => r.json()).then(d => {
+        if (d.ok && d.partida?.address) {
+          document.getElementById('partida-addr').textContent = d.partida.address;
+          document.getElementById('partida-addr-2').textContent = d.partida.address;
+          if (d.scheduledAt) {
+            const dt = new Date(d.scheduledAt);
+            document.getElementById('partida-hora').textContent =
+              `🕐 ${dt.toLocaleDateString('pt-PT')} às ${dt.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' })}`;
+          }
+        }
+      }).catch(() => {});
+  }
+
+  // Inicializar autocomplete do destino
+  iniciarAutocomplete();
+}
+
+/* ── STEP 1: Confirmar OTP ───────────────────────────────── */
+window.confirmarOtp = async function() {
+  const otp = getOtp();
+  if (otp.length < 6) {
+    mostrarMsg('msg-otp', 'err', 'Insira todos os 6 dígitos do código.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-otp');
+  btn.disabled = true;
+  document.getElementById('loader-otp').style.display = 'block';
+  limparMsg('msg-otp');
+
+  try {
+    const r = await fetch(`${API}/api/partilha/evento/confirmar-otp`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, otp })
+    });
+    const d = await r.json();
+
+    if (!r.ok || !d.ok) {
+      mostrarMsg('msg-otp', 'err', d.message || 'Código inválido.');
+      btn.disabled = false;
+      return;
+    }
+
+    otpValido = otp;
+    inviteId  = d.inviteId;
+    eventoId  = d.eventoId;
+    document.getElementById('partida-addr').textContent = d.partida?.address || '—';
+    document.getElementById('partida-addr-2').textContent = d.partida?.address || '—';
+
+    // Ir para step 2
+    irParaStep('step-destino');
+
+  } catch(e) {
+    mostrarMsg('msg-otp', 'err', 'Erro de ligação. Tente novamente.');
+    btn.disabled = false;
+  } finally {
+    document.getElementById('loader-otp').style.display = 'none';
+  }
+};
+
+/* ── STEP 2: Autocomplete destino ────────────────────────── */
+function iniciarAutocomplete() {
+  const input    = document.getElementById('input-destino');
+  const dropdown = document.getElementById('nm-dropdown');
+  let timer;
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 3) { dropdown.style.display = 'none'; return; }
+    timer = setTimeout(() => buscarLugar(q), 350);
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+  });
+}
+
+async function buscarLugar(q) {
+  const dropdown = document.getElementById('nm-dropdown');
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1&accept-language=pt`,
+      { headers: { 'User-Agent': 'RMEvento/1.0' } }
+    );
+    const items = await r.json();
+    dropdown.innerHTML = '';
+    if (!items.length) { dropdown.style.display = 'none'; return; }
+
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'nm-item';
+      div.textContent = item.display_name;
+      div.addEventListener('click', () => {
+        document.getElementById('input-destino').value = item.display_name;
+        dropdown.style.display = 'none';
+        destinoSeleccionado = {
+          address: item.display_name,
+          lat: Number(item.lat),
+          lng: Number(item.lon)
+        };
+        mostrarMiniMapa();
+        document.getElementById('btn-destino').disabled = false;
+      });
+      dropdown.appendChild(div);
+    });
+    dropdown.style.display = 'block';
+  } catch(_) { dropdown.style.display = 'none'; }
+}
+
+function mostrarMiniMapa() {
+  if (!destinoSeleccionado) return;
+  const el = document.getElementById('mini-map');
+  el.style.display = 'block';
+  if (!miniMap) {
+    miniMap = L.map('mini-map', { zoomControl: false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd'
+    }).addTo(miniMap);
+  }
+  const latlng = [destinoSeleccionado.lat, destinoSeleccionado.lng];
+  if (miniMarkerD) miniMap.removeLayer(miniMarkerD);
+  miniMarkerD = L.marker(latlng).addTo(miniMap)
+    .bindPopup(`🏁 ${destinoSeleccionado.address.split(',')[0]}`).openPopup();
+  miniMap.setView(latlng, 14);
+}
+
+/* ── STEP 2 → STEP 3: Calcular preço ───────────────────── */
+window.calcularPreco = async function() {
+  if (!destinoSeleccionado) {
+    mostrarMsg('msg-destino', 'err', 'Selecione um destino da lista.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-destino');
+  btn.disabled = true;
+  document.getElementById('loader-destino').style.display = 'block';
+  limparMsg('msg-destino');
+
+  try {
+    const r = await fetch(`${API}/api/partilha/evento/definir-destino`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, otp: otpValido, destino: destinoSeleccionado })
+    });
+    const d = await r.json();
+
+    if (!r.ok || !d.ok) {
+      mostrarMsg('msg-destino', 'err', d.message || 'Erro ao calcular preço.');
+      btn.disabled = false;
+      return;
+    }
+
+    precoInfo = d;
+
+    // Preencher resumo
+    document.getElementById('res-partida').textContent = d.partida || '—';
+    document.getElementById('res-destino').textContent = destinoSeleccionado.address.split(',')[0] || '—';
+    document.getElementById('res-dist').textContent    = `${d.distanciaKm} km`;
+    document.getElementById('res-cat').textContent     = d.categoria.toUpperCase();
+    document.getElementById('res-preco').textContent   = `€${Number(d.preco).toFixed(2)}`;
+
+    // Ir para pagamento
+    irParaStep('step-pagamento');
+    iniciarStripe(d.preco);
+    iniciarPayPal(d.preco);
+
+  } catch(e) {
+    mostrarMsg('msg-destino', 'err', 'Erro de ligação.');
+    btn.disabled = false;
+  } finally {
+    document.getElementById('loader-destino').style.display = 'none';
+  }
+};
+
+/* ── STEP 3: Pagamento ───────────────────────────────────── */
+window.mudarTab = function(tab) {
+  document.querySelectorAll('.pay-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'stripe') || (i === 1 && tab === 'paypal'));
+  });
+  document.getElementById('area-stripe').classList.toggle('active', tab === 'stripe');
+  document.getElementById('area-paypal').classList.toggle('active', tab === 'paypal');
+};
+
+function iniciarStripe(valor) {
+  const pk = window.__STRIPE_PK__ || '';
+  if (!pk) { document.getElementById('area-stripe').innerHTML = '<div style="color:var(--silver2);font-size:12px;padding:12px 0">Pagamento por cartão não configurado.</div>'; return; }
+  if (stripeInst) return;
+  stripeInst = Stripe(pk);
+  const elements = stripeInst.elements();
+  stripeCard = elements.create('card', {
+    style: { base: { color: '#fff', fontSize: '14px', '::placeholder': { color: '#434a55' } } }
+  });
+  stripeCard.mount('#card-element');
+}
+
+window.pagarStripe = async function() {
+  if (!stripeInst || !stripeCard) return;
+  const btn = document.getElementById('btn-stripe');
+  btn.disabled = true;
+  document.getElementById('loader-pag').style.display = 'block';
+
+  try {
+    // Criar intent
+    const ri = await fetch(`${API}/api/stripe/criar-intent`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valor: precoInfo.preco, descricao: `Evento ${eventoId}` })
+    });
+    const di = await ri.json();
+
+    const result = await stripeInst.confirmCardPayment(di.clientSecret, {
+      payment_method: { card: stripeCard }
+    });
+
+    if (result.error) {
+      mostrarMsg('msg-pag', 'err', result.error.message);
+      btn.disabled = false;
+      return;
+    }
+
+    await confirmarPagamento('stripe', result.paymentIntent?.id);
+  } catch(e) {
+    mostrarMsg('msg-pag', 'err', 'Erro ao processar pagamento.');
+    btn.disabled = false;
+  } finally {
+    document.getElementById('loader-pag').style.display = 'none';
+  }
+};
+
+function iniciarPayPal(valor) {
+  const container = document.getElementById('pp-btns');
+  container.innerHTML = '';
+  if (!window.paypal) { container.innerHTML = '<div style="color:var(--silver2);font-size:12px;padding:12px 0">PayPal não configurado.</div>'; return; }
+  paypal.Buttons({
+    createOrder: (data, actions) => actions.order.create({
+      purchase_units: [{ amount: { value: valor.toFixed(2) } }]
+    }),
+    onApprove: async (data) => {
+      await confirmarPagamento('paypal', data.orderID);
+    },
+    onError: (err) => mostrarMsg('msg-pag', 'err', 'Erro no PayPal. Tente novamente.')
+  }).render('#pp-btns');
+}
+
+async function confirmarPagamento(provider, ref) {
+  try {
+    const r = await fetch(`${API}/api/partilha/evento/confirmar-pagamento`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, inviteId, provider, ref })
+    });
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      document.getElementById('ref-codigo').textContent = ref || eventoId || '—';
+      irParaStep('step-sucesso');
+    } else {
+      mostrarMsg('msg-pag', 'err', d.message || 'Erro ao confirmar pagamento.');
+    }
+  } catch(e) {
+    mostrarMsg('msg-pag', 'err', 'Erro ao confirmar pagamento.');
+  }
+}
+
+/* ── Helpers ─────────────────────────────────────────────── */
+function irParaStep(id) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function mostrarMsg(id, tipo, texto) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = `msg show ${tipo}`;
+  el.textContent = texto;
+}
+
+function limparMsg(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'msg';
+  el.textContent = '';
+}
+
+init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2600 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REALMETROPOLIS — Validação de Motoristas</title>
+  <style>
+    :root{
+      --bg:#050505;
+      --panel:#121214;
+      --panel2:#17181b;
+      --line:rgba(223,228,236,.14);
+      --line-strong:rgba(223,228,236,.85);
+      --text:#f3f5f8;
+      --muted:#a4acb7;
+      --silver:#dfe4ec;
+      --silver-2:#bcc4cf;
+      --silver-3:#88919d;
+      --green:#2aa65f;
+      --orange:#d4882f;
+      --red:#b24545;
+      --shadow:0 22px 70px rgba(0,0,0,.45);
+    }
+
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,.04), transparent 18%),
+        linear-gradient(180deg,#040404 0%, #09090a 45%, #060607 100%);
+      color:var(--text);
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    .app{
+      min-height:100vh;
+      display:grid;
+      grid-template-rows:auto 1fr;
+    }
+
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:60;
+      background:rgba(7,7,8,.92);
+      backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--line);
+    }
+
+    .topbar-inner{
+      max-width:1880px;
+      margin:0 auto;
+      padding:18px 24px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .brand-mark{
+      width:52px;
+      height:52px;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      color:var(--silver);
+      font-weight:900;
+      letter-spacing:.05em;
+      background:#050505;
+      border:2px solid rgba(223,228,236,.92);
+      box-shadow:
+        inset 0 0 0 2px rgba(255,255,255,.02),
+        0 10px 28px rgba(255,255,255,.06),
+        0 14px 35px rgba(0,0,0,.35);
+    }
+
+    .brand h1{
+      margin:0;
+      font-size:22px;
+      font-weight:800;
+      letter-spacing:.04em;
+      color:var(--silver);
+    }
+
+    .brand p{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.11em;
+    }
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      min-height:34px;
+      padding:8px 14px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      color:var(--silver);
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+
+    .btn{
+      appearance:none;
+      position:relative;
+      overflow:hidden;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      color:var(--text);
+      min-height:42px;
+      padding:0 16px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:800;
+      letter-spacing:.03em;
+      transition:.18s ease;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    .btn::after{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background:linear-gradient(110deg, transparent 35%, rgba(255,255,255,.95) 50%, transparent 65%);
+      transform:translateX(-180%);
+      opacity:0;
+      pointer-events:none;
+    }
+
+    .btn.flash::after{
+      opacity:1;
+      animation:metalFlash 300ms ease;
+    }
+
+    @keyframes metalFlash{
+      from{ transform:translateX(-180%); opacity:.2; }
+      40%{ opacity:.95; }
+      to{ transform:translateX(180%); opacity:0; }
+    }
+
+    .btn:hover{
+      transform:translateY(-1px);
+      border-color:var(--line-strong);
+      box-shadow:inset 0 0 0 1px rgba(223,228,236,.22), 0 0 0 1px rgba(223,228,236,.08);
+    }
+
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    .btn.ghost{ background:rgba(255,255,255,.02); }
+
+    .btn.primary{
+      background:linear-gradient(180deg,#eef2f7 0%, #aeb7c3 100%);
+      color:#0b0b0d;
+      border-color:rgba(255,255,255,.4);
+    }
+
+    .btn.success{
+      background:linear-gradient(180deg, #39bf77 0%, #1f8c53 100%);
+      border-color:rgba(90,255,160,.18);
+      color:white;
+    }
+
+    .btn.warning{
+      background:linear-gradient(180deg, #efab51 0%, #c5731d 100%);
+      border-color:rgba(255,200,110,.16);
+      color:white;
+    }
+
+    .btn.danger{
+      background:linear-gradient(180deg, #cf6060 0%, #972f2f 100%);
+      border-color:rgba(255,120,120,.16);
+      color:white;
+    }
+
+    .btn.active{
+      border:2px solid rgba(223,228,236,.94);
+      box-shadow:0 0 0 2px rgba(223,228,236,.14);
+    }
+
+    .shell{
+      max-width:1880px;
+      width:100%;
+      margin:0 auto;
+      padding:24px;
+      display:grid;
+      grid-template-columns:360px 330px 1fr;
+      gap:18px;
+      align-items:stretch;
+    }
+
+    .panel{
+      background:linear-gradient(180deg, rgba(22,22,24,.96), rgba(13,13,15,.99));
+      border:1px solid var(--line);
+      border-radius:20px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      min-height:0;
+      height:calc(100vh - 122px);
+      display:flex;
+      flex-direction:column;
+    }
+
+    .panel-head{
+      padding:16px 18px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,0));
+    }
+
+    .panel-title{
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+    }
+
+    .panel-title h2,
+    .panel-title h3{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.1em;
+      text-transform:uppercase;
+      color:var(--silver);
+    }
+
+    .panel-title span{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .panel-body{
+      padding:16px;
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .search{
+      width:100%;
+      height:46px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.035);
+      color:var(--text);
+      padding:0 16px;
+      outline:none;
+      font-size:14px;
+    }
+
+    .search::placeholder{color:#7d8691}
+
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      overflow:auto;
+      padding-right:2px;
+      min-height:0;
+    }
+
+    .group{
+      border:1px solid var(--line);
+      border-radius:18px;
+      overflow:hidden;
+      background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.018));
+    }
+
+    .group-head{
+      padding:14px 14px 12px;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,.02);
+    }
+
+    .group-head strong{
+      display:block;
+      font-size:14px;
+      color:var(--silver);
+      margin-bottom:6px;
+    }
+
+    .group-head small{
+      color:var(--muted);
+      line-height:1.5;
+      display:block;
+    }
+
+    .group-body{
+      padding:10px;
+      display:grid;
+      gap:10px;
+    }
+
+    .card{
+      border-radius:14px;
+      padding:14px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.018));
+      cursor:pointer;
+      transition:.18s ease;
+    }
+
+    .card:hover{
+      border-color:var(--line-strong);
+      transform:translateY(-1px);
+    }
+
+    .card.selected{
+      border:2px solid rgba(223,228,236,.94);
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      box-shadow:0 0 0 2px rgba(223,228,236,.12);
+    }
+
+    .card b{
+      display:block;
+      font-size:14px;
+      margin-bottom:6px;
+    }
+
+    .muted{
+      color:var(--muted);
+      font-size:13px;
+      word-break:break-word;
+    }
+
+    .mini-status{
+      display:inline-flex;
+      margin-top:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(223,228,236,.16);
+      background:rgba(255,255,255,.03);
+      font-size:11px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color:var(--silver);
+    }
+
+    .thumb-grid{
+      display:grid;
+      gap:12px;
+      overflow:auto;
+      min-height:0;
+    }
+
+    .thumb{
+      display:grid;
+      grid-template-columns:92px 1fr;
+      gap:12px;
+      align-items:center;
+      padding:10px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      cursor:pointer;
+      transition:.18s ease;
+    }
+
+    .thumb:hover{
+      border-color:var(--line-strong);
+      transform:translateY(-1px);
+    }
+
+    .thumb.selected{
+      border:2px solid rgba(223,228,236,.94);
+      background:rgba(255,255,255,.06);
+      box-shadow:0 0 0 2px rgba(223,228,236,.12);
+    }
+
+    .thumb-media{
+      width:92px;
+      height:74px;
+      border-radius:12px;
+      border:1px solid rgba(223,228,236,.16);
+      background:linear-gradient(145deg, #2a2c31, #111216);
+      display:grid;
+      place-items:center;
+      color:var(--silver);
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.08em;
+      overflow:hidden;
+    }
+
+    .thumb-media img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .thumb-title{
+      font-size:13px;
+      font-weight:800;
+      margin-bottom:6px;
+      color:var(--text);
+    }
+
+    .thumb-sub{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    .viewer-panel{
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+
+    .viewer-toolbar{
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      display:grid;
+      grid-template-columns:1fr auto;
+      align-items:center;
+      gap:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+    }
+
+    .viewer-tools{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .viewer-main{
+      display:grid;
+      grid-template-columns:220px minmax(0,1fr) 230px;
+      gap:14px;
+      padding:14px;
+      flex:1;
+      min-height:0;
+      overflow:hidden;
+    }
+
+    .meta-stack{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-width:0;
+      min-height:0;
+      overflow:auto;
+    }
+
+    .doc-type-banner{
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(223,228,236,.18);
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      color:var(--silver);
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      text-align:center;
+    }
+
+    .meta{
+      padding:12px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.025);
+    }
+
+    .meta label{
+      display:block;
+      color:var(--silver-3);
+      font-size:11px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      margin-bottom:7px;
+    }
+
+    .meta div{
+      color:var(--text);
+      font-size:14px;
+      line-height:1.45;
+      word-break:break-word;
+    }
+
+    .viewer-column{
+      min-width:0;
+      min-height:0;
+      display:grid;
+      grid-template-rows:minmax(0,1fr) auto auto;
+      gap:14px;
+      overflow:hidden;
+    }
+
+    .viewer-shell{
+      border:1px solid rgba(223,228,236,.22);
+      border-radius:16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)),
+        radial-gradient(circle at center, rgba(255,255,255,.025), transparent 65%);
+      position:relative;
+      overflow:hidden;
+      min-width:0;
+      min-height:0;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .viewer-stage{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      user-select:none;
+      cursor:grab;
+      padding:18px;
+    }
+
+    .viewer-stage.dragging{
+      cursor:grabbing;
+    }
+
+    .viewer-img{
+      max-width:100%;
+      max-height:100%;
+      width:auto;
+      height:auto;
+      object-fit:contain;
+      display:none;
+      transform-origin:center center;
+      border-radius:14px;
+      box-shadow:0 20px 60px rgba(0,0,0,.42);
+    }
+
+    .viewer-frame-wrap{
+      width:100%;
+      height:100%;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      padding:8px;
+    }
+
+    .viewer-frame{
+      width:100%;
+      height:100%;
+      border:0;
+      background:#111;
+      transform-origin:center center;
+      border-radius:10px;
+    }
+
+    .viewer-empty{
+      color:var(--muted);
+      font-size:14px;
+      padding:24px;
+      text-align:center;
+      position:relative;
+      z-index:2;
+    }
+
+    .pixel-badge{
+      position:absolute;
+      right:12px;
+      top:12px;
+      z-index:6;
+      display:none;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(223,228,236,.18);
+      background:rgba(0,0,0,.45);
+      color:#eef2f7;
+      font-size:12px;
+      backdrop-filter:blur(8px);
+    }
+
+    .face-column{
+      min-width:0;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .face-title{
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(223,228,236,.18);
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      color:var(--silver);
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      text-align:center;
+    }
+
+    .face-box{
+      flex:1;
+      min-height:0;
+      border:1px solid rgba(223,228,236,.22);
+      border-radius:16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)),
+        radial-gradient(circle at center, rgba(255,255,255,.025), transparent 65%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      padding:14px;
+    }
+
+    .face-box img{
+      max-width:100%;
+      max-height:100%;
+      object-fit:contain;
+      border-radius:12px;
+      display:none;
+    }
+
+    .face-empty{
+      color:var(--muted);
+      font-size:13px;
+      text-align:center;
+      line-height:1.45;
+      padding:14px;
+    }
+
+    .decision-row{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:12px;
+    }
+
+    .decision-row .btn{
+      width:100%;
+      min-height:48px;
+    }
+
+    .save-state{
+      color:var(--muted);
+      font-size:13px;
+      text-align:left;
+      padding:0 4px;
+      margin-top:8px;
+    }
+
+    .overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.68);
+      backdrop-filter:blur(10px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:120;
+      padding:24px;
+    }
+
+    .modal{
+      width:min(1080px, 100%);
+      border-radius:24px;
+      overflow:hidden;
+      border:1px solid rgba(223,228,236,.18);
+      background:linear-gradient(180deg, rgba(24,24,27,.98), rgba(12,12,14,.98));
+      box-shadow:0 28px 100px rgba(0,0,0,.55);
+    }
+
+    .modal-head,.modal-foot{
+      padding:18px 20px;
+      border-bottom:1px solid rgba(223,228,236,.12);
+    }
+
+    .modal-foot{
+      border-bottom:0;
+      border-top:1px solid rgba(223,228,236,.12);
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+    }
+
+    .modal-head h3{
+      margin:0 0 6px;
+      font-size:18px;
+      color:var(--silver);
+    }
+
+    .modal-head p{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .modal-body{
+      padding:18px 20px;
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0,1fr));
+      gap:12px;
+      max-height:55vh;
+      overflow:auto;
+    }
+
+    .reason{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:14px 14px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.025);
+      cursor:pointer;
+      transition:.18s ease;
+      min-height:58px;
+    }
+
+    .reason:hover{
+      border-color:var(--line-strong);
+    }
+
+    .reason input{
+      accent-color:#dfe4ec;
+      transform:scale(1.05);
+    }
+
+    .reason span{
+      color:var(--text);
+      font-size:14px;
+      line-height:1.35;
+      font-weight:700;
+    }
+
+    .modal-err{
+      color:#ffb4b4;
+      font-size:13px;
+      padding:0 20px 16px;
+    }
+
+    /* ── Badges de estado de documento ── */
+  .doc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .07em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+  }
+  .doc-badge.validado   { background: rgba(42,166,95,.14);  color: #4de89a; border: 1px solid rgba(42,166,95,.3);  }
+  .doc-badge.pendente   { background: rgba(212,136,47,.13); color: #f5b55a; border: 1px solid rgba(212,136,47,.3); }
+  .doc-badge.reenvio    { background: rgba(91,155,247,.12); color: #9ec5fe; border: 1px solid rgba(91,155,247,.3); }
+  .doc-badge.recusado   { background: rgba(178,69,69,.14);  color: #ff9999; border: 1px solid rgba(178,69,69,.3);  }
+
+  /* ── Thumb overlay de estado ── */
+  .thumb-status-overlay {
+    position: absolute;
+    top: 6px; right: 6px;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    pointer-events: none;
+    text-transform: uppercase;
+  }
+  .thumb-status-overlay.validado { background: rgba(42,166,95,.2);  color: #4de89a; }
+  .thumb-status-overlay.pendente { background: rgba(212,136,47,.2); color: #f5b55a; }
+  .thumb-status-overlay.reenvio  { background: rgba(91,155,247,.2); color: #9ec5fe; }
+
+  .thumb { position: relative; }
+
+  /* ── Botões de acção nos cards ── */
+  .card-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .card-actions .btn {
+    min-height: 26px;
+    padding: 0 10px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .06em;
+  }
+  .btn-aprovar {
+    background: rgba(42,166,95,.12);
+    border: 1px solid rgba(42,166,95,.3);
+    color: #4de89a;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-aprovar:hover { background: rgba(42,166,95,.22); }
+  .btn-excluir {
+    background: rgba(178,69,69,.1);
+    border: 1px solid rgba(178,69,69,.25);
+    color: #ff8888;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-excluir:hover { background: rgba(178,69,69,.2); }
+
+  /* ── Toast de feedback ── */
+  #toastMsg {
+    position: fixed;
+    bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(18,18,20,.97);
+    border: 1px solid rgba(223,228,236,.18);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 200;
+    display: none;
+    white-space: nowrap;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  }
+  #toastMsg.ok   { border-color: rgba(42,166,95,.4);  color: #4de89a; }
+  #toastMsg.err  { border-color: rgba(178,69,69,.4);  color: #ff9999; }
+  #toastMsg.info { border-color: rgba(91,155,247,.4); color: #9ec5fe; }
+    .card.reenvio-highlight {
+      border-color: rgba(91,155,247,.7) !important;
+      box-shadow: 0 0 0 3px rgba(91,155,247,.15);
+      animation: reenvio-pulse 1s ease 3;
+    }
+    @keyframes reenvio-pulse {
+      0%,100% { box-shadow: 0 0 0 3px rgba(91,155,247,.15); }
+      50%      { box-shadow: 0 0 0 6px rgba(91,155,247,.3); }
+    }
+
+    ::-webkit-scrollbar-thumb{
+      background:rgba(255,255,255,.12);
+      border-radius:999px;
+    }
+    ::-webkit-scrollbar-track{background:transparent}
+
+    @media (max-width: 1600px){
+      .viewer-main{ grid-template-columns:220px minmax(0,1fr); }
+      .face-column{ grid-column:1 / -1; flex-direction:row; }
+      .face-title{ width:220px; }
+      .face-box{ min-height:220px; }
+    }
+    @media (max-width: 1500px){
+      .shell{grid-template-columns:1fr}
+      .panel{height:auto; min-height:420px}
+      .viewer-main{grid-template-columns:1fr}
+      .face-column{ flex-direction:column; }
+      .face-title{ width:auto; }
+    }
+    @media (max-width: 920px){
+      .viewer-toolbar{ grid-template-columns:1fr; }
+      .modal-body{ grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width: 640px){
+      .topbar-inner,.shell{padding:16px}
+      .decision-row{ grid-template-columns:1fr; }
+      .modal-body{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="brand-mark">RM</div>
+          <div>
+            <h1>Realmetropolis</h1>
+            <p>Painel profissional de validação documental</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="btn primary" type="button" id="btnSendResultTop">Enviar resultado</button>
+          <button class="btn ghost active" type="button" id="modeMotoristas">Motoristas</button>
+          <button class="btn ghost" type="button" id="modeVeiculos">Veículos</button>
+          <button class="btn ghost" type="button" id="modeGestores">Operadores de Frota</button>
+          <button class="btn ghost" type="button" id="btnVoltar">Voltar</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <h2>Registos</h2>
+            <span id="entitiesHint">A carregar...</span>
+          </div>
+          <span class="pill" id="leftPill">pendentes</span>
+        </div>
+        <div class="panel-body">
+          <div class="toolbar" style="margin-bottom:12px">
+            <input class="search" id="q" type="text" placeholder="Pesquisar nome, email, matrícula, gestor, empresa..." />
+          </div>
+          <div class="toolbar" style="margin-bottom:16px">
+            <button class="btn primary" type="button" id="filterPending">Pendentes</button>
+            <button class="btn ghost" type="button" id="filterAll">Todos</button>
+          </div>
+          <div class="list" id="entitiesList"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title">
+            <h3 id="thumbTitle">Documentos</h3>
+            <span id="thumbHint">Selecione um registo para ver os documentos.</span>
+          </div>
+          <span class="pill" id="thumbPill">—</span>
+        </div>
+        <div class="panel-body">
+          <div class="thumb-grid" id="thumbGrid"></div>
+        </div>
+      </section>
+
+      <section class="panel viewer-panel">
+        <div class="viewer-toolbar">
+          <div class="panel-title">
+            <h3 id="viewerLabel">Documento</h3>
+            <span id="viewerHint">Selecione um documento.</span>
+          </div>
+          <div class="viewer-tools">
+            <button class="btn ghost" type="button" id="btnRotateLeft">⟲</button>
+            <button class="btn ghost" type="button" id="btnRotateRight">⟳</button>
+            <button class="btn ghost" type="button" id="btnZoomOut">−</button>
+            <button class="btn ghost" type="button" id="btnZoomIn">+</button>
+            <button class="btn ghost" type="button" id="btnFit">Ajustar</button>
+            <button class="btn ghost" type="button" id="btnActual">100%</button>
+            <button class="btn ghost" type="button" id="btnPixel">Pixel</button>
+            <button class="btn ghost" type="button" id="btnNegative">Negativo</button>
+          </div>
+        </div>
+
+        <div class="viewer-main">
+          <div class="meta-stack">
+            <div class="doc-type-banner" id="docTypeBanner">TIPO DE DOCUMENTO</div>
+            <div class="meta"><label>Documento</label><div id="regDocLabel">—</div></div>
+            <div class="meta"><label>Nome titular</label><div id="regNome">—</div></div>
+            <div class="meta"><label>NIF / CPF (Motorista)</label><div id="regNifMotorista">—</div></div>
+            <div class="meta"><label>Nº do Documento</label><div id="regNumero">—</div></div>
+            <div class="meta"><label>Validade</label><div id="regValidade">—</div></div>
+            <div class="meta"><label>Email</label><div id="regEmail">—</div></div>
+            <div class="meta"><label>Contacto</label><div id="regContacto">—</div></div>
+            <div class="meta"><label>Empresa / Gestor</label><div id="regGestor">—</div></div>
+
+            <!-- Campo especial: Registo Criminal -->
+            <div id="regCriminalWrap" style="display:none;margin-top:8px;border:1px solid rgba(122,162,255,.2);border-radius:10px;padding:12px;background:rgba(122,162,255,.04)">
+              <label style="font-size:9px;font-weight:700;color:#6b7280;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:8px">Código de Acesso ao Registo Criminal</label>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div id="regCriminalCodigo" style="font-size:13px;font-weight:700;color:#e8eaed;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 12px;letter-spacing:.08em;flex:1;min-width:0;word-break:break-all">—</div>
+                <button id="btnCopiarCodigo" onclick="copiarCodigoCriminal()" style="height:34px;padding:0 10px;border-radius:8px;border:1px solid rgba(122,162,255,.3);background:rgba(122,162,255,.08);color:#7aa2ff;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">COPIAR</button>
+              </div>
+              <a id="linkRegistoCriminal" href="https://registocriminal.justica.gov.pt/UserCertificados" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;font-weight:600;color:#7aa2ff;text-decoration:none">
+                <span>🔗</span> Verificar em registocriminal.justica.gov.pt
+              </a>
+            </div>
+          </div>
+
+          <div class="viewer-column">
+            <div class="viewer-shell">
+              <div class="pixel-badge" id="pixelBadge">RGB(0,0,0)</div>
+              <div class="viewer-stage" id="viewerStage">
+                <img class="viewer-img" id="viewerImg" alt="Documento" />
+                <div class="viewer-frame-wrap" id="viewerFrameWrap">
+                  <iframe class="viewer-frame" id="viewerFrame" title="PDF Viewer"></iframe>
+                </div>
+                <div class="viewer-empty" id="viewerEmpty">Selecione um documento para visualizar.</div>
+              </div>
+            </div>
+            <div class="decision-row">
+              <button class="btn success" type="button" id="btnApprove">Validado</button>
+              <button class="btn warning" type="button" id="btnResend">Enviar novo</button>
+              <button class="btn danger" type="button" id="btnReject">Recusado</button>
+            </div>
+            <div class="save-state" id="saveState">Pendente por enviar resultado.</div>
+          </div>
+
+          <div class="face-column">
+            <div class="face-title">Foto do rosto</div>
+            <div class="face-box">
+              <img id="faceImg" alt="Foto do rosto" />
+              <div class="face-empty" id="faceEmpty">Sem foto de rosto para comparação.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="modalTitle">Justificação do documento</h3>
+        <p id="modalHint">Selecione os motivos e depois clique em Agrupar.</p>
+      </div>
+      <div class="modal-body">
+        <label class="reason"><input class="reasonChk" type="checkbox" value="Pouco visível" /><span>Pouco visível</span></label>
+        <label class="reason"><input class="reasonChk" type="checkbox" value="DC. rasurado" /><span>DC. rasurado</span></label>
+        <label class="reason"><input class="reasonChk" type="checkbox" value="DC. inválido" /><span>DC. inválido</span></label>
+        <label class="reason"><input class="reasonChk" type="checkbox" value="DC. incorreto" /><span>DC. incorreto</span></label>
+        <label class="reason"><input class="reasonChk" type="checkbox" value="Foto pouco visível" /><span>Foto pouco visível</span></label>
+        <label class="reason"><input class="reasonChk" type="checkbox" value="Dados não confere" /><span>Dados não confere</span></label>
+      </div>
+      <div class="modal-err" id="modalErr"></div>
+      <div class="modal-foot">
+        <button class="btn ghost" type="button" id="btnCancelModal">Cancelar</button>
+        <button class="btn primary" type="button" id="btnGroupReasons">Agrupar</button>
+      </div>
+    </div>
+  </div>
+
+<div id="toastMsg"></div>
+
+<script>
+(() => {
+  const entitiesList = document.getElementById("entitiesList");
+  const entitiesHint = document.getElementById("entitiesHint");
+  const q = document.getElementById("q");
+  const thumbTitle = document.getElementById("thumbTitle");
+  const thumbPill = document.getElementById("thumbPill");
+  const thumbHint = document.getElementById("thumbHint");
+  const thumbGrid = document.getElementById("thumbGrid");
+  const viewerImg = document.getElementById("viewerImg");
+  const viewerFrame = document.getElementById("viewerFrame");
+  const viewerFrameWrap = document.getElementById("viewerFrameWrap");
+  const viewerEmpty = document.getElementById("viewerEmpty");
+  const viewerHint = document.getElementById("viewerHint");
+  const viewerLabel = document.getElementById("viewerLabel");
+  const viewerStage = document.getElementById("viewerStage");
+  const pixelBadge = document.getElementById("pixelBadge");
+  const regGestor = document.getElementById("regGestor");
+  const regNome = document.getElementById("regNome");
+  const regEmail = document.getElementById("regEmail");
+  const regContacto = document.getElementById("regContacto");
+  const regNumero = document.getElementById("regNumero");
+  const regDocLabel = document.getElementById("regDocLabel");
+  const regValidade = document.getElementById("regValidade");
+  const saveState = document.getElementById("saveState");
+  const docTypeBanner = document.getElementById("docTypeBanner");
+  const faceImg = document.getElementById("faceImg");
+  const faceEmpty = document.getElementById("faceEmpty");
+  const modeMotoristas = document.getElementById("modeMotoristas");
+  const modeVeiculos = document.getElementById("modeVeiculos");
+  const filterPending = document.getElementById("filterPending");
+  const filterAll = document.getElementById("filterAll");
+  const btnVoltar = document.getElementById("btnVoltar");
+  const btnSendResultTop = document.getElementById("btnSendResultTop");
+  const btnApprove = document.getElementById("btnApprove");
+  const btnResend = document.getElementById("btnResend");
+  const btnReject = document.getElementById("btnReject");
+  const btnNegative = document.getElementById("btnNegative");
+  const btnRotateLeft = document.getElementById("btnRotateLeft");
+  const btnRotateRight = document.getElementById("btnRotateRight");
+  const btnZoomOut = document.getElementById("btnZoomOut");
+  const btnZoomIn = document.getElementById("btnZoomIn");
+  const btnFit = document.getElementById("btnFit");
+  const btnActual = document.getElementById("btnActual");
+  const btnPixel = document.getElementById("btnPixel");
+  const overlay = document.getElementById("overlay");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalHint = document.getElementById("modalHint");
+  const modalErr = document.getElementById("modalErr");
+  const btnCancelModal = document.getElementById("btnCancelModal");
+  const btnGroupReasons = document.getElementById("btnGroupReasons");
+
+  /* ══════════════════════════════════════════════════════════
+     ESTADO — tudo em memória, fonte de verdade é o servidor
+  ══════════════════════════════════════════════════════════ */
+  // ⚡ Este painel é DEDICADO à validação de motoristas.
+  //    Ignoramos qualquer ?mode= da URL — este ficheiro só opera
+  //    em modo "motoristas". Assim garantimos separação de
+  //    responsabilidades (cada scope tem o seu painel) e o URL
+  //    limpo /validacao-motoristas.html é auto-explicativo.
+  const mode = "motoristas";
+  let statusFilter = "pendente";
+  let entities     = [];
+  let selectedEntity  = null;
+  let currentDoc      = null;
+  let pendingAction   = "";
+  let groupedIssues   = {};   // decisões da sessão actual (em memória)
+  let currentEntityId = "";
+  let scale = 1, rotation = 0, negative = false;
+  let translateX = 0, translateY = 0;
+  let dragging = false, dragStartX = 0, dragStartY = 0, dragBaseX = 0, dragBaseY = 0;
+  let pixelMode = false;
+
+  // Cache de docs já validados — preenchida pelo servidor, nunca persiste no cliente
+  // { entityId: { docKey: true } }
+  let validatedDocsCache = {};
+
+  function isDocAlreadyValidated(entityId, docKey) {
+    return !!(validatedDocsCache[entityId]?.[docKey]);
+  }
+
+  function setDocValidatedCache(entityId, docKey) {
+    if (!validatedDocsCache[entityId]) validatedDocsCache[entityId] = {};
+    validatedDocsCache[entityId][docKey] = true;
+  }
+
+  /* Carrega do servidor quais docs desta entidade já foram validados */
+  async function carregarDocsValidados(entityId) {
+    try {
+      const r = await fetch(`/api/validacoes/docs-validados/${encodeURIComponent(entityId)}`,
+        { credentials: "include" });
+      if (!r.ok) return;
+      const data = await r.json().catch(() => ({}));
+      const keys = data?.docsValidados || data?.docs || [];
+      keys.forEach(k => setDocValidatedCache(entityId, k));
+    } catch { /* silencioso — não bloqueia o fluxo */ }
+  }
+
+  /* ── Toast ── */
+  let _toastTimer = null;
+  const toastEl = document.getElementById("toastMsg");
+  function toast(msg, type = "ok", duration = 3500) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.className = type;
+    toastEl.style.display = "block";
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => { toastEl.style.display = "none"; }, duration);
+  }
+
+  function flashButton(btn) {
+    if (!btn) return;
+    btn.classList.remove("flash");
+    void btn.offsetWidth;
+    btn.classList.add("flash");
+    setTimeout(() => btn.classList.remove("flash"), 320);
+  }
+
+  function escapeHtml(text) {
+    return String(text ?? "")
+      .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+  }
+
+  function looksLikeBase64(value) {
+    if (!value || typeof value !== "string") return false;
+    const v = value.trim();
+    if (!v || v.length < 80) return false;
+    if (v.startsWith("data:")) return false;
+    if (v.includes("/") || v.includes("\\") || v.includes("http://") || v.includes("https://")) return false;
+    return /^[A-Za-z0-9+/=\s]+$/.test(v);
+  }
+
+  function guessMimeFromKey(key = "") {
+    const k = String(key).toLowerCase();
+    if (k.includes("pdf") || k.includes("imtt") || k.includes("tvde")) return "application/pdf";
+    if (k.includes("png")) return "image/png";
+    if (k.includes("webp")) return "image/webp";
+    return "image/jpeg";
+  }
+
+  function buildDataUrl(value, mime = "image/jpeg") {
+    const clean = String(value || "").trim();
+    if (!clean) return "";
+    return `data:${mime};base64,${clean.replace(/\s+/g, "")}`;
+  }
+
+  function extractRawDocValue(x) {
+    return (
+      x?.conteudo ?? x?.content ?? x?.data ?? x?.base64 ?? x?.buffer ??
+      x?.url ?? x?.fileUrl ?? x?.arquivoUrl ?? x?.path ?? x?.src ??
+      x?.location ?? x?.secure_url ?? x?.filePath ?? x?.filepath ??
+      x?.filename ?? x?.file?.url ?? x?.file?.path ?? x ?? ""
+    );
+  }
+
+  function extractMimeType(x, fallbackKey = "") {
+    return x?.mimeType || x?.contentType || x?.mimetype || x?.tipo || x?.type || guessMimeFromKey(fallbackKey);
+  }
+
+  function normalizeDocUrl(x, folder = "", fallbackKey = "") {
+    const raw = extractRawDocValue(x);
+    if (!raw) return "";
+    const value = String(raw).trim();
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:") || value.startsWith("blob:")) return value;
+    if (looksLikeBase64(value)) return buildDataUrl(value, extractMimeType(x, fallbackKey));
+    if (value.startsWith("/uploads/")) return `${location.origin}${value}`;
+    if (value.startsWith("uploads/")) return `${location.origin}/${value}`;
+    if (value.startsWith("/api/")) return `${location.origin}${value}`;
+    if (value.startsWith("api/")) return `${location.origin}/${value}`;
+    if (value.includes("/uploads/") || value.includes("\\uploads\\")) {
+      const normalized = value.replaceAll("\\", "/");
+      const idx = normalized.indexOf("/uploads/");
+      if (idx >= 0) return `${location.origin}${normalized.slice(idx)}`;
+    }
+    if (/^[^\\/]+\.(jpg|jpeg|png|webp|gif|pdf)$/i.test(value)) {
+      if (folder) return `${location.origin}/uploads/${folder}/${value}`;
+      return `${location.origin}/uploads/${value}`;
+    }
+    return "";
+  }
+
+  function statusLabel(s) {
+    const v = String(s || "").toLowerCase();
+    if (v === "pendente") return "PENDENTE";
+    if (v === "validado") return "VALIDADO";
+    if (v === "pendente_novo_envio") return "ENVIAR NOVO";
+    if (v === "recusado") return "RECUSADO";
+    if (v === "aprovado") return "APROVADO";
+    if (v === "rejeitado") return "REJEITADO";
+    return String(s || "—").toUpperCase();
+  }
+
+  function isPendingStatus(status) {
+    const s = String(status || "").toLowerCase();
+    // Mostra pendentes E entidades com pedido de reenvio (têm novos docs para validar)
+    return s === "pendente" || s === "" || s === "pendente_novo_envio";
+  }
+
+  function getEntityId(item) {
+    return String(item?._id || item?.id || item?.entityId || item?.matricula || item?.email || item?.ownerEmail || item?.nome || item?.ownerName || "sem-id");
+  }
+
+  function getGestorInfo(item) {
+    const gestor = item?.gestor || {};
+    return {
+      empresa: String(gestor?.empresa || item?.empresa || item?.gestorNome || item?.submittedByName || "Sem empresa / gestor").trim(),
+      gestorNome: String(gestor?.gestorNome || item?.gestorNome || item?.empresa || item?.submittedByName || "Sem gestor").trim()
+    };
+  }
+
+  // Adaptador para o formato devolvido por /api/validation/painel-motoristas
+  // O backend devolve { id, source, nome, contacto, email, gestorNome,
+  //                     submittedAt, documentos: [array], payload: {...} }
+  // Convertemos para o formato antigo (objecto por chave) para o painel
+  // conseguir mostrar previews sem mudar a lógica de rendering.
+  function mapPainelMotoristaItem(raw) {
+    // ─────────────────────────────────────────────────────────
+    // Sistema B devolve documentos como OBJETO com esta forma:
+    //   {
+    //     fotoRosto:      { file: { url, mimetype, ... }, validade, meta },
+    //     cc:             { file: { url, ... } },
+    //     tResidencia:    { file: { url, ... } },
+    //     cartaConducao:  { file: { url, ... } },
+    //     tvde:           { file: { url, ... } },
+    //     registoCriminal:{ file: { url, ... } },
+    //   }
+    // O painel espera cada valor como STRING (URL) ou como um objecto
+    // simples. Convertemos aqui para o formato que mapLegacyDriverItem
+    // já suporta (URL string por chave).
+    // ─────────────────────────────────────────────────────────
+    const docsIn = raw.documentos || {};
+    const docsUrl = {};
+    Object.keys(docsIn || {}).forEach(k => {
+      const d = docsIn[k];
+      if (!d) return;
+      // Extrair URL do objecto Sistema B (d.file.url) ou aceitar string direta.
+      const url = (d?.file?.url) || d?.url || d?.path || (typeof d === "string" ? d : null);
+      if (url) docsUrl[k] = url;
+    });
+
+    const p = raw.payload || {};
+    const mapped = mapLegacyDriverItem({
+      // Metadados originais preservados para o painel saber a fonte
+      _id:           raw.id,
+      __source:      raw.source || "B",
+      __submissionId: raw.submissionId,
+      __motoristaId:  raw.motoristaId,
+      __gestorId:     raw.gestorId,
+      __gestorNome:   raw.gestorNome,
+      __gestorEmail:  raw.gestorEmail,
+
+      nome:      raw.nome     || p.nome     || "",
+      contacto:  raw.contacto || p.contacto || "",
+      email:     raw.email    || p.email    || "",
+      nif:       p.nif        || "",
+      idiomas:   p.idiomas    || [],
+
+      // Datas / status
+      status:      raw.status || "pendente",
+      submittedAt: raw.submittedAt,
+      createdAt:   raw.submittedAt,
+
+      // Documentos convertidos: chave → URL string (para mapLegacyDriverItem consumir)
+      documentos: docsUrl,
+
+      // Payload bruto acessível para debug/inspecção
+      payload:    p,
+    });
+
+    // Guardar os documentos brutos (com validades + meta) para
+    // getDocValidity/getDocNumero conseguirem extrair validades e nºs.
+    mapped.documentos_raw = docsIn;
+    mapped.nif = p.nif || "";
+    mapped.endereco = p.endereco || "";
+    mapped.iban = p.iban || "";
+    return mapped;
+  }
+
+  function mapLegacyDriverItem(raw) {
+    const docs = raw.documentos || raw.documents || raw.docs || raw.arquivos || {};
+    const root = raw || {};
+
+    // Helper: primeiro valor não nulo
+    const p = (...vals) => vals.find(v => v != null && v !== "") || null;
+
+    const normalizedDocs = {
+      // Foto de rosto / perfil (motorista-registo.html → fotoPerfil)
+      fotoRosto:       p(docs.fotoRosto, docs.fotoPerfil, docs.selfie, docs.foto, docs.rosto,
+                         root.fotoRosto, root.fotoPerfil, root.selfie, root.foto, root.rosto),
+      // Comprovativo IBAN
+      ibanComprovativo:p(docs.ibanComprovativo, docs.comprovativoIban, docs.iban,
+                         root.ibanComprovativo, root.comprovativoIban, root.iban),
+      registoCriminal: p(docs.registoCriminal, root.registoCriminal),
+      // BI / CC / Documento de identificação (motorista-registo.html → bi)
+      docIdFrente:     p(docs.bi, docs.cc, docs.docIdFrente, docs.documentoIdentificacaoFrente,
+                         docs.ccFrente, docs.biFrente, docs.idFrente, docs.cartaoCidadao,
+                         root.bi, root.cc, root.docIdFrente, root.ccFrente, root.biFrente),
+      docIdVerso:      p(docs.docIdVerso, docs.documentoIdentificacaoVerso, docs.ccVerso,
+                         docs.biVerso, docs.idVerso, root.docIdVerso, root.ccVerso, root.biVerso),
+      // Título de residência
+      docObgIdFrente:  p(docs.docObgIdFrente, docs.tituloResidenciaFrente, docs.cartaoCidadaoFrente,
+                         docs.documentoObrigatorioFrente, root.docObgIdFrente, root.tituloResidenciaFrente),
+      docObgIdVerso:   p(docs.docObgIdVerso, docs.tituloResidenciaVerso, docs.cartaoCidadaoVerso,
+                         docs.documentoObrigatorioVerso, root.docObgIdVerso, root.tituloResidenciaVerso),
+      // Carta de condução (motorista-registo.html → cartaConducao)
+      cartaFrente:     p(docs.cartaConducao, docs.cartaFrente, docs.cartaConducaoFrente, docs.licencaFrente,
+                         root.cartaConducao, root.cartaFrente, root.cartaConducaoFrente, root.licencaFrente),
+      cartaVerso:      p(docs.cartaVerso, docs.cartaConducaoVerso, docs.licencaVerso,
+                         root.cartaVerso, root.cartaConducaoVerso, root.licencaVerso),
+      // TVDE
+      imttTvde:        p(docs.imttTvde, docs.tvde, docs.certificadoTvde, docs.imtt,
+                         root.imttTvde, root.tvde, root.certificadoTvde, root.imtt),
+    };
+    return {
+      ...raw, entityType: "driver",
+      nome: raw.nome || raw.ownerName || raw.name || "",
+      ownerName: raw.ownerName || raw.nome || raw.name || "",
+      email: raw.email || raw.ownerEmail || "",
+      ownerEmail: raw.ownerEmail || raw.email || "",
+      contacto: raw.contacto || raw.ownerContact || raw.telefone || raw.phone || "",
+      ownerContact: raw.ownerContact || raw.contacto || raw.telefone || raw.phone || "",
+      nif: raw.nif || "",
+      validades: raw.validades || {},
+      status: raw.validacao?.status || raw.aprovacao || raw.estado || raw.status || "pendente",
+      documentos: normalizedDocs, documents: normalizedDocs, docs: normalizedDocs
+    };
+  }
+
+  function mapLegacyValidadorItem(raw) {
+    const docs = raw.documentos || {};
+    function toUrl(d) {
+      if (!d) return null;
+      if (typeof d === "string") return d;
+      return d?.file?.path || d?.file?.url || d?.url || d?.path || null;
+    }
+    const BASE = location.origin;
+    function fullUrl(u) {
+      if (!u) return null;
+      if (u.startsWith("http")) return u;
+      return BASE + (u.startsWith("/") ? u : "/" + u);
+    }
+    // Schema Validador: ccFrente, ccVerso, morada, outro
+    const normDocs = {
+      ccFrente:           fullUrl(toUrl(docs.ccFrente)),
+      ccVerso:            fullUrl(toUrl(docs.ccVerso)),
+      morada:             fullUrl(toUrl(docs.morada)),
+      outro:              fullUrl(toUrl(docs.outro)),
+      // aliases para compatibilidade com buildDocsEntries
+      cc:                 fullUrl(toUrl(docs.ccFrente)),
+      tResidencia:        fullUrl(toUrl(docs.ccFrente)), // mesmo campo — tipo definido por tipoDocumento
+      comprovativoMorada: fullUrl(toUrl(docs.morada)),
+    };
+    return {
+      ...raw,
+      entityType:    "validador",
+      nome:          raw.nome     || "",
+      email:         raw.email    || "",
+      contacto:      raw.contacto || "",
+      nif:           raw.nif      || "",
+      tipoDocumento: raw.tipoDocumento || "cc",
+      scope:         raw.scope    || "",
+      status:        raw.validacao?.status || "pendente",
+      documents:     normDocs,
+      documentos:    normDocs,
+      docs:          normDocs,
+    };
+  }
+
+  function mapLegacyVehicleItem(raw) {
+    const docs = raw.documentos || raw.documents || raw.docs || {};
+    const normalizedDocs = {
+      duaFrente: docs.duaFrente || null, duaVerso: docs.duaVerso || null,
+      inspecaoDoc: docs.inspecaoDoc || null, seguroDoc: docs.seguroDoc || null,
+      autorizacaoDoc: docs.autorizacaoDoc || null,
+      dua: docs.dua || raw.dua || null,
+      seguro: docs.seguro || raw.seguro || raw.cartaVerde || null,
+      inspecao: docs.inspecao || raw.inspecao || raw.inspecaoPeriodica || null,
+      livrete: docs.livrete || raw.livrete || null,
+      fotos: Array.isArray(docs.fotos) ? docs.fotos : Array.isArray(docs.fotosVeiculo) ? docs.fotosVeiculo : Array.isArray(raw.fotos) ? raw.fotos : Array.isArray(raw.imagens) ? raw.imagens : []
+    };
+    return {
+      ...raw, entityType: "vehicle",
+      nome: raw.nome || `${raw.marca || "Veículo"} ${raw.modelo || ""}`.trim(),
+      ownerName: raw.ownerName || raw.nome || "",
+      ownerEmail: raw.ownerEmail || raw.email || "",
+      ownerContact: raw.ownerContact || raw.contacto || "",
+      status: raw.validacao?.status || raw.aprovacao || raw.estado || raw.status || "pendente",
+      validades: raw.validades || {},
+      documentos: normalizedDocs, documents: normalizedDocs, docs: normalizedDocs
+    };
+  }
+
+  // Gestores de frota — dados do ConviteParceiro (status: "registado")
+  // Documentos têm estrutura { url, validade } guardada pelo backend
+  // Colaboradores — modelo colaboradores.js
+  // Campos: empresa, nome, email, contacto, tipo, concelho, cidade, aprovado, validacao
+  function mapLegacyGestorItem(raw) {
+    const docs = raw.documentos || {};
+    // Mapear documentos do modelo Colaborador para o formato esperado pelo viewer
+    // Estrutura: documentos.certidaoPermanente.file.url
+    function docUrl(campo) {
+      const d = docs[campo];
+      if (!d) return null;
+      if (typeof d === "string") return d;
+      if (d.file?.url) return d.file.url;
+      if (d.url) return d.url;
+      return null;
+    }
+
+    const mappedDocs = {
+      certidaoPermanente:          docUrl("certidaoPermanente"),
+      seguroResponsabilidadeCivil: docUrl("seguroResponsabilidadeCivil"),
+      seguroAcidenteTrabalho:      docUrl("seguroAcidenteTrabalho"),
+      autorizacaoImtt:             docUrl("autorizacaoImtt"),
+    };
+
+    return {
+      ...raw,
+      entityType:   "gestor",
+      nome:         raw.empresa || raw.nome || "",
+      ownerName:    raw.empresa || raw.nome || "",
+      email:        raw.email   || "",
+      ownerEmail:   raw.email   || "",
+      contacto:     raw.contacto || "",
+      ownerContact: raw.contacto || "",
+      nif:          raw.nif     || "",
+      empresa:      raw.empresa || raw.nome || "",
+      tipo:         raw.tipo    || "",
+      concelho:     raw.concelho || "",
+      cidade:       raw.cidade  || "",
+      status:       raw.aprovado === false ? "pendente" : (raw.validacao?.status || "pendente"),
+      aprovacao:    raw.aprovado === false ? "pendente" : (raw.validacao?.status || "pendente"),
+      validacao:    raw.validacao || { status: "pendente" },
+      documentos:   mappedDocs,
+      documents:    mappedDocs,
+      docs:         mappedDocs,
+      validades:    {
+        certidaoPermanente:          docs.certidaoPermanente?.validade || "",
+        seguroResponsabilidadeCivil: docs.seguroResponsabilidadeCivil?.validade || "",
+        seguroAcidenteTrabalho:      docs.seguroAcidenteTrabalho?.validade || "",
+        autorizacaoImtt:             docs.autorizacaoImtt?.validade || "",
+      }
+    };
+  }
+
+  async function apiGet(path) {
+    const r = await fetch(path, { credentials: "include" });
+    const txt = await r.text().catch(() => "");
+    let data = [];
+    try { data = txt ? JSON.parse(txt) : []; } catch { data = []; }
+    if (!r.ok) throw new Error("Falha ao carregar dados.");
+    return data;
+  }
+
+  function prettifyDocKey(key) {
+    return String(key || "").replace(/([a-z])([A-Z])/g, "$1 $2").replaceAll("_", " ").replaceAll("-", " ").replace(/\s+/g, " ").trim();
+  }
+
+  function collectGenericDocEntries(source, preferredKeys = []) {
+    const found = [], seen = new Set();
+    function pushDoc(key, label, value) {
+      const url = normalizeDocUrl(value, "", key);
+      if (!url) return;
+      const sig = `${key}__${url}`;
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      found.push({ key, label, url });
+    }
+    preferredKeys.forEach(({ key, label, value }) => pushDoc(key, label, value));
+    function walk(obj, prefix = "") {
+      if (!obj || typeof obj !== "object") return;
+      Object.entries(obj).forEach(([k, v]) => {
+        const fullKey = prefix ? `${prefix}.${k}` : k;
+        if (!v) return;
+        if (typeof v === "string") { const url = normalizeDocUrl(v, "", k); if (url) pushDoc(k, prettifyDocKey(k), v); return; }
+        if (Array.isArray(v)) {
+          v.forEach((item, i) => {
+            if (typeof item === "string") { const url = normalizeDocUrl(item, "", `${k}_${i}`); if (url) pushDoc(`${k}_${i}`, `${prettifyDocKey(k)} #${i + 1}`, item); }
+            else if (item && typeof item === "object") { const candidate = extractRawDocValue(item); if (candidate) pushDoc(`${k}_${i}`, `${prettifyDocKey(k)} #${i + 1}`, item); else walk(item, `${fullKey}.${i}`); }
+          });
+          return;
+        }
+        if (typeof v === "object") { const candidate = extractRawDocValue(v); if (candidate) { pushDoc(k, prettifyDocKey(k), v); return; } walk(v, fullKey); }
+      });
+    }
+    walk(source);
+    return found;
+  }
+
+  function buildDocsEntries(item) {
+    const docs = item?.documents || item?.documentos || item?.docs || {};
+    const out = [];
+
+    // ── Operador de Frota — documentos específicos da empresa ──
+    if (item.entityType === "gestor") {
+      const entries = [
+        { key: "certidaoPermanente",          label: "Certidão Permanente",            url: docs.certidaoPermanente },
+        { key: "seguroResponsabilidadeCivil", label: "Seguro Responsabilidade Civil",  url: docs.seguroResponsabilidadeCivil },
+        { key: "seguroAcidenteTrabalho",      label: "Seguro Acidente de Trabalho",    url: docs.seguroAcidenteTrabalho },
+        { key: "autorizacaoImtt",             label: "Autorização IMTT/IMT (opcional)", url: docs.autorizacaoImtt },
+      ];
+      return entries.filter(e => !!e.url);
+    }
+
+    if (item.entityType === "driver") {
+      const p = (...vals) => vals.find(v => v != null && v !== "") || null;
+      const preferred = [
+        { key: "fotoRosto",        label: "Foto de Perfil / Rosto",
+          value: p(docs.fotoRosto, docs.fotoPerfil, docs.selfie, docs.foto, docs.rosto) },
+        { key: "docIdFrente",      label: "BI / Cartão de Cidadão / Passaporte",
+          value: p(docs.bi, docs.cc, docs.docIdFrente, docs.ccFrente, docs.biFrente, docs.cartaoCidadao) },
+        { key: "docIdVerso",       label: "BI / CC — Verso",
+          value: p(docs.docIdVerso, docs.ccVerso, docs.biVerso) },
+        { key: "cartaFrente",      label: "Carta de Condução",
+          value: p(docs.cartaConducao, docs.cartaFrente, docs.cartaConducaoFrente, docs.licencaFrente) },
+        { key: "cartaVerso",       label: "Carta de Condução — Verso",
+          value: p(docs.cartaVerso, docs.cartaConducaoVerso, docs.licencaVerso) },
+        { key: "imttTvde",         label: "Autorização IMTT / TVDE",
+          value: p(docs.imttTvde, docs.tvde, docs.certificadoTvde, docs.imtt) },
+        { key: "docObgIdFrente",   label: "Título de Residência / Autorização",
+          value: p(docs.docObgIdFrente, docs.tituloResidenciaFrente, docs.cartaoCidadaoFrente) },
+        { key: "docObgIdVerso",    label: "Título de Residência — Verso",
+          value: p(docs.docObgIdVerso, docs.tituloResidenciaVerso, docs.cartaoCidadaoVerso) },
+        { key: "ibanComprovativo", label: "Comprovativo IBAN",
+          value: p(docs.ibanComprovativo, docs.comprovativoIban, docs.iban) },
+        { key: "registoCriminal",  label: "Registo Criminal",
+          value: p(docs.registoCriminal, docs.registoCriminalDoc) },
+      ];
+      return collectGenericDocEntries({ documents: docs, documentos: docs, docs }, preferred).filter(x => !!x.url);
+    }
+    if (item.entityType === "validador") {
+      const p = (...vals) => vals.find(v => v != null && v !== "") || null;
+      const preferred = [
+        { key: "ccFrente",           label: "Documento de Identificação — Frente",  value: p(docs.ccFrente, docs.cc) },
+        { key: "ccVerso",            label: "Documento de Identificação — Verso",   value: p(docs.ccVerso) },
+        { key: "morada",             label: "Comprovativo de Morada",               value: p(docs.morada, docs.comprovativoMorada) },
+        { key: "outro",              label: "Outro Documento",                      value: p(docs.outro) },
+      ];
+      return collectGenericDocEntries({ documents: docs, documentos: docs, docs }, preferred).filter(x => !!x.url);
+    }
+
+    out.push({ key: "duaFrente", label: "DUA frente", url: normalizeDocUrl(docs.duaFrente || docs.dua?.frente || docs.dua, "", "duaFrente") });
+    out.push({ key: "duaVerso", label: "DUA verso", url: normalizeDocUrl(docs.duaVerso || docs.dua?.verso, "", "duaVerso") });
+    out.push({ key: "inspecaoDoc", label: "Inspeção", url: normalizeDocUrl(docs.inspecaoDoc || docs.inspecao || item?.inspecao || item?.inspecaoPeriodica, "", "inspecaoDoc") });
+    out.push({ key: "seguroDoc", label: "Seguro", url: normalizeDocUrl(docs.seguroDoc || docs.seguro || item?.seguro || item?.cartaVerde, "", "seguroDoc") });
+    out.push({ key: "autorizacaoDoc", label: "Autorização de utilização", url: normalizeDocUrl(docs.autorizacaoDoc, "", "autorizacaoDoc") });
+    out.push({ key: "livrete", label: "Livrete", url: normalizeDocUrl(docs.livrete || item?.livrete, "", "livrete") });
+    const fotos = Array.isArray(docs.fotos) ? docs.fotos : Array.isArray(docs.fotosVeiculo) ? docs.fotosVeiculo : Array.isArray(item?.fotos) ? item.fotos : Array.isArray(item?.imagens) ? item.imagens : [];
+    fotos.forEach((f, i) => out.push({ key: `fotos_${i}`, label: `Foto veículo #${i + 1}`, url: normalizeDocUrl(f, "", `fotos_${i}`) }));
+    return out.filter(x => !!x.url);
+  }
+
+  // Formata data ISO para DD/MM/AAAA
+  function _fmtData(v) {
+    if (!v) return "";
+    try {
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      return `${dd}/${mm}/${d.getFullYear()}`;
+    } catch { return String(v); }
+  }
+
+  // Mapa de chaves do painel (legado) → chaves reais do Sistema B
+  const _PAINEL_TO_SYS_B = {
+    cartaFrente:      "cartaConducao",
+    cartaVerso:       "cartaConducaoVerso",
+    imttTvde:         "tvde",
+    imttTvdeVerso:    "tvdeVerso",
+    docObgIdFrente:   "tResidencia",
+    docObgIdVerso:    "tResidencia",
+    docIdFrente:      "cc",
+    docIdVerso:       "cc",
+  };
+
+  function _keyForSysB(key) {
+    return _PAINEL_TO_SYS_B[key] || key;
+  }
+
+  function getDocValidity(item, key) {
+    const rawDocs = item?.documentos_raw || item?.documents || {};
+    // 1. Tentar com o nome real do Sistema B
+    const bkey = _keyForSysB(key);
+    if (rawDocs?.[bkey]?.validade) {
+      const d = _fmtData(rawDocs[bkey].validade);
+      if (d) return d;
+    }
+    // 2. Tentar com a chave literal (Sistema B direto)
+    if (rawDocs?.[key]?.validade) {
+      const d = _fmtData(rawDocs[key].validade);
+      if (d) return d;
+    }
+
+    // Fallback Sistema A
+    const v = item?.validades || {};
+    if (item?.entityType === "gestor") {
+      const gestorMap = {
+        certidaoPermanente:          v.certidaoPermanente          || "",
+        seguroResponsabilidadeCivil: v.seguroResponsabilidadeCivil || "",
+        seguroAcidenteTrabalho:      v.seguroAcidenteTrabalho      || "",
+        autorizacaoImtt:             v.autorizacaoImtt             || "",
+      };
+      return gestorMap[key] || "—";
+    }
+    const map = {
+      docIdFrente: v.docIdValidade, docIdVerso: v.docIdValidade,
+      docObgIdFrente: v.docObgIdValidade, docObgIdVerso: v.docObgIdValidade,
+      cartaFrente: v.cartaValidade, cartaVerso: v.cartaValidade,
+      imttTvde: v.imttTvdeValidade,
+      duaFrente: v.duaValidade || v.dua || "", duaVerso: v.duaValidade || v.dua || "",
+      inspecaoDoc: v.inspecaoValidade || v.inspecao || "",
+      seguroDoc: v.seguroValidade || v.seguro || "",
+      autorizacaoDoc: v.autorizacaoValidade || v.autorizacao || ""
+    };
+    return map[key] || "—";
+  }
+
+  function getDocNumero(item, key) {
+    const rawDocs = item?.documentos_raw || item?.documents || {};
+    const bkey = _keyForSysB(key);
+    if (rawDocs?.[bkey]?.meta?.numeroDocumento) {
+      return String(rawDocs[bkey].meta.numeroDocumento);
+    }
+    if (rawDocs?.[key]?.meta?.numeroDocumento) {
+      return String(rawDocs[key].meta.numeroDocumento);
+    }
+    return "";
+  }
+
+  // Mapa de tipo de documento → label profissional para o painel
+  const DOC_TIPO_LABEL = {
+    // Operador de Frota
+    certidaoPermanente:          "Certidão Permanente",
+    seguroResponsabilidadeCivil: "Seguro Responsabilidade Civil",
+    seguroAcidenteTrabalho:      "Seguro Acidente de Trabalho",
+    autorizacaoImtt:             "Autorização IMTT/IMT",
+    // Motorista — Sistema B (nomes reais dos campos)
+    fotoRosto:              "Foto de Perfil / Rosto",
+    cc:                     "Cartão de Cidadão",
+    tResidencia:            "Título de Residência",
+    cartaConducao:          "Carta de Condução",
+    cartaConducaoVerso:     "Carta de Condução — Verso",
+    tvde:                   "Autorização TVDE / IMTT",
+    tvdeVerso:              "Autorização TVDE — Verso",
+    registoCriminal:        "Registo Criminal",
+    // Motorista — chaves antigas (compatibilidade)
+    fotoPerfil:       "Foto de Perfil",
+    docIdFrente:      "BI / Cartão de Cidadão / Passaporte",
+    docIdVerso:       "BI / CC — Verso",
+    cartaFrente:      "Carta de Condução",
+    cartaVerso:       "Carta de Condução — Verso",
+    imttTvde:         "Autorização IMTT / TVDE",
+    docObgIdFrente:   "Título de Residência / Autorização",
+    docObgIdVerso:    "Título de Residência — Verso",
+    ibanComprovativo: "Comprovativo IBAN",
+    dua:              "DUA / Registo do Veículo",
+    duaFrente:        "DUA / Registo do Veículo",
+    duaVerso:         "DUA — Verso",
+    seguro:           "Apólice de Seguro",
+    seguroDoc:        "Apólice de Seguro",
+    inspecao:         "Inspeção Periódica",
+    inspecaoDoc:      "Inspeção Periódica",
+    livrete:          "Livrete / Título de Propriedade",
+    autorizacaoDoc:   "Autorização de Utilização",
+  };
+
+  function getDocOfficialData(item, doc) {
+    const gestorInfo = getGestorInfo(item);
+    const tipoLabel = DOC_TIPO_LABEL[doc.key] || doc.label || "—";
+    // Nº do documento: cada documento tem o seu próprio número.
+    // Ex.: Carta de Condução tem o "cartaConducaoNumero".
+    // Foto Rosto e Registo Criminal não têm número — usam "—".
+    const numeroDoc = getDocNumero(item, doc.key)
+                   || getDocNumero(item, doc.key.replace(/Verso$/, "")) // verso herda do frente
+                   || "";
+    return {
+      label:     tipoLabel,
+      nome:      item.nome || item.ownerName || "—",
+      numero:    numeroDoc || "—",
+      validade:  getDocValidity(item, doc.key)
+              || getDocValidity(item, doc.key.replace(/Verso$/, ""))
+              || "—",
+      email:     item.email || item.ownerEmail || "—",
+      contacto:  item.contacto || item.ownerContact || item.telefone || "—",
+      gestor:    gestorInfo.empresa || gestorInfo.gestorNome || "—",
+      nifMotorista: item.nif || "—",   // NIF do motorista (não do doc)
+    };
+  }
+
+  function getFacePhotoUrl(item) {
+    const docs = item?.documents || item?.documentos || item?.docs || {};
+    return normalizeDocUrl(docs.fotoRosto || docs.selfie || docs.foto || docs.rosto, "", "fotoRosto");
+  }
+
+  async function apiGet(path) {
+    const r = await fetch(path, { credentials: "include" });
+    const txt = await r.text().catch(() => "");
+    let data = [];
+    try { data = txt ? JSON.parse(txt) : []; } catch { data = []; }
+    if (!r.ok) throw new Error("Falha ao carregar dados.");
+    return data;
+  }
+
+  function groupByGestor(list) {
+    const map = new Map();
+    list.forEach(item => {
+      const g = getGestorInfo(item);
+      const key = `${g.empresa}__${g.gestorNome}`;
+      if (!map.has(key)) map.set(key, { empresa: g.empresa || "Sem empresa", gestorNome: g.gestorNome || "Sem gestor", items: [] });
+      map.get(key).items.push(item);
+    });
+    return Array.from(map.values());
+  }
+
+  async function loadEntities() {
+    entitiesHint.textContent = "A carregar...";
+    selectedEntity = null; currentDoc = null;
+    resetViewer(); resetThumbs();
+    try {
+      if (mode === "motoristas") {
+        // ─────────────────────────────────────────────────────────
+        // SISTEMA B — Rota unificada que agrega Sistema A + B
+        // Devolve { ok, items: [...], totals: {...} }
+        // Formato: { id, source, nome, contacto, email, gestorNome,
+        //           submittedAt, status, documentos, payload }
+        // ─────────────────────────────────────────────────────────
+        const data = await apiGet("/api/validation/painel-motoristas").catch(() => ({}));
+        const lista = Array.isArray(data?.items) ? data.items : [];
+        entities = lista.map(mapPainelMotoristaItem);
+      } else if (mode === "gestores") {
+        // Operadores de Frota — Colaboradores com tipo "frota" e documentos submetidos
+        const data = await apiGet("/api/admin/validacoes/colaboradores?status=pendente").catch(() => ({}));
+        const todos = Array.isArray(data) ? data
+          : Array.isArray(data?.colaboradores) ? data.colaboradores : [];
+        // Mostrar todos os operadores de frota com pelo menos 1 documento submetido
+        const comRegisto = todos.filter(c => {
+          if (c.tipo !== "frota") return false;
+          // Apenas pendentes — não mostrar aprovados
+          if (c.aprovado === true) return false;
+          if (!c.documentos) return true; // mostrar mesmo sem docs para admin ver
+          const docs = c.documentos;
+          return true;
+        });
+        entities = comRegisto.map(mapLegacyGestorItem);
+      } else if (mode === "validadores") {
+        const data = await apiGet("/api/admin/validadores/listar?status=pendente").catch(() => ({}));
+        const lista = Array.isArray(data?.validadores) ? data.validadores : [];
+        entities = lista.map(mapLegacyValidadorItem);
+      } else {
+        const data = await apiGet("/api/admin/validacoes/veiculos").catch(() => []);
+        entities = Array.isArray(data) ? data.map(mapLegacyVehicleItem) : [];
+      }
+      renderEntities();
+      entitiesHint.textContent = entities.length
+        ? `${entities.length} registo(s) carregado(s).`
+        : mode === "gestores"
+          ? "Sem operadores de frota pendentes de validação."
+          : "Nenhum registo encontrado.";
+
+      // Detectar e abrir reenvios automaticamente
+      await processarReenviosAutomaticos(entities);
+    } catch (err) {
+      entities = []; renderEntities();
+      entitiesHint.textContent = err.message || "Falha ao carregar.";
+    }
+  }
+
+  function renderEntities() {
+    entitiesList.innerHTML = "";
+    const term = String(q.value || "").trim().toLowerCase();
+    let filtered = entities.filter(item => JSON.stringify(item).toLowerCase().includes(term));
+    if (statusFilter === "pendente") filtered = filtered.filter(item => isPendingStatus(item.status));
+    if (!filtered.length) {
+      entitiesList.innerHTML = `<div class="group"><div class="group-head"><strong>Sem resultados</strong><small>Não existem registos para o filtro atual.</small></div></div>`;
+      return;
+    }
+    const grouped = groupByGestor(filtered);
+    grouped.forEach(group => {
+      const groupDiv = document.createElement("div");
+      groupDiv.className = "group";
+      groupDiv.innerHTML = `<div class="group-head"><strong>${escapeHtml(group.empresa || group.gestorNome || "Sem gestor")}</strong><small>Gestor: ${escapeHtml(group.gestorNome || "—")}</small></div><div class="group-body"></div>`;
+      const body = groupDiv.querySelector(".group-body");
+      group.items.forEach(item => {
+        const eid = getEntityId(item);
+        const isSelected = selectedEntity && getEntityId(selectedEntity) === eid;
+        const isReenvio  = String(item.status || "").toLowerCase() === "pendente_novo_envio";
+
+        const div = document.createElement("div");
+        div.className = "card" + (isSelected ? " selected" : "");
+
+        // Badge de estado especial para reenvio
+        const reenvBadge = isReenvio
+          ? `<span class="doc-badge reenvio" style="margin-left:4px">REENVIO</span>`
+          : "";
+
+        if (mode === "motoristas") {
+          div.innerHTML = `
+            <b>${escapeHtml(item.nome || item.ownerName || "Motorista")}</b>
+            <div class="muted">${escapeHtml(item.email || item.ownerEmail || "—")}</div>
+            <div class="muted">${escapeHtml(item.contacto || item.ownerContact || "—")}</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+              <span class="mini-status">${statusLabel(item.status)}</span>${reenvBadge}
+            </div>
+            <div class="card-actions">
+              <button class="btn card-actions btn-aprovar" title="Aprovar entidade" onclick="event.stopPropagation();aprovarEntidade('${eid}')">✅ APROVAR</button>
+              <button class="btn card-actions btn-excluir" title="Excluir da fila" onclick="event.stopPropagation();excluirEntidade('${eid}')">🗑 EXCLUIR</button>
+            </div>`;
+        } else if (mode === "validadores") {
+          const _sl = { motoristas:"Motoristas", veiculos:"Veículos", empresa:"Empresa", global:"Global" };
+          div.innerHTML = `
+            <b>${escapeHtml(item.nome || "Validador")}</b>
+            <div class="muted">${escapeHtml(item.contacto || "—")}</div>
+            <div class="muted">${escapeHtml(item.email || "—")}</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+              <span class="mini-status">${statusLabel(item.status)}</span>
+              <span style="font-size:10px;color:#8a939f">${_sl[item.scope]||item.scope||""}</span>
+            </div>`;
+        } else {
+          div.innerHTML = `
+            <b>${escapeHtml(((item.marca || "Veículo") + " " + (item.modelo || "")).trim() || item.nome || "Veículo")}</b>
+            <div class="muted">${escapeHtml(item.matricula || "—")}</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+              <span class="mini-status">${statusLabel(item.status)}</span>${reenvBadge}
+            </div>`;
+        }
+        div.addEventListener("click", () => { selectEntity(item); flashButton(div); });
+        body.appendChild(div);
+      });
+      entitiesList.appendChild(groupDiv);
+    });
+  }
+
+  /* ── Aprovar motorista ── */
+  async function aprovarEntidade(entityId) {
+    const entity = entities.find(x => getEntityId(x) === entityId);
+    if (!entity) return;
+    const nomeEntidade = entity.nome || entity.ownerName || "este motorista";
+    if (!confirm(`Aprovar ${nomeEntidade}?\n\nO motorista receberá um email para definir a palavra-passe e activar a conta.`)) return;
+    try {
+      // Painel dedicado a motoristas — rota unificada Sistema B/A
+      const endpoint = `/api/validation/aprovar-motorista/${entityId}`;
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "aprovado" })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data.ok === false) {
+        throw new Error(data?.message || `HTTP ${r.status}`);
+      }
+      // Marcar todos os docs desta entidade como validados no DB local
+      const docs = buildDocsEntries(entity);
+      docs.forEach(doc => markDocValidatedDB(entityId, doc.key));
+      // Remover da lista local
+      entities = entities.filter(x => getEntityId(x) !== entityId);
+      if (selectedEntity && getEntityId(selectedEntity) === entityId) {
+        selectedEntity = null; currentDoc = null; resetViewer(); resetThumbs();
+      }
+      renderEntities();
+      toast(`✅ Motorista aprovado. Email de activação enviado.`, "ok");
+    } catch(e) {
+      toast(`❌ Erro ao aprovar: ${e.message}`, "err");
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     REJEITAR MOTORISTA (com modal de motivos)
+     - 5 motivos predefinidos apresentados horizontalmente
+     - Textarea de observação (opcional)
+     - Regra: pelo menos 1 motivo OU observação preenchida
+     - O gestor é notificado por email com os motivos
+  ────────────────────────────────────────────────────────── */
+  const MOTIVOS_REJEICAO = [
+    "POUCO VISIVEL",
+    "DOCUMENTO INCORRETO",
+    "DOCUMENTO CADUCADO",
+    "FOTO POUCO VISIVEL",
+    "DOCUMENTO ALTERADO",
+  ];
+
+  function abrirModalRejeicao(entityId, nomeEntidade) {
+    // Remove modal anterior se existir
+    document.getElementById("modalRejeicao")?.remove();
+
+    const wrap = document.createElement("div");
+    wrap.id = "modalRejeicao";
+    wrap.style.cssText = `
+      position:fixed;inset:0;z-index:99999;
+      background:rgba(0,0,0,.72);backdrop-filter:blur(6px);
+      display:flex;align-items:center;justify-content:center;padding:20px;
+      font-family:inherit;
+    `;
+    wrap.innerHTML = `
+      <div style="width:min(760px,100%);background:linear-gradient(180deg,#121214 0%,#0a0b0d 100%);border:1px solid rgba(223,228,236,.22);border-radius:14px;padding:28px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6);color:#f3f5f8">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:11px;font-weight:900;letter-spacing:.32em;color:#dfe4ec;opacity:.85">REJEITAR SUBMISSÃO</div>
+          <button id="rejFechar" type="button" style="background:transparent;border:none;color:#889;font-size:22px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <h3 style="margin:0 0 18px;font-size:17px;font-weight:800;color:#f3f5f8;letter-spacing:.01em">${escapeHtml(nomeEntidade || "Motorista")}</h3>
+
+        <div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#8b95a2;margin-bottom:10px">MOTIVOS</div>
+        <div id="rejMotivosGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px">
+          ${MOTIVOS_REJEICAO.map(m => `
+            <label class="rej-motivo" style="cursor:pointer;user-select:none;padding:9px 14px;border:1px solid rgba(223,228,236,.24);border-radius:8px;background:rgba(255,255,255,.02);font-size:12px;font-weight:700;letter-spacing:.03em;color:#dfe4ec;transition:.15s">
+              <input type="checkbox" value="${m}" style="display:none">
+              <span>${m}</span>
+            </label>
+          `).join("")}
+        </div>
+
+        <div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#8b95a2;margin-bottom:8px">OBSERVAÇÃO (OPCIONAL)</div>
+        <textarea id="rejComentario" rows="3" placeholder="Ex.: A carta apresenta desgaste no canto superior direito, dificultando a leitura do número." style="width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(223,228,236,.16);border-radius:8px;color:#f3f5f8;font-family:inherit;font-size:13px;padding:11px 12px;resize:vertical;line-height:1.5"></textarea>
+
+        <div id="rejErro" style="display:none;color:#ff9a9a;font-size:12px;margin-top:12px;font-weight:600"></div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px">
+          <button id="rejCancelar" type="button" style="padding:10px 20px;background:transparent;border:1px solid rgba(223,228,236,.28);border-radius:8px;color:#dfe4ec;font-family:inherit;font-weight:700;font-size:12px;letter-spacing:.06em;cursor:pointer">CANCELAR</button>
+          <button id="rejConfirmar" type="button" style="padding:10px 22px;background:linear-gradient(180deg,#8a2323,#601818);border:1px solid rgba(223,228,236,.35);border-radius:8px;color:#fff;font-family:inherit;font-weight:800;font-size:12px;letter-spacing:.06em;cursor:pointer">CONFIRMAR REJEIÇÃO</button>
+        </div>
+      </div>
+      <style>
+        .rej-motivo.selected {
+          background: rgba(200,60,60,.14) !important;
+          border-color: rgba(255,90,90,.6) !important;
+          color: #ffb3b3 !important;
+        }
+        .rej-motivo:hover { border-color: rgba(223,228,236,.42); }
+      </style>
+    `;
+    document.body.appendChild(wrap);
+
+    // Handlers
+    const fechar = () => wrap.remove();
+    wrap.querySelector("#rejFechar").onclick = fechar;
+    wrap.querySelector("#rejCancelar").onclick = fechar;
+    wrap.addEventListener("click", (e) => { if (e.target === wrap) fechar(); });
+
+    wrap.querySelectorAll(".rej-motivo").forEach(label => {
+      label.onclick = () => {
+        const cb = label.querySelector("input");
+        cb.checked = !cb.checked;
+        label.classList.toggle("selected", cb.checked);
+      };
+    });
+
+    wrap.querySelector("#rejConfirmar").onclick = async () => {
+      const motivos = Array.from(wrap.querySelectorAll(".rej-motivo input:checked")).map(x => x.value);
+      const comentario = wrap.querySelector("#rejComentario").value.trim();
+      const erroEl = wrap.querySelector("#rejErro");
+      erroEl.style.display = "none";
+
+      if (motivos.length === 0 && !comentario) {
+        erroEl.textContent = "Selecione pelo menos um motivo ou escreva uma observação.";
+        erroEl.style.display = "block";
+        return;
+      }
+
+      try {
+        const btn = wrap.querySelector("#rejConfirmar");
+        btn.disabled = true;
+        btn.textContent = "A REJEITAR...";
+        const r = await fetch(`/api/validation/rejeitar-motorista/${entityId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ motivos, comentario }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || data.ok === false) {
+          throw new Error(data?.message || `HTTP ${r.status}`);
+        }
+        entities = entities.filter(x => getEntityId(x) !== entityId);
+        if (selectedEntity && getEntityId(selectedEntity) === entityId) {
+          selectedEntity = null; currentDoc = null; resetViewer(); resetThumbs();
+        }
+        renderEntities();
+        toast("🚫 Submissão rejeitada. Gestor notificado por email.", "info");
+        fechar();
+      } catch (err) {
+        erroEl.textContent = err.message || "Erro ao rejeitar.";
+        erroEl.style.display = "block";
+        const btn = wrap.querySelector("#rejConfirmar");
+        btn.disabled = false;
+        btn.textContent = "CONFIRMAR REJEIÇÃO";
+      }
+    };
+  }
+
+  /* ── Wrapper para o botão antigo "Excluir" abrir agora o modal de rejeição ── */
+  async function excluirEntidade(entityId) {
+    const entity = entities.find(x => getEntityId(x) === entityId);
+    if (!entity) return;
+    abrirModalRejeicao(entityId, entity.nome || entity.ownerName || "");
+  }
+
+  function resetThumbs() {
+    thumbTitle.textContent = "Documentos";
+    thumbPill.textContent = "—";
+    thumbHint.textContent = "Selecione um registo para ver os documentos.";
+    thumbGrid.innerHTML = "";
+  }
+
+  function resetViewer() {
+    viewerImg.style.display = "none"; viewerImg.src = "";
+    viewerFrameWrap.style.display = "none"; viewerFrame.src = "about:blank";
+    viewerEmpty.style.display = "block";
+    viewerLabel.textContent = "Documento"; viewerHint.textContent = "Selecione um documento.";
+    docTypeBanner.textContent = "TIPO DE DOCUMENTO";
+    regGestor.textContent = "—"; regNome.textContent = "—"; regEmail.textContent = "—";
+    regContacto.textContent = "—"; regNumero.textContent = "—";
+    regDocLabel.textContent = "—"; regValidade.textContent = "—";
+    const _nifEl = document.getElementById("regNifMotorista");
+    if (_nifEl) _nifEl.textContent = "—";
+    const _cw = document.getElementById("regCriminalWrap");
+    if (_cw) _cw.style.display = "none";
+    resetFaceBox(); resetViewTransform(); setDecisionVisual("");
+  }
+
+  function resetFaceBox() { faceImg.style.display = "none"; faceImg.src = ""; faceEmpty.style.display = "block"; }
+
+  function loadFaceBox(item) {
+    const faceUrl = getFacePhotoUrl(item);
+    if (!faceUrl) { resetFaceBox(); return; }
+    faceImg.src = faceUrl; faceImg.style.display = "block"; faceEmpty.style.display = "none";
+  }
+
+  async function selectEntity(item) {
+    selectedEntity = item; currentDoc = null; currentEntityId = getEntityId(item);
+    // Carregar do servidor quais docs já foram validados para esta entidade
+    await carregarDocsValidados(currentEntityId);
+    renderEntities();
+    thumbTitle.textContent = mode === "motoristas" ? (item.nome || item.ownerName || "Motorista") : mode === "validadores" ? (item.nome || "Validador") : `${item.marca || "Veículo"} ${item.modelo || ""}`.trim() || item.nome || "Veículo";
+    const docs = buildDocsEntries(item);
+    thumbPill.textContent = `${docs.length} documento(s)`;
+    thumbGrid.innerHTML = "";
+    if (!docs.length) {
+      thumbHint.textContent = "Sem documentos enviados ou sem URL válida.";
+      resetViewer(); viewerHint.textContent = "Este registo ainda não tem documentos utilizáveis para visualização.";
+      return;
+    }
+    thumbHint.textContent = `${docs.length} documento(s) encontrado(s).`;
+    const isReenvio = String(item.status || "").toLowerCase() === "pendente_novo_envio";
+    docs.forEach(doc => {
+      const thumb = document.createElement("div");
+      const savedDecision = groupedIssues[currentEntityId]?.[doc.key];
+      const alreadyValidated = isDocAlreadyValidated(currentEntityId, doc.key);
+      thumb.className = "thumb" + (currentDoc && currentDoc.key === doc.key ? " selected" : "");
+      const isPdf = String(doc.url).toLowerCase().includes(".pdf") || String(doc.url).startsWith("data:application/pdf");
+
+      // Badge de estado: prioridade — decisão local pendente > já validado no DB > pendente
+      let badgeClass, badgeTxt;
+      if (savedDecision) {
+        badgeClass = savedDecision.tipo === "validado" ? "validado" : savedDecision.tipo === "pendente_novo_envio" ? "reenvio" : "recusado";
+        badgeTxt   = statusLabel(savedDecision.tipo);
+      } else if (alreadyValidated) {
+        badgeClass = "validado"; badgeTxt = "VALIDADO";
+      } else if (isReenvio) {
+        badgeClass = "pendente"; badgeTxt = "PENDENTE";
+      } else {
+        badgeClass = "pendente"; badgeTxt = "Pendente";
+      }
+
+      thumb.innerHTML = `
+        <div class="thumb-media">${isPdf ? '<span>PDF</span>' : `<img src="${doc.url}" alt="${escapeHtml(doc.label)}">`}</div>
+        <div>
+          <div class="thumb-title">${escapeHtml(doc.label)}</div>
+          <div class="thumb-sub"><span class="doc-badge ${badgeClass}">${badgeTxt}</span></div>
+        </div>
+        <span class="thumb-status-overlay ${badgeClass}">${badgeTxt}</span>
+      `;
+      // Docs já validados no DB em modo reenvio ficam visíveis mas não-seleccionáveis para nova decisão
+      if (alreadyValidated && isReenvio) {
+        thumb.style.opacity = "0.55";
+        thumb.style.cursor = "default";
+        thumb.title = "Documento já validado anteriormente — não requer nova decisão.";
+        thumb.addEventListener("click", () => {
+          openDocument(item, doc); flashButton(thumb);
+        });
+      } else {
+        thumb.addEventListener("click", () => { openDocument(item, doc); flashButton(thumb); });
+      }
+      thumbGrid.appendChild(thumb);
+    });
+    openDocument(item, docs.find(d => !isDocAlreadyValidated(currentEntityId, d.key)) || docs[0]);
+  }
+
+  function openDocument(item, doc) {
+    if (!doc || !doc.url) { resetViewer(); viewerHint.textContent = "Sem documentos enviados ou sem URL válida."; return; }
+    currentDoc = doc; resetViewTransform();
+    Array.from(thumbGrid.children).forEach(el => el.classList.remove("selected"));
+    const docs = buildDocsEntries(item);
+    const idx = docs.findIndex(d => d.key === doc.key);
+    if (thumbGrid.children[idx]) thumbGrid.children[idx].classList.add("selected");
+    const official = getDocOfficialData(item, doc);
+    const saved = groupedIssues[currentEntityId]?.[doc.key];
+    viewerLabel.textContent = doc.label; viewerHint.textContent = "Documento carregado.";
+    docTypeBanner.textContent = doc.label;
+    regGestor.textContent = official.gestor; regNome.textContent = official.nome;
+    regEmail.textContent = official.email; regContacto.textContent = official.contacto;
+    regNumero.textContent = official.numero; regDocLabel.textContent = official.label;
+    regValidade.textContent = official.validade;
+    const nifEl = document.getElementById("regNifMotorista");
+    if (nifEl) nifEl.textContent = official.nifMotorista || "—";
+    loadFaceBox(item); setDecisionVisual(saved?.tipo || "");
+
+    // Registo criminal — mostrar campo especial com código e link
+    const criminalWrap   = document.getElementById("regCriminalWrap");
+    const criminalCodigo = document.getElementById("regCriminalCodigo");
+    if (criminalWrap && criminalCodigo) {
+      if (doc.key === "registoCriminal") {
+        // Tentar extrair o código do meta ou do número do documento
+        const rawData  = item?.documentos || item?.documents || item?.docs || {};
+        const docRaw   = rawData?.registoCriminal;
+        const codigo   = docRaw?.meta?.numeroDocumento || docRaw?.numeroDocumento || official.numero || "";
+        criminalCodigo.textContent = codigo || "Não disponível";
+        criminalCodigo.dataset.codigo = codigo;
+        criminalWrap.style.display = "block";
+      } else {
+        criminalWrap.style.display = "none";
+      }
+    }
+    const url = doc.url || "";
+    const isPdf = String(url).toLowerCase().includes(".pdf") || String(url).startsWith("data:application/pdf");
+    viewerEmpty.style.display = "none";
+    if (isPdf) {
+      viewerImg.style.display = "none"; viewerImg.src = "";
+      viewerFrameWrap.style.display = "flex"; viewerFrame.src = url; applyPdfTransform();
+    } else {
+      viewerFrameWrap.style.display = "none"; viewerFrame.src = "about:blank";
+      viewerImg.style.display = "block"; viewerImg.src = url; applyImageTransform();
+    }
+  }
+
+  function copiarCodigoCriminal() {
+    const codigo = document.getElementById("regCriminalCodigo")?.dataset?.codigo || "";
+    if (!codigo || codigo === "Não disponível") {
+      alert("Sem código de acesso disponível para copiar.");
+      return;
+    }
+    navigator.clipboard.writeText(codigo).then(() => {
+      const btn = document.getElementById("btnCopiarCodigo");
+      if (btn) { btn.textContent = "✅ COPIADO"; setTimeout(() => { btn.textContent = "COPIAR"; }, 2000); }
+    }).catch(() => {
+      // Fallback para browsers sem clipboard API
+      const el = document.createElement("textarea");
+      el.value = codigo; document.body.appendChild(el);
+      el.select(); document.execCommand("copy");
+      document.body.removeChild(el);
+      const btn = document.getElementById("btnCopiarCodigo");
+      if (btn) { btn.textContent = "✅ COPIADO"; setTimeout(() => { btn.textContent = "COPIAR"; }, 2000); }
+    });
+  }
+
+  function setDecisionVisual(tipo) {
+    btnApprove.classList.remove("active"); btnResend.classList.remove("active"); btnReject.classList.remove("active");
+    if (tipo === "validado") btnApprove.classList.add("active");
+    if (tipo === "pendente_novo_envio") btnResend.classList.add("active");
+    if (tipo === "recusado") btnReject.classList.add("active");
+  }
+
+  function resetViewTransform() {
+    scale = 1; rotation = 0; negative = false; translateX = 0; translateY = 0;
+    pixelMode = false; pixelBadge.style.display = "none";
+    btnNegative.classList.remove("active"); btnPixel.classList.remove("active");
+    applyImageTransform(); applyPdfTransform();
+  }
+
+  function applyImageTransform() {
+    if (!viewerImg || viewerImg.style.display === "none") return;
+    viewerImg.style.filter = negative ? "invert(1)" : "none";
+    viewerImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`;
+  }
+
+  function applyPdfTransform() {
+    if (!viewerFrameWrap || viewerFrameWrap.style.display === "none") return;
+    viewerFrame.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rotation}deg)`;
+    viewerFrame.style.filter = negative ? "invert(1)" : "none";
+  }
+
+  function zoomIn() { scale = Math.min(8, +(scale + 0.2).toFixed(2)); applyImageTransform(); applyPdfTransform(); }
+  function zoomOut() { scale = Math.max(0.2, +(scale - 0.2).toFixed(2)); applyImageTransform(); applyPdfTransform(); }
+  function fitView() { scale = 1; translateX = 0; translateY = 0; applyImageTransform(); applyPdfTransform(); }
+  function actualSize() { scale = 1.6; translateX = 0; translateY = 0; applyImageTransform(); applyPdfTransform(); }
+  function rotateLeft() { rotation -= 90; applyImageTransform(); applyPdfTransform(); }
+  function rotateRight() { rotation += 90; applyImageTransform(); applyPdfTransform(); }
+
+  function toggleNegative() {
+    negative = !negative;
+    btnNegative.classList.toggle("active", negative);
+    flashButton(btnNegative);
+    applyImageTransform(); applyPdfTransform();
+  }
+
+  function togglePixel() {
+    pixelMode = !pixelMode;
+    btnPixel.classList.toggle("active", pixelMode);
+    flashButton(btnPixel);
+    if (!pixelMode) { pixelBadge.style.display = "none"; }
+    else if (viewerImg.style.display !== "none") { pixelBadge.style.display = "block"; }
+  }
+
+  function openReasonsModal(tipo) {
+    if (!selectedEntity || !currentDoc) { saveState.textContent = "Selecione um documento primeiro."; return; }
+    pendingAction = tipo;
+    modalTitle.textContent = tipo === "recusado" ? "Motivos da recusa" : "Motivos para novo envio";
+    modalHint.textContent = "Selecione um ou mais motivos e depois clique em Agrupar.";
+    modalErr.textContent = "";
+    document.querySelectorAll(".reasonChk").forEach(x => x.checked = false);
+    overlay.style.display = "flex";
+  }
+
+  function closeModal() {
+    overlay.style.display = "none";
+    modalErr.textContent = "";
+    document.querySelectorAll(".reasonChk").forEach(x => x.checked = false);
+  }
+
+  function groupReasons() {
+    const reasons = Array.from(document.querySelectorAll(".reasonChk:checked")).map(x => x.value);
+    if (!reasons.length) { modalErr.textContent = "Selecione pelo menos um motivo."; return; }
+    if (!selectedEntity || !currentDoc) { modalErr.textContent = "Nenhum documento selecionado."; return; }
+    if (!groupedIssues[currentEntityId]) groupedIssues[currentEntityId] = {};
+    groupedIssues[currentEntityId][currentDoc.key] = { tipo: pendingAction, motivos: reasons, label: currentDoc.label, url: currentDoc.url };
+    saveState.textContent = `Documento "${currentDoc.label}" agrupado como ${statusLabel(pendingAction)}.`;
+    selectEntity(selectedEntity); openDocument(selectedEntity, currentDoc); closeModal();
+  }
+
+  function markApproved() {
+    if (!selectedEntity || !currentDoc) { saveState.textContent = "Selecione um documento primeiro."; return; }
+    if (!groupedIssues[currentEntityId]) groupedIssues[currentEntityId] = {};
+    groupedIssues[currentEntityId][currentDoc.key] = { tipo: "validado", motivos: [], label: currentDoc.label, url: currentDoc.url };
+    saveState.textContent = `Documento "${currentDoc.label}" marcado como VALIDADO.`;
+    selectEntity(selectedEntity); openDocument(selectedEntity, currentDoc);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     ENVIO DO RESULTADO FINAL
+     - Inclui docs aprovados E reprovados
+     - O servidor envia o email ao remetente
+     - O servidor guarda o registo no DB (histórico)
+     - O servidor devolve quais docs ficam marcados como validados
+  ══════════════════════════════════════════════════════════ */
+  function buildFinalPayload() {
+    const result = [];
+    Object.entries(groupedIssues).forEach(([entityId, docsMap]) => {
+      const entity = entities.find(x => getEntityId(x) === entityId);
+      if (!entity) return;
+
+      const allDocs            = buildDocsEntries(entity);
+      const documentosAprovados  = [];
+      const documentosReprovados = [];
+
+      allDocs.forEach(doc => {
+        const decisao    = docsMap[doc.key];
+        const jaValidado = isDocAlreadyValidated(entityId, doc.key);
+        if (!decisao && jaValidado) {
+          documentosAprovados.push({ docKey: doc.key, label: doc.label });
+        } else if (decisao?.tipo === "validado") {
+          documentosAprovados.push({ docKey: doc.key, label: doc.label });
+        } else if (decisao) {
+          documentosReprovados.push({ docKey: doc.key, label: doc.label, tipo: decisao.tipo, motivos: decisao.motivos || [] });
+        }
+      });
+
+      result.push({
+        entityId,
+        modo:                entity.entityType === "vehicle" ? "veiculos" : "motoristas",
+        nome:                entity.nome     || entity.ownerName    || "",
+        email:               entity.email    || entity.ownerEmail   || "",
+        contacto:            entity.contacto || entity.ownerContact || "",
+        nif:                 entity.nif      || "",
+        matricula:           entity.matricula || "",
+        gestor:              getGestorInfo(entity),
+        aprovacaoTotal:      documentosReprovados.length === 0 && documentosAprovados.length > 0,
+        documentosAprovados,
+        documentosReprovados,
+        timestampEnvio:      new Date().toISOString(),
+        // O backend gera um token único e constrói o link completo:
+        // urlDefinirSenha + "?token=TOKEN_GERADO_PELO_BACKEND"
+        urlDefinirSenha:     location.origin + "/motorista-definir-senha.html",
+        incluirBotaoSenha:   true,
+      });
+    });
+    return result;
+  }
+
+  async function sendFinalResult() {
+    let totalDecisoes = 0;
+    Object.values(groupedIssues).forEach(m => { totalDecisoes += Object.keys(m).length; });
+    if (!totalDecisoes) { saveState.textContent = "Nenhum documento com decisão registada."; return; }
+
+    const payload = buildFinalPayload();
+    if (!payload.length) { saveState.textContent = "Sem entidades com decisões para enviar."; return; }
+
+    saveState.textContent = "A enviar resultado e a registar no servidor...";
+    if (btnSendResultTop) { btnSendResultTop.disabled = true; btnSendResultTop.textContent = "A enviar..."; }
+
+    try {
+      // Gestores de frota — usar endpoints dedicados com email de activação
+      if (mode === "gestores") {
+        let aprovados = 0, erros = 0, linksGerados = [];
+        for (const p of payload) {
+          try {
+            const endpoint = `/api/admin/validacoes/colaboradores/${p.entityId}`;
+            const statusEnviar = p.aprovacaoTotal ? "aprovado" : "rejeitado";
+            const r = await fetch(endpoint, {
+              method: "POST", credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: statusEnviar, observacoes: p.observacoes || "" })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (r.ok) {
+              aprovados++;
+              if (d.activationLink) linksGerados.push(d.activationLink);
+              entities = entities.filter(x => getEntityId(x) !== p.entityId);
+              delete groupedIssues[p.entityId];
+            } else erros++;
+          } catch { erros++; }
+        }
+        renderEntities();
+        const emailMsg = aprovados > 0 ? ` · Email de activação enviado ✅` : "";
+        saveState.textContent = `${aprovados} gestor(es) validado(s)${emailMsg}${erros > 0 ? ` · ${erros} erro(s)` : ""}.`;
+        toast(erros > 0 ? `⚠️ ${erros} erro(s).` : "✅ Gestor(es) validado(s). Email enviado.", erros > 0 ? "err" : "ok");
+        if (btnSendResultTop) { btnSendResultTop.disabled = false; btnSendResultTop.textContent = "Enviar resultado"; }
+        return;
+      }
+
+      const r = await fetch("/api/validacoes/resultado-final", {
+        method:      "POST",
+        credentials: "include",
+        headers:     { "Content-Type": "application/json" },
+        body:        JSON.stringify(payload)
+      });
+      const raw  = await r.text().catch(() => "");
+      let data   = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch {}
+      if (!r.ok) throw new Error(data?.message || raw || `Erro HTTP ${r.status}`);
+
+      /* ── Processar resposta ── */
+      const entitiesToRemove = new Set();
+
+      payload.forEach(p => {
+        const resEntidade = data?.resultados?.[p.entityId] || {};
+
+        // Actualizar cache de docs validados (a fonte de verdade está no servidor)
+        // O servidor devolve { resultados: { [entityId]: { docsValidados: ["chave1", ...] } } }
+        const docsValidadosAgora = resEntidade.docsValidados || p.documentosAprovados.map(d => d.docKey);
+        docsValidadosAgora.forEach(k => setDocValidatedCache(p.entityId, k));
+
+        // Se a entidade ficou totalmente resolvida, removê-la da lista
+        const entity   = entities.find(x => getEntityId(x) === p.entityId);
+        const allDocs  = entity ? buildDocsEntries(entity) : [];
+        const resolved = allDocs.every(d =>
+          isDocAlreadyValidated(p.entityId, d.key) || groupedIssues[p.entityId]?.[d.key]
+        );
+        if (resolved) entitiesToRemove.add(p.entityId);
+
+        // Limpar decisões desta entidade da memória
+        delete groupedIssues[p.entityId];
+      });
+
+      if (entitiesToRemove.size > 0) {
+        entities = entities.filter(x => !entitiesToRemove.has(getEntityId(x)));
+        if (selectedEntity && entitiesToRemove.has(getEntityId(selectedEntity))) {
+          selectedEntity = null; currentDoc = null; resetViewer(); resetThumbs();
+        }
+      }
+
+      renderEntities();
+
+      const emailsOk  = data?.emailsEnviados  ?? payload.length;
+      const emailsFail= data?.emailsFalharam  ?? 0;
+      const emailMsg  = emailsFail > 0
+        ? ` · ⚠️ ${emailsFail} email(s) com falha`
+        : " · Emails enviados ✅";
+
+      saveState.textContent = `Resultado registado no servidor. ${entitiesToRemove.size} entidade(s) concluída(s)${emailMsg}.`;
+      toast(
+        `✅ Resultado enviado e gravado no servidor.${emailsFail > 0 ? ` ⚠️ ${emailsFail} email(s) falharam.` : " Emails enviados."}`,
+        emailsFail > 0 ? "info" : "ok"
+      );
+
+    } catch (err) {
+      saveState.textContent = err.message || "Erro ao enviar resultado.";
+      toast(`❌ ${err.message || "Erro ao enviar resultado."}`, "err", 5000);
+    } finally {
+      if (btnSendResultTop) { btnSendResultTop.disabled = false; btnSendResultTop.textContent = "Enviar resultado"; }
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     REENVIO — quando o servidor devolve entidades com status
+     "pendente_novo_envio", o sistema:
+     1. Detecta automaticamente quais são reenvios
+     2. Busca no DB o histórico dessa entidade (docs já validados)
+     3. Abre o grupo correspondente no painel
+     4. Mostra docs anteriores com badge VALIDADO e novos com PENDENTE
+  ══════════════════════════════════════════════════════════ */
+
+  /* Após carregar entidades, detectar reenvios e abrir automaticamente */
+  async function processarReenviosAutomaticos(lista) {
+    const reenvios = lista.filter(item =>
+      String(item.status || "").toLowerCase() === "pendente_novo_envio"
+    );
+    if (!reenvios.length) return;
+
+    // Para cada reenvio, buscar histórico do DB em paralelo
+    await Promise.all(reenvios.map(item => carregarDocsValidados(getEntityId(item))));
+
+    // Abrir o primeiro reenvio automaticamente e mostrar notificação
+    const primeiro = reenvios[0];
+    toast(
+      `🔄 ${reenvios.length} reenvio(s) detectado(s). A abrir ${primeiro.nome || primeiro.ownerName || "entidade"}...`,
+      "info", 5000
+    );
+
+    // Scroll até ao card do reenvio na lista e seleccioná-lo
+    setTimeout(() => {
+      selectEntity(primeiro);
+      // Destacar o card na sidebar
+      const card = [...document.querySelectorAll(".card")].find(el =>
+        el.querySelector("b")?.textContent?.includes(primeiro.nome || primeiro.ownerName || "")
+      );
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.classList.add("reenvio-highlight");
+        setTimeout(() => card.classList.remove("reenvio-highlight"), 3000);
+      }
+    }, 300);
+  }
+  viewerStage.addEventListener("mousedown", (e) => {
+    if (!currentDoc) return;
+    dragging = true; viewerStage.classList.add("dragging");
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    dragBaseX = translateX; dragBaseY = translateY;
+  });
+
+  window.addEventListener("mouseup", () => { dragging = false; viewerStage.classList.remove("dragging"); });
+
+  window.addEventListener("mousemove", (e) => {
+    if (dragging) {
+      translateX = dragBaseX + (e.clientX - dragStartX);
+      translateY = dragBaseY + (e.clientY - dragStartY);
+      applyImageTransform(); applyPdfTransform();
+    }
+    if (!pixelMode || viewerImg.style.display === "none" || !viewerImg.complete) return;
+    const rect = viewerImg.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      canvas.width = viewerImg.naturalWidth; canvas.height = viewerImg.naturalHeight;
+      ctx.drawImage(viewerImg, 0, 0);
+      const x = Math.floor((e.clientX - rect.left) * (viewerImg.naturalWidth / rect.width));
+      const y = Math.floor((e.clientY - rect.top) * (viewerImg.naturalHeight / rect.height));
+      const data = ctx.getImageData(x, y, 1, 1).data;
+      pixelBadge.style.display = "block";
+      pixelBadge.textContent = `RGB(${data[0]}, ${data[1]}, ${data[2]}) • x:${x} y:${y}`;
+    } catch { pixelBadge.style.display = "block"; pixelBadge.textContent = "Pixel indisponível"; }
+  });
+
+  viewerStage.addEventListener("wheel", (e) => { e.preventDefault(); if (e.deltaY > 0) zoomOut(); else zoomIn(); }, { passive: false });
+
+  // NOTA: Este painel é dedicado a motoristas ('mode' é const).
+  // Os botões de mudança de modo (Motoristas/Veículos/Gestores) ainda existem
+  // no HTML por herança do painel unificado antigo, mas aqui apenas recarregam
+  // a lista actual — não mudam de scope. Para validar veículos, o validador
+  // usa /validacao-veiculos.html (painel separado, próxima fase).
+  modeMotoristas.addEventListener("click", () => {
+    modeMotoristas.classList.add("active");
+    modeVeiculos.classList.remove("active");
+    document.getElementById("modeGestores")?.classList.remove("active");
+    flashButton(modeMotoristas);
+    loadEntities();
+  });
+  modeVeiculos.addEventListener("click", () => {
+    // Redireciona para o painel de veículos quando estiver criado
+    flashButton(modeVeiculos);
+    alert("A validação de veículos abre num painel dedicado. Volte ao painel central e escolha 'Validar Veículos'.");
+  });
+  document.getElementById("modeGestores")?.addEventListener("click", () => {
+    flashButton(document.getElementById("modeGestores"));
+    alert("A validação de gestores/colaboradores abrirá num painel dedicado.");
+  });
+
+  filterPending.addEventListener("click", () => {
+    statusFilter = "pendente"; filterPending.classList.add("primary"); filterPending.classList.remove("ghost");
+    filterAll.classList.remove("primary"); filterAll.classList.add("ghost");
+    document.getElementById("leftPill").textContent = "pendentes"; flashButton(filterPending); renderEntities();
+  });
+
+  filterAll.addEventListener("click", () => {
+    statusFilter = "todos"; filterAll.classList.add("primary"); filterAll.classList.remove("ghost");
+    filterPending.classList.remove("primary"); filterPending.classList.add("ghost");
+    document.getElementById("leftPill").textContent = "todos"; flashButton(filterAll); renderEntities();
+  });
+
+  q.addEventListener("input", renderEntities);
+  btnVoltar.addEventListener("click", () => {
+    if (mode === "validadores") {
+      location.href = "/admin-gestao.html";
+    } else {
+      history.back();
+    }
+  });
+  btnApprove.addEventListener("click", () => { flashButton(btnApprove); markApproved(); });
+  btnResend.addEventListener("click", () => { flashButton(btnResend); openReasonsModal("pendente_novo_envio"); });
+  btnReject.addEventListener("click", () => { flashButton(btnReject); openReasonsModal("recusado"); });
+  btnSendResultTop.addEventListener("click", () => { flashButton(btnSendResultTop); sendFinalResult(); });
+  btnNegative.addEventListener("click", toggleNegative);
+  btnRotateLeft.addEventListener("click", () => { flashButton(btnRotateLeft); rotateLeft(); });
+  btnRotateRight.addEventListener("click", () => { flashButton(btnRotateRight); rotateRight(); });
+  btnZoomOut.addEventListener("click", () => { flashButton(btnZoomOut); zoomOut(); });
+  btnZoomIn.addEventListener("click", () => { flashButton(btnZoomIn); zoomIn(); });
+  btnFit.addEventListener("click", () => { flashButton(btnFit); fitView(); });
+  btnActual.addEventListener("click", () => { flashButton(btnActual); actualSize(); });
+  btnPixel.addEventListener("click", togglePixel);
+  btnCancelModal.addEventListener("click", () => { flashButton(btnCancelModal); closeModal(); });
+  btnGroupReasons.addEventListener("click", () => { flashButton(btnGroupReasons); groupReasons(); });
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+
+  resetViewer();
+  // Se mode=validadores, esconder botões e remover active de todos os outros modos
+  if (mode === "validadores") {
+    const btnM = document.getElementById("modeMotoristas");
+    const btnV = document.getElementById("modeVeiculos");
+    const btnG = document.getElementById("modeGestores");
+    if (btnM) { btnM.style.display = "none"; btnM.classList.remove("active"); }
+    if (btnV) { btnV.style.display = "none"; btnV.classList.remove("active"); }
+    if (btnG) { btnG.style.display = "none"; btnG.classList.remove("active"); }
+  }
+
+  // Expor funções chamadas por onclick inline no HTML.
+  // O script está dentro de IIFE — sem estes exports, os botões
+  // "APROVAR" e "EXCLUIR" nos cartões dão ReferenceError.
+  window.aprovarEntidade = aprovarEntidade;
+  window.excluirEntidade = excluirEntidade;
+
+  loadEntities();
+})();
+</script>
+</body>
+</html>

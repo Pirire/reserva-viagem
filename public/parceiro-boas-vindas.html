@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REALMETROPOLIS — A sua API Key</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #050507;
+  --surface:   #0c0e13;
+  --surface2:  #111419;
+  --border:    rgba(226,232,240,.08);
+  --border2:   rgba(226,232,240,.14);
+  --text:      #f1f5f9;
+  --text2:     #94a3b8;
+  --text3:     #475569;
+  --indigo:    #6366f1;
+  --indigo2:   #818cf8;
+  --violet:    #8b5cf6;
+  --cyan:      #06b6d4;
+  --green:     #10b981;
+  --green2:    #34d399;
+  --amber:     #f59e0b;
+  --red:       #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: 'Sora', Arial, sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Background mesh */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,.15), transparent 60%),
+    radial-gradient(ellipse 40% 40% at 90% 90%, rgba(139,92,246,.08), transparent 50%);
+  pointer-events: none;
+}
+
+.wrap {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 20px 64px;
+}
+
+/* Logo */
+.logo {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 48px;
+}
+.logo-mark {
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1.5px solid rgba(226,232,240,.2);
+  background: rgba(226,232,240,.04);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  color: var(--text2); letter-spacing: .06em;
+}
+.logo-name {
+  font-size: 11px; font-weight: 600;
+  color: var(--text3); letter-spacing: .2em; text-transform: uppercase;
+}
+
+/* Card */
+.card {
+  width: min(600px, 100%);
+  background: linear-gradient(160deg, #0f1117, #090b0f);
+  border: 1px solid var(--border2);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 40px 120px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.03);
+}
+
+.card-stripe {
+  height: 3px;
+  background: linear-gradient(90deg, var(--indigo), var(--violet), var(--cyan));
+}
+
+.card-body { padding: 40px; }
+
+/* Header */
+.card-header {
+  display: flex; align-items: flex-start; gap: 16px; margin-bottom: 28px;
+}
+.header-icon {
+  width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+  background: rgba(99,102,241,.1);
+  border: 1px solid rgba(99,102,241,.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.header-text h1 {
+  font-size: 22px; font-weight: 700;
+  color: var(--text); line-height: 1.2;
+  letter-spacing: -.02em; margin-bottom: 4px;
+}
+.header-text p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+/* Env badge */
+.env-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.env-live    { background: rgba(16,185,129,.1);  color: var(--green2);  border: 1px solid rgba(16,185,129,.2); }
+.env-sandbox { background: rgba(99,102,241,.1);  color: var(--indigo2); border: 1px solid rgba(99,102,241,.2); }
+
+/* Key box */
+.key-box {
+  background: rgba(0,0,0,.4);
+  border: 1px solid rgba(226,232,240,.1);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.key-label {
+  font-size: 10px; font-weight: 700;
+  color: var(--text3); letter-spacing: .14em; text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.key-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px; color: var(--text);
+  word-break: break-all; line-height: 1.6;
+  letter-spacing: .02em;
+  user-select: all; /* selects all on single click */
+  cursor: text;
+  background: rgba(226,232,240,.03);
+  border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 16px;
+  margin-bottom: 12px;
+  transition: border-color .2s;
+}
+.key-value:hover { border-color: rgba(226,232,240,.18); }
+
+/* Copy button */
+.btn-copy {
+  width: 100%; height: 48px;
+  border-radius: 12px; border: none;
+  background: linear-gradient(135deg, var(--indigo), var(--violet));
+  color: #fff;
+  font-family: 'Sora', Arial, sans-serif;
+  font-size: 14px; font-weight: 700; letter-spacing: .02em;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .2s ease;
+  box-shadow: 0 8px 32px rgba(99,102,241,.3);
+}
+.btn-copy:hover   { transform: translateY(-1px); box-shadow: 0 12px 40px rgba(99,102,241,.4); }
+.btn-copy:active  { transform: translateY(0); }
+.btn-copy.copied  {
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 8px 32px rgba(16,185,129,.3);
+}
+
+/* Warning */
+.warning {
+  background: rgba(245,158,11,.05);
+  border: 1px solid rgba(245,158,11,.15);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  font-size: 12px; color: rgba(245,158,11,.8); line-height: 1.6;
+}
+
+/* Divider */
+.divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+/* Steps */
+.steps-title {
+  font-size: 10px; font-weight: 700;
+  color: var(--text3); letter-spacing: .14em; text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.steps { display: flex; flex-direction: column; gap: 10px; }
+.step {
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.step-n {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--indigo2);
+  margin-top: 1px;
+}
+.step p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.step p a { color: var(--indigo2); text-decoration: none; }
+.step p a:hover { text-decoration: underline; }
+
+/* Card footer */
+.card-footer {
+  padding: 20px 40px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+.card-footer span { font-size: 11px; color: var(--text3); }
+.card-footer a { font-size: 11px; color: var(--text3); text-decoration: none; }
+.card-footer a:hover { color: var(--text2); }
+
+/* Error / loading states */
+.state {
+  text-align: center; padding: 40px 20px;
+  display: none;
+}
+.state.active { display: block; }
+.state-icon { font-size: 40px; margin-bottom: 16px; }
+.state h2 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.state p  { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+/* Revealed state */
+#stateReady { display: none; }
+#stateLoading { display: block; }
+#stateError   { display: none; }
+#stateExpired { display: none; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.3);
+  padding: 12px 24px; border-radius: 12px;
+  font-size: 13px; font-weight: 600; color: var(--green2);
+  opacity: 0; transition: all .3s ease; pointer-events: none; white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 640px) {
+  .card-body { padding: 28px 24px; }
+  .card-footer { padding: 16px 24px; }
+  .header-text h1 { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-mark">RM</div>
+    <div class="logo-name">Realmetropolis</div>
+  </div>
+
+  <!-- Card -->
+  <div class="card">
+    <div class="card-stripe"></div>
+    <div class="card-body">
+
+      <!-- Loading -->
+      <div class="state active" id="stateLoading">
+        <div class="state-icon">⏳</div>
+        <h2>A carregar...</h2>
+        <p>A verificar o seu link de acesso.</p>
+      </div>
+
+      <!-- Error -->
+      <div class="state" id="stateError">
+        <div class="state-icon">❌</div>
+        <h2>Link inválido</h2>
+        <p>Este link não é válido ou já foi utilizado.<br>Contacte o administrador REALMETROPOLIS para uma nova chave.</p>
+      </div>
+
+      <!-- Expired -->
+      <div class="state" id="stateExpired">
+        <div class="state-icon">⏱</div>
+        <h2>Link expirado</h2>
+        <p>Este link era válido por 24 horas e expirou.<br>Contacte o administrador para receber um novo link.</p>
+      </div>
+
+      <!-- Ready -->
+      <div id="stateReady">
+
+        <div class="card-header">
+          <div class="header-icon">🔑</div>
+          <div class="header-text">
+            <h1>A sua API Key está pronta</h1>
+            <p id="empresaNome">Carregando...</p>
+          </div>
+        </div>
+
+        <span class="env-badge" id="envBadge">● —</span>
+
+        <!-- Key box -->
+        <div class="key-box">
+          <div class="key-label">API Key</div>
+          <div class="key-value" id="keyValue" onclick="this.focus(); selectAll(this);" tabindex="0">—</div>
+          <button class="btn-copy" id="btnCopy" onclick="copyKey()">
+            <span id="copyIcon">📋</span>
+            <span id="copyText">Copiar API Key</span>
+          </button>
+        </div>
+
+        <!-- Warning -->
+        <div class="warning">
+          🔒 <strong>Guarde esta chave num local seguro.</strong> Trate-a como uma palavra-passe — não a partilhe publicamente nem coloque em repositórios de código. Este link expira e não voltaremos a exibir a chave.
+        </div>
+
+        <!-- Steps -->
+        <div class="divider"></div>
+        <div class="steps-title">Como começar</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <p>Copie a chave acima e guarde-a em local seguro (gestor de palavras-passe ou variável de ambiente).</p>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <p>Aceda ao <a id="portalLink" href="#">portal de submissão</a> para enviar motoristas e veículos para validação.</p>
+          </div>
+          <div class="step">
+            <div class="step-n">3</div>
+            <p>Ou integre directamente via API enviando o header <code style="font-family:'IBM Plex Mono',monospace;font-size:11px;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:4px">X-Api-Key: &lt;chave&gt;</code> em cada pedido.</p>
+          </div>
+          <div class="step">
+            <div class="step-n">4</div>
+            <p>Em caso de dúvida, contacte <a href="mailto:api@realmetropolis.pt">api@realmetropolis.pt</a>.</p>
+          </div>
+        </div>
+
+      </div><!-- /stateReady -->
+
+    </div><!-- /card-body -->
+
+    <div class="card-footer">
+      <span>REALMETROPOLIS · API Partner Access</span>
+      <a href="mailto:api@realmetropolis.pt">Suporte</a>
+    </div>
+  </div><!-- /card -->
+
+</div><!-- /wrap -->
+
+<!-- Toast -->
+<div class="toast" id="toast">✅ API Key copiada para a área de transferência</div>
+
+<script>
+  const API = location.origin;
+
+  /* ── Decode JWT (client-side, sem verificação — só para exibir) ── */
+  function decodeToken(token) {
+    try {
+      const parts   = token.split('.');
+      if (parts.length !== 3) return null;
+      const pad     = parts[1].length % 4 === 0 ? '' : '='.repeat(4 - parts[1].length % 4);
+      const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/') + pad));
+      if (payload.exp && payload.exp * 1000 < Date.now()) return null; // expirado
+      return payload;
+    } catch { return null; }
+  }
+
+  function selectAll(el) {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  function copyKey() {
+    const key = document.getElementById('keyValue').textContent.trim();
+    if (!key || key === '—') return;
+
+    navigator.clipboard.writeText(key).then(() => {
+      const btn  = document.getElementById('btnCopy');
+      const icon = document.getElementById('copyIcon');
+      const txt  = document.getElementById('copyText');
+      btn.classList.add('copied');
+      icon.textContent = '✅';
+      txt.textContent  = 'Copiado!';
+      showToast('✅ API Key copiada para a área de transferência');
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        icon.textContent = '📋';
+        txt.textContent  = 'Copiar API Key';
+      }, 3000);
+    }).catch(() => {
+      // Fallback: seleccionar o texto manualmente
+      selectAll(document.getElementById('keyValue'));
+      showToast('Texto seleccionado — prima Ctrl+C para copiar');
+    });
+  }
+
+  /* ── Init ─────────────────────────────────────────────────── */
+  (function init() {
+    const params = new URLSearchParams(location.search);
+    const token  = params.get('t') || '';
+
+    if (!token) {
+      show('stateError'); return;
+    }
+
+    const payload = decodeToken(token);
+
+    if (!payload) {
+      // Tentar verificar no servidor (link pode ter expirado no servidor mas não no cliente)
+      show('stateExpired'); return;
+    }
+
+    // Preencher a página com os dados do payload
+    const { apiKey, empresa, ambiente } = payload;
+
+    if (!apiKey) { show('stateError'); return; }
+
+    document.getElementById('empresaNome').textContent = empresa || 'Empresa Parceira';
+    document.getElementById('keyValue').textContent    = apiKey;
+
+    // Badge de ambiente
+    const badge = document.getElementById('envBadge');
+    if (ambiente === 'live') {
+      badge.textContent = '● Live (Produção)';
+      badge.classList.add('env-live');
+    } else {
+      badge.textContent = '● Sandbox (Testes)';
+      badge.classList.add('env-sandbox');
+    }
+
+    // Portal link
+    const portalLink = document.getElementById('portalLink');
+    portalLink.href = location.origin + '/Parceiro-submit.html';
+
+    show('stateReady');
+  })();
+
+  function show(id) {
+    ['stateLoading','stateError','stateExpired','stateReady'].forEach(s => {
+      const el = document.getElementById(s);
+      if (el) el.style.display = s === id ? (s === 'stateReady' ? 'block' : 'block') : 'none';
+    });
+  }
+
+  // Atalho de teclado: Ctrl+C quando o foco está na key
+  document.getElementById('keyValue').addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      setTimeout(() => showToast('✅ API Key copiada'), 50);
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+===== DIAG START =====
+PWD: C:\Users\silva\OneDrive\Ambiente de Trabalho\backend
+
+--- WHERE NODE ---
+C:\Program Files\nodejs\node.exe
+
+--- WHERE NPM ---
+C:\Program Files\nodejs\npm
+C:\Program Files\nodejs\npm.cmd
+
+--- WHERE NPX ---
+C:\Program Files\nodejs\npx
+C:\Program Files\nodejs\npx.cmd
+
+--- NODE --VERSION ---
+v22.19.0
+
+--- NODE -E ---
+NODE_OK v22.19.0
+
+--- EXPLICIT NODE PATH ---
+v22.19.0
+
+===== DIAG END =====

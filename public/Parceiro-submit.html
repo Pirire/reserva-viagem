@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REALMETROPOLIS — Portal de Submissão</title>
+<style>
+:root{
+  --bg:#050507;--panel:#0e1014;--line:rgba(217,221,227,.12);--line2:rgba(217,221,227,.20);
+  --silver:#e3e8ef;--silver2:#aeb7c4;--silver3:#596270;
+  --text:#f7f9fc;--ok:#19d68b;--bad:#ff5a5a;--warn:#f0a500;
+  --gold:#c9a96e;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;}
+html,body{min-height:100%;background:var(--bg);color:var(--text);}
+body{
+  display:flex;flex-direction:column;align-items:center;
+  padding:32px 16px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,255,255,.03) 0%, transparent 30%),
+    radial-gradient(circle at 80% 100%, rgba(255,255,255,.02) 0%, transparent 25%),
+    var(--bg);
+}
+
+/* Header */
+.header{
+  width:min(720px,100%);
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:32px;flex-wrap:wrap;gap:12px;
+}
+.brand{display:flex;align-items:center;gap:12px;}
+.rm-circle{
+  width:44px;height:44px;border-radius:50%;
+  border:1.5px solid rgba(217,221,227,.3);
+  background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:900;color:var(--silver);letter-spacing:.06em;
+}
+.brand-name{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--silver2);text-transform:uppercase;}
+.brand-sub{font-size:10px;color:var(--silver3);margin-top:2px;}
+
+/* Auth bar */
+.auth-bar{
+  background:var(--panel);border:1px solid var(--line2);
+  border-radius:14px;padding:14px 18px;
+  width:min(720px,100%);margin-bottom:20px;
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+}
+.auth-bar label{font-size:11px;color:var(--silver3);flex-shrink:0;}
+.auth-bar input{
+  flex:1;min-width:200px;min-height:38px;
+  padding:0 12px;border-radius:10px;
+  border:1px solid var(--line2);background:#0a0c10;
+  color:var(--text);font-size:12px;font-family:'Courier New',monospace;
+  outline:none;
+}
+.auth-bar input:focus{border-color:var(--line2);}
+.btn-auth{
+  min-height:38px;padding:0 16px;border-radius:10px;border:none;
+  background:linear-gradient(180deg,#e2e7ee,#bec7d2);
+  color:#000;font-weight:900;font-size:11px;letter-spacing:.04em;
+  cursor:pointer;white-space:nowrap;
+}
+.auth-status{
+  font-size:11px;padding:6px 12px;border-radius:8px;
+}
+.auth-status.ok{background:rgba(25,214,139,.1);color:var(--ok);border:1px solid rgba(25,214,139,.2);}
+.auth-status.err{background:rgba(255,90,90,.1);color:var(--bad);border:1px solid rgba(255,90,90,.2);}
+
+/* Tabs */
+.tabs{
+  width:min(720px,100%);display:flex;gap:6px;margin-bottom:16px;
+}
+.tab{
+  flex:1;min-height:44px;border-radius:14px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#181c23,#101319);
+  color:var(--silver2);font-weight:900;font-size:12px;letter-spacing:.04em;
+  cursor:pointer;transition:.2s;
+}
+.tab.active{
+  background:linear-gradient(180deg,#e2e7ee,#bec7d2);
+  color:#000;border-color:#eef2f7;
+}
+
+/* Card */
+.card{
+  width:min(720px,100%);
+  background:linear-gradient(180deg,rgba(16,18,22,.98),rgba(10,12,15,.97));
+  border:1px solid var(--line2);border-radius:22px;
+  padding:28px;margin-bottom:16px;
+  display:none;
+}
+.card.active{display:block;}
+.card h3{font-size:15px;font-weight:900;margin-bottom:4px;color:var(--text);}
+.card .sub{font-size:12px;color:var(--silver3);margin-bottom:22px;line-height:1.5;}
+
+/* Form */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:600px){.grid-2{grid-template-columns:1fr;}}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;color:var(--silver2);margin-bottom:6px;letter-spacing:.04em;}
+.field label .req{color:var(--bad);}
+.input{
+  width:100%;min-height:46px;padding:0 12px;border-radius:12px;
+  border:1px solid var(--line2);background:#0a0c10;
+  color:var(--text);font-size:13px;outline:none;transition:.18s;
+}
+.input:focus{border-color:rgba(217,221,227,.35);box-shadow:0 0 0 3px rgba(217,221,227,.05);}
+.input::placeholder{color:var(--silver3);}
+
+/* File upload */
+.file-box{
+  border:1.5px dashed var(--line2);border-radius:12px;
+  padding:16px;text-align:center;cursor:pointer;
+  transition:.2s;position:relative;background:#070809;
+}
+.file-box:hover{border-color:rgba(217,221,227,.35);}
+.file-box input[type=file]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;
+}
+.file-box .icon{font-size:22px;margin-bottom:6px;}
+.file-box .label{font-size:11px;color:var(--silver3);line-height:1.4;}
+.file-box .filename{font-size:11px;color:var(--ok);margin-top:4px;font-weight:700;}
+.file-box.has-file{border-color:rgba(25,214,139,.3);background:rgba(25,214,139,.03);}
+
+/* Section divider */
+.section-sep{
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--silver3);margin:20px 0 14px;
+  display:flex;align-items:center;gap:10px;
+}
+.section-sep::after{content:'';flex:1;height:1px;background:var(--line);}
+
+/* Submit btn */
+.btn-submit{
+  width:100%;min-height:52px;border-radius:16px;border:none;
+  background:linear-gradient(180deg,#e2e7ee,#bec7d2);
+  color:#000;font-weight:900;font-size:14px;letter-spacing:.06em;
+  cursor:pointer;transition:.2s ease;margin-top:8px;
+  box-shadow:0 12px 28px rgba(255,255,255,.06);
+}
+.btn-submit:hover{filter:brightness(1.04);transform:translateY(-1px);}
+.btn-submit:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+/* Result */
+.result{
+  padding:16px 18px;border-radius:16px;margin-top:16px;
+  font-size:13px;line-height:1.6;display:none;
+}
+.result.ok{display:block;background:rgba(25,214,139,.07);border:1px solid rgba(25,214,139,.2);color:#7fffc4;}
+.result.err{display:block;background:rgba(255,90,90,.07);border:1px solid rgba(255,90,90,.2);color:#ff9999;}
+.result .rid{font-family:'Courier New',monospace;font-size:11px;color:var(--silver3);margin-top:6px;}
+
+/* Info footer */
+.info-footer{
+  width:min(720px,100%);
+  background:rgba(255,255,255,.02);border:1px solid var(--line);
+  border-radius:16px;padding:18px;margin-top:4px;
+}
+.info-footer h4{font-size:12px;font-weight:900;color:var(--silver2);margin-bottom:10px;letter-spacing:.06em;}
+.info-footer ul{list-style:none;display:flex;flex-direction:column;gap:6px;}
+.info-footer li{font-size:11px;color:var(--silver3);display:flex;gap:8px;line-height:1.5;}
+.info-footer li::before{content:'→';color:var(--silver3);flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="brand">
+    <div class="rm-circle">RM</div>
+    <div>
+      <div class="brand-name">REALMETROPOLIS</div>
+      <div class="brand-sub">Portal de Submissão de Documentos</div>
+    </div>
+  </div>
+  <div id="authBadge" style="display:none;"></div>
+</div>
+
+<!-- Auth Bar -->
+<div class="auth-bar">
+  <label>API Key</label>
+  <input type="password" id="apiKeyInput" placeholder="rm_live_... ou rm_test_...">
+  <button class="btn-auth" onclick="validateKey()">VALIDAR CHAVE</button>
+  <span class="auth-status" id="authStatus" style="display:none;"></span>
+</div>
+
+<!-- Status de diagnóstico -->
+<div id="diagBox" style="width:min(720px,100%);background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:12px;padding:14px 18px;margin-bottom:14px;font-size:12px;color:#f0c060;display:none;">
+  <b>⚠️ Diagnóstico:</b> <span id="diagMsg"></span>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('driver')">🚗 SUBMETER MOTORISTA</button>
+  <button class="tab" onclick="switchTab('vehicle')">🚗 SUBMETER VEÍCULO</button>
+  <button class="tab" onclick="switchTab('status')">🔍 VER ESTADO</button>
+</div>
+
+<!-- ══════════════════════════
+     FORM — MOTORISTA
+══════════════════════════ -->
+<div class="card active" id="tab-driver">
+  <h3>Submeter Motorista para Validação</h3>
+  <p class="sub">Preencha os dados e carregue os documentos. O motorista aparecerá no painel de validação do REALMETROPOLIS para revisão.</p>
+
+  <form id="formDriver" onsubmit="submitDriver(event)">
+    <div class="section-sep">Dados pessoais</div>
+    <div class="grid-2">
+      <div class="field"><label>Nome completo <span class="req">*</span></label><input class="input" name="nome" placeholder="João Silva" required></div>
+      <div class="field"><label>Email <span class="req">*</span></label><input class="input" name="email" type="email" placeholder="joao@empresa.pt" required></div>
+      <div class="field"><label>Contacto <span class="req">*</span></label><input class="input" name="contacto" placeholder="+351 910 000 000" required></div>
+
+    </div>
+
+    <div class="section-sep">Tipo de documento de identidade</div>
+    <div class="grid-2">
+      <div class="field"><label>Tipo de documento</label>
+        <select class="input" name="drvIdDocType" id="docTypeSelect" onchange="toggleTitulo()">
+          <option value="CC">Cartão de Cidadão (CC)</option>
+          <option value="TITULO_RESIDENCIA">Título de Residência</option>
+          <option value="PASSAPORTE">Passaporte</option>
+        </select>
+      </div>
+      <div class="field"><label>Validade do documento</label>
+        <input class="input" name="ccValidade" type="date">
+      </div>
+    </div>
+
+    <div class="section-sep">Documentos obrigatórios</div>
+    <div style="background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:11px;color:#818cf8;line-height:1.6;">
+      ℹ️ <b>Campos de validade obrigatórios</b> para os documentos com prazo — o sistema de alertas automáticos de vencimento depende destas datas.
+    </div>
+
+    <!-- ── FOTO ROSTO ──────────────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;">📷 Foto Rosto <span class="req">*</span></div>
+      <div class="field" style="margin:0">
+        <div class="file-box" id="box_fotoRosto">
+          <input type="file" name="fotoRosto" accept="image/*" onchange="markFile(this,'box_fotoRosto')" required>
+          <div class="icon">📷</div>
+          <div class="label">Foto do rosto (frente)</div>
+          <div class="filename" id="fn_fotoRosto"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CC / DOCUMENTO IDENTIDADE ──────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;"><span id="ccBlockLabel">🪪 Cartão de Cidadão (CC)</span> <span class="req">*</span></div>
+      <div class="grid-2">
+        <div class="field">
+          <label id="ccLabel">Documento (frente) <span class="req">*</span></label>
+          <div class="file-box" id="box_cc">
+            <input type="file" name="cc" accept="image/*,application/pdf" onchange="markFile(this,'box_cc')" required>
+            <div class="icon">🪪</div>
+            <div class="label">Frente do documento</div>
+            <div class="filename" id="fn_cc"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Validade <span class="req">*</span></label>
+          <input class="input" name="ccValidade" type="date" required>
+          <div style="font-size:10px;color:var(--silver3);margin-top:4px;">Data impressa no documento</div>
+        </div>
+      </div>
+      <div class="field" id="tResidenciaField" style="display:none;margin-top:10px;margin-bottom:0">
+        <label>Verso / Documento complementar</label>
+        <div class="file-box" id="box_tResidencia">
+          <input type="file" name="tResidencia" accept="image/*,application/pdf" onchange="markFile(this,'box_tResidencia')">
+          <div class="icon">📄</div>
+          <div class="label">Verso ou doc. complementar</div>
+          <div class="filename" id="fn_tResidencia"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CARTA DE CONDUÇÃO ───────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;">🚗 Carta de Condução <span class="req">*</span></div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Documento <span class="req">*</span></label>
+          <div class="file-box" id="box_cartaConducao">
+            <input type="file" name="cartaConducao" accept="image/*,application/pdf" onchange="markFile(this,'box_cartaConducao')" required>
+            <div class="icon">🚗</div>
+            <div class="label">Frente da carta de condução</div>
+            <div class="filename" id="fn_cartaConducao"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Validade <span class="req">*</span></label>
+          <input class="input" name="cartaConducaoValidade" type="date" required>
+          <div style="font-size:10px;color:var(--silver3);margin-top:4px;">Data de validade da carta</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TVDE ───────────────────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;">🏷️ Certificado TVDE</div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Documento (opcional)</label>
+          <div class="file-box" id="box_tvde">
+            <input type="file" name="tvde" accept="image/*,application/pdf" onchange="markFile(this,'box_tvde')">
+            <div class="icon">🏷️</div>
+            <div class="label">Certificado TVDE</div>
+            <div class="filename" id="fn_tvde"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Validade</label>
+          <input class="input" name="tvdeValidade" type="date">
+          <div style="font-size:10px;color:var(--silver3);margin-top:4px;">Obrigatório se tiver TVDE</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REGISTO CRIMINAL ───────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;">📋 Registo Criminal <span class="req">*</span></div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Documento <span class="req">*</span></label>
+          <div class="file-box" id="box_registoCriminal">
+            <input type="file" name="registoCriminal" accept="image/*,application/pdf" onchange="markFile(this,'box_registoCriminal')" required>
+            <div class="icon">📋</div>
+            <div class="label">Registo criminal (PDF ou imagem)</div>
+            <div class="filename" id="fn_registoCriminal"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Validade <span class="req">*</span></label>
+          <input class="input" name="registoCriminalValidade" type="date" required>
+          <div style="font-size:10px;color:var(--silver3);margin-top:4px;">Normalmente 90 dias após a data de emissão</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="driverResult"></div>
+    <button class="btn-submit" type="submit" id="btnDriver">SUBMETER MOTORISTA PARA VALIDAÇÃO</button>
+  </form>
+</div>
+
+<!-- ══════════════════════════
+     FORM — VEÍCULO
+══════════════════════════ -->
+<div class="card" id="tab-vehicle">
+  <h3>Submeter Veículo para Validação</h3>
+  <p class="sub">Carregue os documentos do veículo. O veículo aparecerá no painel de validação para revisão.</p>
+
+  <form id="formVehicle" onsubmit="submitVehicle(event)">
+    <div class="section-sep">Dados do veículo</div>
+    <div class="grid-2">
+      <div class="field"><label>Marca <span class="req">*</span></label><input class="input" name="marca" placeholder="Mercedes-Benz" required></div>
+      <div class="field"><label>Modelo <span class="req">*</span></label><input class="input" name="modelo" placeholder="Classe E" required></div>
+      <div class="field"><label>Matrícula <span class="req">*</span></label><input class="input" name="matricula" placeholder="00-AA-00" required style="text-transform:uppercase;"></div>
+      <div class="field"><label>Cor</label><input class="input" name="cor" placeholder="Preto"></div>
+      <div class="field"><label>Ano</label><input class="input" name="ano" type="number" placeholder="2022" min="2000" max="2030"></div>
+    </div>
+
+    <div class="section-sep">Documentos obrigatórios</div>
+    <div style="background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:11px;color:#818cf8;line-height:1.6;">
+      ℹ️ <b>Datas de validade obrigatórias</b> — o sistema de alertas automáticos depende destas datas para notificar antes do vencimento.
+    </div>
+
+    <!-- ── DUA ──────────────────────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;">📄 DUA — Documento Único Automóvel <span class="req">*</span></div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Documento <span class="req">*</span></label>
+          <div class="file-box" id="box_dua">
+            <input type="file" name="dua" accept="image/*,application/pdf" onchange="markFile(this,'box_dua')" required>
+            <div class="icon">📄</div>
+            <div class="label">Documento único automóvel</div>
+            <div class="filename" id="fn_dua"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Validade do DUA <span class="req">*</span></label>
+          <input class="input" name="duaValidade" type="date" required>
+          <div style="font-size:10px;color:var(--silver3);margin-top:4px;">Data de validade impressa no DUA</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SEGURO ──────────────────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;">🛡️ Seguro / Carta Verde <span class="req">*</span></div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Documento <span class="req">*</span></label>
+          <div class="file-box" id="box_seguro">
+            <input type="file" name="seguro" accept="image/*,application/pdf" onchange="markFile(this,'box_seguro')" required>
+            <div class="icon">🛡️</div>
+            <div class="label">Comprovativo de seguro</div>
+            <div class="filename" id="fn_seguro"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Validade do seguro <span class="req">*</span></label>
+          <input class="input" name="seguroValidade" type="date" required>
+          <div style="font-size:10px;color:var(--silver3);margin-top:4px;">Data em que o seguro expira</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INSPECÇÃO ───────────────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;">🔧 Inspecção <span class="req">*</span></div>
+      <div class="grid-2">
+        <div class="field">
+          <label>Documento <span class="req">*</span></label>
+          <div class="file-box" id="box_inspecao">
+            <input type="file" name="inspecao" accept="image/*,application/pdf" onchange="markFile(this,'box_inspecao')" required>
+            <div class="icon">🔧</div>
+            <div class="label">Certificado de inspecção</div>
+            <div class="filename" id="fn_inspecao"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Validade da inspecção <span class="req">*</span></label>
+          <input class="input" name="inspecaoValidade" type="date" required>
+          <div style="font-size:10px;color:var(--silver3);margin-top:4px;">Data da próxima inspecção</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FOTOS ───────────────────────────────── -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--silver2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px;">📸 Fotos do veículo (opcional)</div>
+      <div class="file-box" id="box_fotos">
+        <input type="file" name="fotos" accept="image/*" multiple onchange="markFile(this,'box_fotos')">
+        <div class="icon">📸</div>
+        <div class="label">Fotos do exterior — máx. 12 imagens</div>
+        <div class="filename" id="fn_fotos"></div>
+      </div>
+    </div>
+
+    <div id="vehicleResult"></div>
+    <button class="btn-submit" type="submit" id="btnVehicle">SUBMETER VEÍCULO PARA VALIDAÇÃO</button>
+  </form>
+</div>
+
+<!-- ══════════════════════════
+     TAB — ESTADO
+══════════════════════════ -->
+<div class="card" id="tab-status">
+  <h3>Verificar Estado de Submissão</h3>
+  <p class="sub">Introduza o ID de submissão para verificar o estado actual no painel de validação REALMETROPOLIS.</p>
+
+  <div class="field">
+    <label>ID de Submissão</label>
+    <input class="input" id="statusId" placeholder="6845abc123def456...">
+  </div>
+  <button class="btn-submit" onclick="checkStatus()" style="margin-top:0;">VERIFICAR ESTADO</button>
+  <div id="statusResult"></div>
+</div>
+
+<!-- Info footer -->
+<div class="info-footer">
+  <h4>COMO FUNCIONA</h4>
+  <ul>
+    <li>Introduza a sua API Key no campo acima e clique em Validar.</li>
+    <li>Submeta os documentos do motorista ou veículo com os ficheiros em anexo.</li>
+    <li>O registo aparece automaticamente no painel de validação da REALMETROPOLIS.</li>
+    <li>Receberá uma notificação (webhook) quando a decisão for tomada.</li>
+    <li>Para suporte: <a href="mailto:api@realmetropolis.pt" style="color:var(--ok);">api@realmetropolis.pt</a></li>
+  </ul>
+</div>
+
+<script>
+const API    = location.origin;
+let apiKey   = "";
+let verified = false;
+
+/* ── Diagnóstico visível ──────────────── */
+function diag(msg) {
+  const box = document.getElementById("diagBox");
+  const txt = document.getElementById("diagMsg");
+  box.style.display = "block";
+  txt.textContent   = msg;
+  console.log("[DIAG]", msg);
+}
+function clearDiag() {
+  document.getElementById("diagBox").style.display = "none";
+}
+
+/* ── AUTH ─────────────────────────────── */
+async function validateKey() {
+  const input = document.getElementById("apiKeyInput");
+  const raw   = input.value.trim();
+  const badge = document.getElementById("authStatus");
+  clearDiag();
+
+  if (!raw) {
+    badge.style.display = "block";
+    badge.className     = "auth-status err";
+    badge.textContent   = "Introduza a API Key.";
+    return;
+  }
+
+  badge.style.display = "block";
+  badge.className     = "auth-status";
+  badge.textContent   = "A validar...";
+
+  try {
+    // 1. Ping — verificar se o servidor está a responder
+    diag("A verificar conectividade com o servidor...");
+    const ping = await fetch(`${API}/api/validation/ping`).catch(e => {
+      diag("Servidor não responde: " + e.message); return null;
+    });
+
+    if (!ping) {
+      badge.className = "auth-status err";
+      badge.textContent = "❌ Servidor não responde.";
+      return;
+    }
+    if (!ping.ok) {
+      diag(`Ping falhou: HTTP ${ping.status}`);
+      badge.className = "auth-status err";
+      badge.textContent = `❌ Servidor respondeu com erro ${ping.status}.`;
+      return;
+    }
+
+    diag("Servidor OK. A validar API Key...");
+
+    // 2. Testar a chave — enviar pedido mínimo
+    const res = await fetch(`${API}/api/validation/submissions/driver`, {
+      method:  "POST",
+      headers: { "X-Api-Key": raw },
+      body:    new FormData(), // form vazio — vai dar 400 mas prova que a chave é aceite
+      credentials: "include",
+    }).catch(e => { diag("Erro de rede: " + e.message); return null; });
+
+    if (!res) {
+      badge.className = "auth-status err";
+      badge.textContent = "❌ Erro de rede ao validar chave.";
+      return;
+    }
+
+    diag(`Resposta do servidor: HTTP ${res.status}`);
+
+    if (res.status === 401) {
+      badge.className = "auth-status err";
+      badge.textContent = "❌ API Key inválida ou revogada. Peça ao admin para criar uma chave.";
+      verified = false; apiKey = "";
+    } else if (res.status === 400 || res.status === 201 || res.ok) {
+      // 400 = chave aceite mas campos em falta (esperado com FormData vazio)
+      badge.className = "auth-status ok";
+      badge.textContent = "✅ API Key válida — pronto para submeter";
+      apiKey = raw; verified = true;
+      clearDiag();
+    } else {
+      diag(`Resposta inesperada: ${res.status}`);
+      badge.className = "auth-status ok";
+      badge.textContent = `⚠️ Chave guardada (resposta ${res.status})`;
+      apiKey = raw; verified = true;
+    }
+  } catch (err) {
+    diag("Excepção: " + err.message);
+    badge.className = "auth-status err";
+    badge.textContent = "❌ Erro: " + err.message;
+  }
+}
+
+/* ── TABS ─────────────────────────────── */
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach((t, i) => {
+    const names = ["driver","vehicle","status"];
+    t.classList.toggle("active", names[i] === name);
+  });
+  document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+}
+
+/* ── FILE UPLOAD ─────────────────────── */
+function markFile(input, boxId) {
+  const box = document.getElementById(boxId);
+  const fnEl = box.querySelector(".filename");
+  if (input.files?.length) {
+    box.classList.add("has-file");
+    fnEl.textContent = input.files.length > 1
+      ? `${input.files.length} ficheiros`
+      : input.files[0].name;
+  }
+}
+
+function toggleTitulo() {
+  const val = document.getElementById("docTypeSelect").value;
+  const field = document.getElementById("tResidenciaField");
+  const label = document.getElementById("ccLabel");
+  if (val === "CC") {
+    field.style.display = "none";
+    label.innerHTML = 'CC — Frente <span class="req">*</span>';
+  } else {
+    field.style.display = "";
+    label.innerHTML = `${val === "TITULO_RESIDENCIA" ? "Título de Residência" : "Passaporte"} — Frente <span class="req">*</span>`;
+  }
+}
+
+/* ── SUBMIT MOTORISTA ─────────────────── */
+async function submitDriver(e) {
+  e.preventDefault();
+  if (!apiKey) { alert("Valide a API Key primeiro."); return; }
+
+  const btn    = document.getElementById("btnDriver");
+  const result = document.getElementById("driverResult");
+  const LABEL  = "SUBMETER MOTORISTA PARA VALIDAÇÃO";
+
+  btn.disabled = true; btn.textContent = "A submeter...";
+  result.className = "msg"; result.textContent = "";
+
+  try {
+    const fd  = new FormData(e.target);
+    const res = await fetch(`${API}/api/validation/submissions/driver`, {
+      method:      "POST",
+      headers:     { "X-Api-Key": apiKey },
+      body:        fd,
+      credentials: "include",
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.ok) {
+      result.className = "result ok";
+      result.innerHTML = `✅ <b>Motorista submetido com sucesso!</b><br>Aguarde a validação pela equipa REALMETROPOLIS.<div class="rid">ID de submissão: ${data.item?._id || "—"}</div>`;
+      e.target.reset();
+      document.querySelectorAll(".file-box").forEach(b => b.classList.remove("has-file"));
+      document.querySelectorAll(".filename").forEach(f => f.textContent = "");
+    } else {
+      result.className = "result err";
+      result.textContent = "❌ " + (data.message || `Erro ${res.status}. Verifique a API Key e os campos.`);
+    }
+  } catch (err) {
+    result.className = "result err";
+    result.textContent = "❌ Erro de ligação ao servidor: " + err.message;
+  } finally {
+    // botão SEMPRE libertado — mesmo que haja erro
+    btn.disabled = false; btn.textContent = LABEL;
+  }
+}
+
+/* ── SUBMIT VEÍCULO ──────────────────── */
+async function submitVehicle(e) {
+  e.preventDefault();
+  if (!apiKey) { alert("Valide a API Key primeiro."); return; }
+
+  const btn    = document.getElementById("btnVehicle");
+  const result = document.getElementById("vehicleResult");
+  const LABEL  = "SUBMETER VEÍCULO PARA VALIDAÇÃO";
+
+  btn.disabled = true; btn.textContent = "A submeter...";
+  result.className = "msg"; result.textContent = "";
+
+  try {
+    const fd  = new FormData(e.target);
+    const res = await fetch(`${API}/api/validation/submissions/vehicle`, {
+      method:      "POST",
+      headers:     { "X-Api-Key": apiKey },
+      body:        fd,
+      credentials: "include",
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.ok) {
+      result.className = "result ok";
+      result.innerHTML = `✅ <b>Veículo submetido com sucesso!</b><br>Aguarde a validação pela equipa REALMETROPOLIS.<div class="rid">ID de submissão: ${data.item?._id || "—"}</div>`;
+      e.target.reset();
+      document.querySelectorAll(".file-box").forEach(b => b.classList.remove("has-file"));
+      document.querySelectorAll(".filename").forEach(f => f.textContent = "");
+    } else {
+      result.className = "result err";
+      result.textContent = "❌ " + (data.message || `Erro ${res.status}. Verifique a API Key e os campos.`);
+    }
+  } catch (err) {
+    result.className = "result err";
+    result.textContent = "❌ Erro de ligação ao servidor: " + err.message;
+  } finally {
+    // botão SEMPRE libertado — mesmo que haja erro
+    btn.disabled = false; btn.textContent = LABEL;
+  }
+}
+
+/* ── VERIFICAR ESTADO ─────────────────── */
+async function checkStatus() {
+  if (!apiKey) { alert("Valide a API Key primeiro."); return; }
+  const id     = document.getElementById("statusId").value.trim();
+  const result = document.getElementById("statusResult");
+  const btn    = document.querySelector("#tab-status .btn-submit");
+  if (!id) { result.className = "result err"; result.textContent = "Introduza um ID de submissão."; return; }
+
+  result.className = "result ok"; result.textContent = "A verificar...";
+  if (btn) { btn.disabled = true; btn.textContent = "A verificar..."; }
+
+  try {
+    const res  = await fetch(`${API}/api/validation/submissions/${id}`, {
+      headers:     { "X-Api-Key": apiKey },
+      credentials: "include",
+    });
+    const data = await res.json().catch(() => ({}));
+
+  if (!res.ok || !data.ok) {
+    result.className = "result err"; result.textContent = "❌ " + (data.message || "Submissão não encontrada.");
+    return;
+  }
+
+  const item = data.item;
+  const statusLabels = {
+    pendente:             "⏳ Em análise",
+    validado:             "✅ Aprovado",
+    pendente_novo_envio:  "🔄 Documentos adicionais solicitados",
+    recusado:             "❌ Recusado",
+  };
+
+  result.className = "result ok";
+  result.innerHTML = `
+    <b>${statusLabels[item.status] || item.status}</b><br>
+    Tipo: ${item.type === "driver" ? "Motorista" : "Veículo"}<br>
+    Nome: ${item.ownerName || "—"}<br>
+    Submetido em: ${new Date(item.createdAt).toLocaleDateString("pt-PT")}
+    ${item.finalDecision?.decidedAt ? `<br>Decisão em: ${new Date(item.finalDecision.decidedAt).toLocaleDateString("pt-PT")}` : ""}
+    <div class="rid">ID: ${item._id}</div>
+  `;
+  } catch (err) {
+    result.className = "result err";
+    result.textContent = "❌ Erro de ligação: " + err.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "VERIFICAR ESTADO"; }
+  }
+}
+</script>
+</body>
+</html>

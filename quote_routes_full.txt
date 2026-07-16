@@ -1,0 +1,157 @@
+﻿// src/routes/quote.routes.js
+//
+// CÃ¡lculo de orÃ§amento â€” lÃª preÃ§os do AdminQuoteConfig (base de dados)
+// Fallback para valores hardcoded se a BD nÃ£o tiver configuraÃ§Ã£o.
+//
+import { Router }         from "express";
+import AdminQuoteConfig   from "../models/AdminQuoteConfig.js";
+import { calcTollsPortugalFromDirectionsRoute } from "../services/tolls.pt.js";
+
+const router = Router();
+console.log("âœ… quote.routes.js carregado");
+
+/* ================================================================
+   HELPER â€” carregar config da BD com fallback
+================================================================ */
+const FALLBACK = {
+  precoKm:   { confort: 1.05, executive: 1.35, luxury: 1.75, economica: 0.85 },
+  minimos:   { aeroporto: 15, normal: 10 },
+  espera:    { minutosGratis: 10, valorPorMinExtra: 0.8 },
+  portagem:  { valorFixo: 2.1 },
+  transito:  { fatorMax: 1.3 },
+  horaPonta: { fator: 1.1, manhaInicio: 7, manhaFim: 10, tardeInicio: 17, tardeFim: 20 },
+  procura:   { incrementoPorExcesso: 0.15, fatorMax: 1.5 },
+};
+
+async function getConfig() {
+  try {
+    const cfg = await AdminQuoteConfig.findOne({ key: "default" }).lean();
+    if (!cfg) return FALLBACK;
+
+    // Admin guarda como Confort/Executive/Luxury â€” normalizar para minÃºsculas
+    const km = cfg.precoKm || {};
+    return {
+      precoKm: {
+        confort:   Number(km.Confort   || km.confort   || FALLBACK.precoKm.confort),
+        executive: Number(km.Executive || km.executive || FALLBACK.precoKm.executive),
+        luxury:    Number(km.Luxury    || km.luxury    || FALLBACK.precoKm.luxury),
+        economica: Number(km.Economica || km.economica || FALLBACK.precoKm.economica),
+      },
+      minimos:   cfg.minimos   || FALLBACK.minimos,
+      espera:    cfg.espera    || FALLBACK.espera,
+      portagem:  cfg.portagem  || FALLBACK.portagem,
+      transito:  cfg.transito  || FALLBACK.transito,
+      horaPonta: cfg.horaPonta || FALLBACK.horaPonta,
+      procura:   cfg.procura   || FALLBACK.procura,
+    };
+  } catch {
+    return FALLBACK;
+  }
+}
+
+/* ================================================================
+   HELPER â€” calcular preÃ§o com a config da BD
+================================================================ */
+function isAeroporto(txt = "") {
+  const t = String(txt).toLowerCase();
+  return t.includes("aeroporto") || t.includes("airport") || t.includes("humberto delgado");
+}
+
+function calcularPreco({ categoria, distanciaKm, directionsRoute, contexto, cfg }) {
+  const cat = String(categoria || "").trim().toLowerCase();
+
+  let valorKm = 0;
+  if (cat.startsWith("grupo")) {
+    const n = Number(cat.replace("grupo", ""));
+    const grupos = { 6: 1.20, 8: 1.35, 17: 1.60 };
+    valorKm = grupos[n] || 0;
+  } else {
+    valorKm = cfg.precoKm[cat] || 0;
+  }
+
+  if (!valorKm) return { ok: false, message: "Categoria nÃ£o suportada: " + categoria };
+
+  // Base
+  let base = valorKm * distanciaKm;
+  const minimo = (isAeroporto(contexto?.origemTexto) || isAeroporto(contexto?.destinoTexto))
+    ? cfg.minimos.aeroporto
+    : cfg.minimos.normal;
+  if (base < minimo) base = minimo;
+
+  // Espera
+  const mins = Number(contexto?.minutosEspera || 0);
+  const espera = +(Math.max(0, mins - cfg.espera.minutosGratis) * cfg.espera.valorPorMinExtra).toFixed(2);
+
+  // Portagens reais
+  let portagens = 0, tolls = [], hasTolls = false;
+  if (directionsRoute) {
+    try {
+      const t = calcTollsPortugalFromDirectionsRoute(directionsRoute);
+      hasTolls  = Boolean(t?.hasTolls);
+      portagens = Number(t?.tollAmount || 0);
+      tolls     = t?.tolls || [];
+    } catch {}
+  }
+
+  const total = +(base + espera + portagens).toFixed(2);
+
+  // Split financeiro
+  const plataforma = +(base * 0.15).toFixed(2);
+  const motorista  = +(base - plataforma).toFixed(2);
+
+  return {
+    ok: true,
+    categoria: cat,
+    km: +distanciaKm.toFixed(2),
+    valorKm,
+    base:      +base.toFixed(2),
+    baseTotal: +base.toFixed(2),
+    espera,
+    portagens,
+    hasTolls,
+    tolls,
+    total,
+    breakdown: { plataforma, motorista },
+    status: hasTolls ? "Inclui portagens" : "Sem portagens",
+  };
+}
+
+/* ================================================================
+   POST /api/quote
+================================================================ */
+router.post("/quote", async (req, res) => {
+  try {
+    const { categoria, distanciaKm, directionsRoute, contexto } = req.body || {};
+
+    if (!categoria || !distanciaKm) {
+      return res.status(400).json({ ok: false, message: "Campos obrigatÃ³rios: categoria, distanciaKm." });
+    }
+
+    const cfg    = await getConfig();
+    const result = calcularPreco({
+      categoria,
+      distanciaKm:     Number(distanciaKm),
+      directionsRoute: directionsRoute || null,
+      contexto:        contexto        || {},
+      cfg,
+    });
+
+    if (!result.ok) return res.status(400).json({ ok: false, message: result.message });
+    return res.json(result);
+
+  } catch (err) {
+    console.error("âŒ /quote:", err);
+    return res.status(500).json({ ok: false, message: "Erro ao calcular orÃ§amento." });
+  }
+});
+
+/* ================================================================
+   GET /api/quote/tabela
+   Devolve tabela de preÃ§os actual da BD
+================================================================ */
+router.get("/quote/tabela", async (_req, res) => {
+  const cfg = await getConfig();
+  return res.json({ ok: true, tabela: cfg.precoKm, config: cfg });
+});
+
+export default router;

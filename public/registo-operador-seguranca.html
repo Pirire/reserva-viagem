@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>REALMETROPOLIS — Operador de Segurança</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#07080a; --ink-2:#0e0f13; --ink-3:#161820; --ink-4:#1e2028;
+  --silver:#c4c9d4; --silver-2:#7a8290; --silver-3:#3e4452;
+  --white:#edf0f5; --green:#19d68b; --red:#ff5a5a;
+  --border:rgba(196,201,212,.10); --border-2:rgba(196,201,212,.20); --border-3:rgba(196,201,212,.38);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:'Outfit',sans-serif;background:var(--ink);color:var(--silver);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(196,201,212,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(196,201,212,.025) 1px,transparent 1px);
+  background-size:48px 48px}
+body::after{content:'';position:fixed;top:-20vh;left:50%;transform:translateX(-50%);width:70vw;height:50vh;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse,rgba(196,201,212,.04) 0%,transparent 70%)}
+
+.wrap{position:relative;z-index:1;max-width:660px;margin:0 auto;padding:48px 24px 80px}
+
+.header{text-align:center;margin-bottom:44px}
+.brand{display:inline-flex;align-items:center;gap:12px;margin-bottom:28px}
+.brand-mark{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--border-3);background:rgba(196,201,212,.06);
+  display:grid;place-items:center;font-family:'Playfair Display',serif;font-size:12px;font-weight:700;color:var(--white)}
+.brand-name{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:var(--silver);letter-spacing:.2em;text-transform:uppercase}
+.header h1{font-family:'Playfair Display',serif;font-size:clamp(26px,5vw,38px);font-weight:900;color:var(--white);line-height:1.15;margin-bottom:12px}
+.header p{font-size:14px;color:var(--silver-2);line-height:1.65;max-width:420px;margin:0 auto}
+
+/* Steps */
+.steps{display:flex;align-items:center;margin-bottom:36px;padding:0 8px}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;position:relative}
+.step::after{content:'';position:absolute;top:16px;left:calc(50% + 16px);right:calc(-50% + 16px);height:1px;background:var(--border-2)}
+.step:last-child::after{display:none}
+.step-num{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border-2);background:var(--ink-3);
+  display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--silver-3);transition:all .3s;position:relative;z-index:1}
+.step.active .step-num{border-color:var(--white);background:rgba(196,201,212,.1);color:var(--white)}
+.step.done   .step-num{border-color:var(--green);background:rgba(25,214,139,.1);color:var(--green)}
+.step-label{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--silver-3);transition:color .3s;white-space:nowrap}
+.step.active .step-label{color:var(--silver)}
+.step.done   .step-label{color:var(--green)}
+
+/* Token error */
+#tokenError{display:none;background:rgba(255,90,90,.06);border:1.5px solid rgba(255,90,90,.22);
+  border-radius:14px;padding:18px 22px;text-align:center;color:#ff9999;font-size:13px;line-height:1.6;margin-bottom:28px}
+#tokenError.show{display:block}
+
+/* Card */
+.card{background:linear-gradient(160deg,var(--ink-2),var(--ink));border:1.5px solid var(--border-2);
+  border-radius:22px;padding:28px;margin-bottom:14px;animation:fadeUp .4s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card.hidden{display:none}
+.card-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--white);margin-bottom:5px}
+.card-sub{font-size:13px;color:var(--silver-2);line-height:1.55;margin-bottom:24px}
+
+/* Campos */
+.field-group{display:flex;flex-direction:column;gap:14px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--silver-3)}
+.field input,.field select{height:50px;background:var(--ink-3);border:1.5px solid var(--border-2);border-radius:13px;
+  padding:0 16px;color:var(--white);font-size:14px;font-weight:500;font-family:'Outfit',sans-serif;outline:none;
+  transition:border-color .18s,box-shadow .18s,background .18s;width:100%}
+.field input:hover,.field select:hover{border-color:var(--border-3);background:var(--ink-4)}
+.field input:focus,.field select:focus{border-color:rgba(196,201,212,.5);background:var(--ink-4);box-shadow:0 0 0 3px rgba(196,201,212,.06)}
+.field input::placeholder{color:var(--silver-3);font-weight:400}
+.field select{appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a8290' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
+.field select option{background:#161820}
+
+/* Upload */
+.docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.upload-zone{border:1.5px dashed var(--border-2);border-radius:13px;padding:20px 16px;
+  text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--ink-3)}
+.upload-zone:hover{border-color:var(--border-3);background:var(--ink-4)}
+.upload-zone.has-file{border-color:rgba(25,214,139,.3);background:rgba(25,214,139,.04)}
+.upload-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:22px;margin-bottom:6px}
+.upload-title{font-size:12px;font-weight:600;color:var(--silver);margin-bottom:3px}
+.upload-hint{font-size:10px;color:var(--silver-3)}
+.upload-name{font-size:11px;font-weight:600;color:var(--green);margin-top:5px;display:none}
+.upload-zone.has-file .upload-name{display:block}
+.upload-zone.has-file .upload-hint{display:none}
+
+/* Secção credenciais */
+.cred-section{background:rgba(196,201,212,.03);border:1.5px solid var(--border-3);border-radius:16px;padding:20px;margin-top:6px}
+.cred-title{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--silver-2);
+  margin-bottom:14px;display:flex;align-items:center;gap:7px}
+
+/* Toggle senha */
+.field-pw{position:relative}
+.field-pw input{padding-right:48px}
+.toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:var(--silver-3);font-size:16px;padding:4px;transition:color .18s}
+.toggle-pw:hover{color:var(--silver)}
+
+/* Botões */
+.btn-row{display:flex;gap:10px;margin-top:24px}
+.btn-primary{flex:1;height:52px;border:none;border-radius:15px;
+  background:linear-gradient(180deg,#dde2e8,#adb4be);
+  color:#060708;font-weight:700;font-size:14px;font-family:'Outfit',sans-serif;letter-spacing:.06em;
+  cursor:pointer;transition:all .2s;
+  box-shadow:0 6px 20px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.5)}
+.btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-secondary{height:52px;padding:0 22px;border-radius:15px;border:1.5px solid var(--border-2);
+  background:transparent;color:var(--silver-2);font-weight:600;font-size:14px;font-family:'Outfit',sans-serif;
+  cursor:pointer;transition:all .18s}
+.btn-secondary:hover{border-color:var(--border-3);color:var(--white)}
+
+/* Mensagem */
+.msg{border-radius:12px;padding:13px 16px;font-size:13px;line-height:1.55;display:none;margin-top:14px}
+.msg.show{display:block}
+.msg.ok{background:rgba(25,214,139,.07);border:1.5px solid rgba(25,214,139,.22);color:#7fffc4}
+.msg.err{background:rgba(255,90,90,.07);border:1.5px solid rgba(255,90,90,.22);color:#ff9999}
+
+/* Sucesso */
+#successPanel{display:none;text-align:center;padding:44px 28px;animation:fadeUp .5s ease both}
+#successPanel.show{display:block}
+.si{font-size:52px;margin-bottom:18px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.st{font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--white);margin-bottom:10px}
+.ss{font-size:13px;color:var(--silver-2);line-height:1.65;max-width:340px;margin:0 auto}
+
+@media(max-width:540px){
+  .wrap{padding:28px 14px 60px}
+  .card{padding:20px 16px}
+  .field-row,.docs-grid{grid-template-columns:1fr}
+  .btn-row{flex-direction:column-reverse}
+  .btn-secondary{height:46px}
+  .step-label{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark">RM</div>
+      <div class="brand-name">Realmetropolis</div>
+    </div>
+    <h1>Operador de Segurança</h1>
+    <p>Complete o seu registo para aceder ao Centro de Segurança e monitorizar viagens em tempo real.</p>
+  </div>
+
+  <div id="tokenError">
+    <strong>Convite inválido ou expirado.</strong><br>
+    Este link não é válido ou já foi utilizado. Contacte o administrador para obter um novo convite.
+  </div>
+
+  <div class="steps" id="stepsBar">
+    <div class="step active" id="s1"><div class="step-num">1</div><div class="step-label">Dados</div></div>
+    <div class="step"        id="s2"><div class="step-num">2</div><div class="step-label">Documentos</div></div>
+    <div class="step"        id="s3"><div class="step-num">3</div><div class="step-label">Acesso</div></div>
+  </div>
+
+  <!-- PASSO 1 -->
+  <div class="card" id="c1">
+    <div class="card-title">Dados Pessoais</div>
+    <div class="card-sub">Identificação do operador de segurança.</div>
+    <div class="field-group">
+      <div class="field"><label>Nome Completo *</label><input type="text" id="fNome" placeholder="Nome e apelido"></div>
+      <div class="field-row">
+        <div class="field"><label>NIF *</label><input type="text" id="fNif" placeholder="123456789" maxlength="9" inputmode="numeric"></div>
+        <div class="field"><label>Nº Cartão de Cidadão *</label><input type="text" id="fCc" placeholder="00000000 0 ZZ0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Contacto *</label><input type="tel" id="fContacto" placeholder="+351 900 000 000"></div>
+        <div class="field">
+          <label>País de Actuação</label>
+          <div id="fPaisDisplay" style="
+            display:flex;align-items:center;gap:10px;
+            background:rgba(255,255,255,.04);
+            border:1.5px solid rgba(255,255,255,.1);
+            border-radius:10px;padding:0 14px;height:46px;
+            font-size:14px;font-weight:800;color:#fff;
+            cursor:not-allowed;user-select:none;
+          ">
+            <span id="fPaisFlag" style="font-size:20px"></span>
+            <span id="fPaisNome" style="flex:1">—</span>
+            <span style="font-size:11px;color:var(--muted);background:rgba(255,255,255,.06);padding:2px 8px;border-radius:6px;letter-spacing:.06em">BLOQUEADO</span>
+          </div>
+          <input type="hidden" id="fPais">
+        </div>
+      </div>
+      <div class="field"><label>Endereço Completo *</label><input type="text" id="fEndereco" placeholder="Rua, nº, código postal, localidade"></div>
+    </div>
+    <div id="m1" class="msg"></div>
+    <div class="btn-row"><button class="btn-primary" onclick="ir2()">CONTINUAR →</button></div>
+  </div>
+
+  <!-- PASSO 2 -->
+  <div class="card hidden" id="c2">
+    <div class="card-title">Documentos de Identificação</div>
+    <div class="card-sub">Frente e verso do Cartão de Cidadão (PDF, JPG ou PNG, máx. 10MB).</div>
+    <div class="docs-grid">
+      <div class="field"><label>CC — Frente *</label>
+        <div class="upload-zone" id="zF">
+          <input type="file" id="fCcF" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="onUp('zF','nF',this)">
+          <div class="upload-icon">🪪</div>
+          <div class="upload-title">Frente do CC</div>
+          <div class="upload-hint">PDF · JPG · PNG</div>
+          <div class="upload-name" id="nF"></div>
+        </div>
+      </div>
+      <div class="field"><label>CC — Verso *</label>
+        <div class="upload-zone" id="zV">
+          <input type="file" id="fCcV" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="onUp('zV','nV',this)">
+          <div class="upload-icon">🪪</div>
+          <div class="upload-title">Verso do CC</div>
+          <div class="upload-hint">PDF · JPG · PNG</div>
+          <div class="upload-name" id="nV"></div>
+        </div>
+      </div>
+    </div>
+    <div id="m2" class="msg"></div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="ir1()">← VOLTAR</button>
+      <button class="btn-primary"   onclick="ir3()">CONTINUAR →</button>
+    </div>
+  </div>
+
+  <!-- PASSO 3 -->
+  <div class="card hidden" id="c3">
+    <div class="card-title">Credenciais de Acesso</div>
+    <div class="card-sub">Email e palavra-passe para entrar no Centro de Segurança.</div>
+    <div class="cred-section">
+      <div class="cred-title">🔐 Registar Email e Passe</div>
+      <div class="field-group">
+        <div class="field"><label>Email de Acesso *</label><input type="email" id="fEmail" placeholder="operador@exemplo.com"></div>
+        <div class="field-row">
+          <div class="field"><label>Palavra-Passe *</label>
+            <div class="field-pw">
+              <input type="password" id="fPasse" placeholder="Mínimo 8 caracteres">
+              <button class="toggle-pw" type="button" onclick="togglePw('fPasse',this)">👁</button>
+            </div>
+          </div>
+          <div class="field"><label>Confirmar Passe *</label>
+            <div class="field-pw">
+              <input type="password" id="fPasseC" placeholder="Repetir">
+              <button class="toggle-pw" type="button" onclick="togglePw('fPasseC',this)">👁</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="m3" class="msg"></div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="ir2()">← VOLTAR</button>
+      <button class="btn-primary" id="btnSubmit" onclick="submeter()">CONCLUIR REGISTO</button>
+    </div>
+  </div>
+
+  <!-- SUCESSO -->
+  <div id="successPanel">
+    <div class="si">🛡️</div>
+    <div class="st">Registo Concluído</div>
+    <div class="ss">O seu registo foi submetido com sucesso e aguarda aprovação pelo administrador.<br>Receberá acesso ao Centro de Segurança assim que a conta for activada.</div>
+  </div>
+
+</div>
+
+<script>
+const API    = location.origin;
+const PARAMS = new URLSearchParams(location.search);
+const TOKEN  = PARAMS.get('token') || '';
+const PAIS   = (PARAMS.get('pais') || '').toUpperCase();
+
+/* ── Mapa de países ── */
+const PAISES = {
+  PT: { nome: 'Portugal',             flag: '🇵🇹' },
+  BR: { nome: 'Brasil',               flag: '🇧🇷' },
+  AO: { nome: 'Angola',               flag: '🇦🇴' },
+  MZ: { nome: 'Moçambique',           flag: '🇲🇿' },
+  CV: { nome: 'Cabo Verde',           flag: '🇨🇻' },
+  ST: { nome: 'São Tomé e Príncipe',  flag: '🇸🇹' },
+  GW: { nome: 'Guiné-Bissau',         flag: '🇬🇼' },
+  GQ: { nome: 'Guiné Equatorial',     flag: '🇬🇶' },
+  TL: { nome: 'Timor-Leste',          flag: '🇹🇱' },
+};
+
+/* ── Validar token ── */
+if (!TOKEN) {
+  document.getElementById('tokenError').classList.add('show');
+  document.getElementById('stepsBar').style.display = 'none';
+  document.getElementById('c1').style.display = 'none';
+}
+
+/* ── Pré-preencher e bloquear país ── */
+(function preencherPais() {
+  const cfg = PAISES[PAIS];
+  const flagEl = document.getElementById('fPaisFlag');
+  const nomeEl = document.getElementById('fPaisNome');
+  const hiddenEl = document.getElementById('fPais');
+
+  if (cfg) {
+    if (flagEl) flagEl.textContent = cfg.flag;
+    if (nomeEl) nomeEl.textContent = cfg.nome;
+    if (hiddenEl) hiddenEl.value  = PAIS;
+  } else {
+    /* País não reconhecido — mostrar código bruto */
+    if (flagEl) flagEl.textContent = '🌍';
+    if (nomeEl) nomeEl.textContent = PAIS || 'Não especificado';
+    if (hiddenEl) hiddenEl.value  = PAIS;
+  }
+})();
+
+/* ── Uploads ── */
+function onUp(zId, nId, inp) {
+  const z = document.getElementById(zId), n = document.getElementById(nId);
+  if (inp.files?.[0]) { z.classList.add('has-file'); n.textContent = '✓ ' + inp.files[0].name.slice(0,30); }
+  else { z.classList.remove('has-file'); n.textContent = ''; }
+}
+
+function togglePw(id, btn) {
+  const i = document.getElementById(id);
+  const show = i.type === 'password';
+  i.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+}
+
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('c'+i).classList.toggle('hidden', i!==n);
+    const s = document.getElementById('s'+i);
+    s.classList.remove('active','done');
+    if (i < n) s.classList.add('done');
+    if (i === n) s.classList.add('active');
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function msg(id, type, text) {
+  const el = document.getElementById(id);
+  el.className = 'msg ' + type + ' show';
+  el.textContent = text;
+}
+function clrMsg(id) { const el=document.getElementById(id); el.className='msg'; el.textContent=''; }
+
+function ir1() { setStep(1); }
+
+function ir2() {
+  clrMsg('m1');
+  const nome     = document.getElementById('fNome').value.trim();
+  const nif      = document.getElementById('fNif').value.trim().replace(/\s/g,'');
+  const cc       = document.getElementById('fCc').value.trim();
+  const contacto = document.getElementById('fContacto').value.trim();
+  const pais     = document.getElementById('fPais').value;
+  const endereco = document.getElementById('fEndereco').value.trim();
+
+  if (!nome || !nif || !cc || !contacto || !pais || !endereco) {
+    msg('m1','err','Preencha todos os campos obrigatórios.'); return;
+  }
+  /* NIF (9 dígitos) ou CPF (11 dígitos) */
+  if (!/^\d{9}$/.test(nif) && !/^\d{11}$/.test(nif)) {
+    msg('m1','err','NIF deve ter 9 dígitos ou CPF 11 dígitos.'); return;
+  }
+  setStep(2);
+}
+
+function ir3() {
+  clrMsg('m2');
+  if (!document.getElementById('fCcF').files?.[0] || !document.getElementById('fCcV').files?.[0]) {
+    msg('m2','err','Frente e verso do CC são obrigatórios.'); return;
+  }
+  setStep(3);
+}
+
+async function submeter() {
+  clrMsg('m3');
+  const email  = document.getElementById('fEmail').value.trim();
+  const passe  = document.getElementById('fPasse').value;
+  const passeC = document.getElementById('fPasseC').value;
+  if (!email||!passe||!passeC)                           { msg('m3','err','Preencha todos os campos.'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))        { msg('m3','err','Email inválido.'); return; }
+  if (passe.length < 8)                                  { msg('m3','err','Palavra-passe com mínimo 8 caracteres.'); return; }
+  if (passe !== passeC)                                  { msg('m3','err','As palavras-passe não coincidem.'); return; }
+
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true; btn.textContent = 'A submeter…';
+
+  try {
+    const fd = new FormData();
+    fd.append('token',    TOKEN);
+    fd.append('pais',     document.getElementById('fPais').value);   /* país bloqueado pelo admin */
+    fd.append('nome',     document.getElementById('fNome').value.trim());
+    fd.append('nif',      document.getElementById('fNif').value.trim().replace(/\s/g,''));
+    fd.append('cc',       document.getElementById('fCc').value.trim());
+    fd.append('contacto', document.getElementById('fContacto').value.trim());
+    fd.append('endereco', document.getElementById('fEndereco').value.trim());
+    fd.append('email',    email);
+    fd.append('password', passe);
+    fd.append('doc_cc_frente', document.getElementById('fCcF').files[0]);
+    fd.append('doc_cc_verso',  document.getElementById('fCcV').files[0]);
+
+    const resp = await fetch(`${API}/api/operadores-seguranca/registar`, { method:'POST', body:fd }).then(r=>r.json());
+    if (!resp.ok && !resp.success) throw new Error(resp.message || 'Erro ao submeter.');
+
+    document.getElementById('stepsBar').style.display = 'none';
+    ['c1','c2','c3'].forEach(id => document.getElementById(id).style.display = 'none');
+    document.getElementById('successPanel').classList.add('show');
+  } catch(err) {
+    msg('m3','err', err.message || 'Erro inesperado. Tente novamente.');
+    btn.disabled = false; btn.textContent = 'CONCLUIR REGISTO';
+  }
+}
+</script>
+</body>
+</html>

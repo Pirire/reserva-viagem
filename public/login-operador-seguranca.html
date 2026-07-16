@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REALMETROPOLIS — Acesso Centro de Segurança</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#07080a; --ink-2:#0e0f13; --ink-3:#161820; --ink-4:#1e2028;
+  --silver:#c4c9d4; --silver-2:#7a8290; --silver-3:#3e4452;
+  --white:#edf0f5; --green:#19d68b; --red:#ff5a5a;
+  --border:rgba(196,201,212,.10); --border-2:rgba(196,201,212,.20); --border-3:rgba(196,201,212,.38);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Outfit',sans-serif;background:var(--ink);color:var(--silver);overflow:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(196,201,212,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(196,201,212,.025) 1px,transparent 1px);
+  background-size:48px 48px}
+body::after{content:'';position:fixed;top:-25vh;left:50%;transform:translateX(-50%);
+  width:70vw;height:55vh;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse,rgba(196,201,212,.045) 0%,transparent 70%)}
+
+.page{position:relative;z-index:1;height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
+
+.card{width:min(440px,100%);
+  background:linear-gradient(160deg,var(--ink-2),var(--ink));
+  border:1.5px solid var(--border-2);border-radius:26px;
+  box-shadow:0 40px 100px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.03);
+  overflow:hidden;animation:fadeUp .45s cubic-bezier(.22,1,.36,1) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+.card-header{padding:26px 28px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+.brand-mark{width:44px;height:44px;border-radius:50%;flex:0 0 auto;
+  border:1.5px solid var(--border-3);background:rgba(196,201,212,.06);
+  display:grid;place-items:center;font-family:'Playfair Display',serif;
+  font-size:12px;font-weight:700;color:var(--white)}
+.header-eyebrow{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--silver-3);margin-bottom:4px}
+.header-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--white)}
+
+/* Badge de segurança */
+.security-badge{
+  display:flex;align-items:center;gap:8px;padding:10px 14px;
+  background:rgba(25,214,139,.05);border:1px solid rgba(25,214,139,.18);
+  border-radius:12px;margin:0 28px 20px;
+  font-size:11px;color:rgba(25,214,139,.8);font-weight:600;
+}
+.shield-icon{font-size:16px}
+
+.card-body{padding:4px 28px 28px}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--silver-3);margin-bottom:6px}
+.field input{width:100%;height:50px;background:var(--ink-3);border:1.5px solid var(--border-2);
+  border-radius:13px;padding:0 16px;color:var(--white);font-size:14px;font-weight:500;
+  font-family:'Outfit',sans-serif;outline:none;transition:border-color .18s,box-shadow .18s,background .18s}
+.field input:hover{border-color:var(--border-3);background:var(--ink-4)}
+.field input:focus{border-color:rgba(196,201,212,.5);background:var(--ink-4);box-shadow:0 0 0 3px rgba(196,201,212,.06)}
+.field input::placeholder{color:var(--silver-3);font-weight:400}
+.field-pw{position:relative}
+.field-pw input{padding-right:46px}
+.toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:var(--silver-3);font-size:16px;padding:4px;transition:color .18s}
+.toggle-pw:hover{color:var(--silver)}
+
+.btn-row{display:flex;gap:10px;margin-top:24px}
+.btn-primary{flex:1;height:50px;border:none;border-radius:14px;
+  background:linear-gradient(180deg,#dde2e8,#adb4be);
+  color:#060708;font-weight:700;font-size:14px;font-family:'Outfit',sans-serif;letter-spacing:.06em;
+  cursor:pointer;transition:all .2s;
+  box-shadow:0 6px 20px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.5)}
+.btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-ghost{height:50px;padding:0 18px;border-radius:14px;border:1.5px solid var(--border-2);
+  background:transparent;color:var(--silver-2);font-weight:600;font-size:13px;
+  font-family:'Outfit',sans-serif;cursor:pointer;transition:all .18s}
+.btn-ghost:hover{border-color:var(--border-3);color:var(--white)}
+
+.msg{margin-top:16px;padding:13px 15px;border-radius:12px;font-size:13px;line-height:1.55;display:none}
+.msg.ok{display:block;background:rgba(25,214,139,.07);border:1.5px solid rgba(25,214,139,.22);color:#7fffc4}
+.msg.err{display:block;background:rgba(255,90,90,.07);border:1.5px solid rgba(255,90,90,.22);color:#ff9999}
+
+.footer-link{margin-top:18px;text-align:center;font-size:12px;color:var(--silver-3)}
+.footer-link a{color:var(--silver-2);text-decoration:underline;text-underline-offset:3px;transition:color .18s}
+.footer-link a:hover{color:var(--white)}
+
+@media(max-width:480px){
+  .card-header{padding:20px 18px 16px}
+  .security-badge{margin:0 18px 16px}
+  .card-body{padding:4px 18px 22px}
+  .btn-row{flex-direction:column-reverse}
+  .btn-ghost{height:44px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="card">
+
+    <div class="card-header">
+      <div class="brand-mark">RM</div>
+      <div>
+        <div class="header-eyebrow">Realmetropolis · Área Restrita</div>
+        <div class="header-title">Centro de Segurança</div>
+      </div>
+    </div>
+
+    <div class="security-badge">
+      <span class="shield-icon">🛡️</span>
+      Acesso exclusivo a operadores credenciados
+    </div>
+
+    <div class="card-body">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="operador@exemplo.com" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Palavra-Passe</label>
+        <div class="field-pw">
+          <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password">
+          <button class="toggle-pw" type="button" id="btnToggle">👁</button>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" id="btnLimpar">LIMPAR</button>
+        <button class="btn-primary" id="btnLogin">ENTRAR →</button>
+      </div>
+
+      <div class="msg" id="msg"></div>
+
+      <div class="footer-link">
+        Recebeu um convite? <a href="/registo-operador-seguranca.html">Fazer registo</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = location.origin;
+
+function show(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text; el.className = 'msg ' + type;
+}
+
+document.getElementById('btnToggle').onclick = () => {
+  const i = document.getElementById('senha');
+  const isPass = i.type === 'password';
+  i.type = isPass ? 'text' : 'password';
+  document.getElementById('btnToggle').textContent = isPass ? '🙈' : '👁';
+};
+
+document.getElementById('btnLimpar').onclick = () => {
+  document.getElementById('email').value = '';
+  document.getElementById('senha').value = '';
+  show('', '');
+};
+
+async function login() {
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const senha = document.getElementById('senha').value;
+  if (!email || !senha) { show('Preencha email e palavra-passe.', 'err'); return; }
+
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.textContent = 'A autenticar…';
+
+  try {
+    const r = await fetch(`${API}/api/operadores-seguranca/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha }),
+    });
+
+    const resp = await r.json().catch(() => ({}));
+
+    if (!r.ok) {
+      if (r.status === 403 || resp?.pendente || resp?.aprovado === false) {
+        show('⏳ Conta pendente de aprovação pelo administrador. Receberá um email quando estiver activa.', 'err');
+      } else {
+        show('❌ ' + (resp?.message || 'Credenciais inválidas.'), 'err');
+      }
+      btn.disabled = false; btn.textContent = 'ENTRAR →';
+      return;
+    }
+
+    show('✅ Acesso concedido. A abrir painel…', 'ok');
+    setTimeout(() => { location.href = './painel-seguranca.html'; }, 700);
+
+  } catch (err) {
+    show('❌ ' + (err.message || 'Erro de autenticação.'), 'err');
+    btn.disabled = false; btn.textContent = 'ENTRAR →';
+  }
+}
+
+document.getElementById('btnLogin').onclick = login;
+['email','senha'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+});
+</script>
+</body>
+</html>

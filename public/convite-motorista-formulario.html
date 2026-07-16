@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REALMETROPOLIS — Registo Motorista / Veículo</title>
+
+  <style>
+    :root{
+      --bg:#060606;
+      --panel:#0d0f13;
+      --panel2:#151922;
+      --line:#2a313d;
+      --line2:#4d5868;
+      --silver:#dce1e8;
+      --silver2:#aeb6c2;
+      --text:#f5f7fa;
+      --ok:#19d68b;
+      --warn:#f2c56a;
+      --bad:#ff6b6b;
+      --shadow:0 16px 38px rgba(0,0,0,.45);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+    html,body{width:100%;height:100%;background:var(--bg);color:var(--text)}
+    body{overflow:auto}
+
+    .wrap{
+      min-height:100%;
+      padding:24px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .card{
+      width:min(1180px, 96vw);
+      background:linear-gradient(180deg,#0d0f13,#090b0f);
+      border:1px solid var(--line2);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .head{
+      padding:18px 20px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      gap:14px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .logo{
+      width:52px;height:52px;border-radius:16px;
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid var(--line2);
+      background:linear-gradient(180deg,#1b1f26,#101318);
+      color:#fff;font-weight:900;
+    }
+
+    .head h1{font-size:18px;letter-spacing:.04em}
+    .head p{font-size:12px;color:var(--silver2);margin-top:4px;line-height:1.45}
+
+    .body{padding:20px}
+
+    .screen{display:none}
+    .screen.active{display:block}
+
+    .chooser{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px;
+      margin-top:10px;
+    }
+
+    .choice{
+      border:1px solid var(--line2);
+      border-radius:22px;
+      background:linear-gradient(180deg,#171b22,#101319);
+      padding:24px;
+      cursor:pointer;
+      transition:.16s ease;
+      min-height:220px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      box-shadow:var(--shadow);
+    }
+
+    .choice:hover{
+      transform:translateY(-2px);
+      filter:brightness(1.04);
+    }
+
+    .choice h3{
+      font-size:20px;
+      margin-bottom:10px;
+      color:#fff;
+    }
+
+    .choice p{
+      color:var(--silver2);
+      line-height:1.5;
+      font-size:14px;
+    }
+
+    .choice.pending{
+      border-color:#e4e9f0;
+      box-shadow:0 0 0 1px rgba(255,255,255,.18), var(--shadow);
+    }
+
+    .choice.done{
+      border-color:rgba(25,214,139,.45);
+      background:linear-gradient(180deg,#13231c,#0f1614);
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 12px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      margin-top:14px;
+      width:max-content;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.04);
+    }
+
+    .badge.ok{
+      background:rgba(25,214,139,.12);
+      border-color:rgba(25,214,139,.35);
+      color:#d7ffec;
+    }
+
+    .badge.warn{
+      background:rgba(242,197,106,.12);
+      border-color:rgba(242,197,106,.32);
+      color:#fff3d4;
+    }
+
+    .form-title{
+      font-size:18px;
+      font-weight:900;
+      margin-bottom:10px;
+    }
+
+    .muted{
+      color:var(--silver2);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-bottom:10px;
+    }
+
+    .field label{
+      font-size:12px;
+      color:var(--silver2);
+    }
+
+    .req{
+      color:var(--bad);
+      font-weight:900;
+      margin-left:4px;
+    }
+
+    .input,.select,.textarea{
+      width:100%;
+      padding:11px 12px;
+      border-radius:14px;
+      border:1px solid var(--line2);
+      background:#0d1015;
+      color:#fff;
+      outline:none;
+    }
+
+    .textarea{
+      min-height:110px;
+      resize:vertical;
+    }
+
+    .doc-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+
+    .doc-card{
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:linear-gradient(180deg,#181c23,#101319);
+      padding:14px;
+    }
+
+    .doc-card h4{
+      font-size:14px;
+      margin-bottom:10px;
+      color:#fff;
+    }
+
+    .helper{
+      margin-top:10px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      color:var(--silver2);
+      font-size:12px;
+      line-height:1.55;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+
+    .btn{
+      min-height:44px;
+      padding:0 16px;
+      border-radius:14px;
+      border:1px solid var(--line2);
+      background:linear-gradient(180deg,#171b22,#101319);
+      color:var(--silver);
+      font-weight:900;
+      cursor:pointer;
+      transition:.16s ease;
+    }
+
+    .btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
+    .btn.primary{
+      background:linear-gradient(180deg,#e2e7ee,#bec7d2);
+      color:#000;
+      border-color:#eef2f7;
+    }
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none;
+      filter:none;
+    }
+
+    .msg{
+      margin-top:12px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,#181b20,#111318);
+      color:var(--silver);
+      font-size:13px;
+      white-space:pre-wrap;
+    }
+
+    .overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.72);
+      backdrop-filter:blur(8px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:1000;
+      padding:18px;
+    }
+
+    .overlay.active{display:flex}
+
+    .modal{
+      width:min(520px, 94vw);
+      background:linear-gradient(180deg,#0f1217,#090b0f);
+      border:1px solid var(--line2);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
+
+    .modal h3{
+      color:#fff;
+      margin-bottom:10px;
+      font-size:18px;
+    }
+
+    .modal p{
+      color:var(--silver2);
+      line-height:1.55;
+      font-size:14px;
+    }
+
+    .modal-actions{
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+
+    @media(max-width:900px){
+      .chooser,.grid-2,.grid-3,.doc-grid{grid-template-columns:1fr}
+      .wrap{padding:12px}
+      .body{padding:14px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <div class="logo">RM</div>
+        <div>
+          <h1>REALMETROPOLIS — Registo para Validação</h1>
+          <p id="headHint">Escolha o que pretende registar.</p>
+        </div>
+      </div>
+
+      <div class="body">
+        <!-- ECRÃ INICIAL -->
+        <section class="screen active" id="screen-choice">
+          <div class="muted" style="margin-bottom:14px">
+            O convite dá acesso a dois registos independentes. Pode enviar apenas motorista, apenas veículo, ou os dois.
+          </div>
+
+          <div class="chooser">
+            <div class="choice pending" id="choiceDriver">
+              <h3>Registar dados do motorista</h3>
+              <p>Preencher dados pessoais, idioma obrigatório e documentos para validação.</p>
+              <div class="badge warn" id="driverChoiceBadge">PENDENTE</div>
+            </div>
+
+            <div class="choice pending" id="choiceVehicle">
+              <h3>Registar dados do veículo</h3>
+              <p>Preencher marca, modelo, matrícula e documentos do veículo para validação.</p>
+              <div class="badge warn" id="vehicleChoiceBadge">PENDENTE</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn" id="btnChoiceBack" type="button" disabled>VOLTAR</button>
+          </div>
+        </section>
+
+        <!-- FORM MOTORISTA -->
+        <section class="screen" id="screen-driver">
+          <div class="form-title">Registar dados do motorista</div>
+          <div class="muted">Preencha completamente este formulário. O idioma é obrigatório.</div>
+
+          <div class="grid-3" style="margin-top:14px">
+            <div class="field">
+              <label>Nome <span class="req">*</span></label>
+              <input class="input" id="drvNome" type="text" />
+            </div>
+            <div class="field">
+              <label>Contacto <span class="req">*</span></label>
+              <input class="input" id="drvContacto" type="text" />
+            </div>
+            <div class="field">
+              <label>E-mail <span class="req">*</span></label>
+              <input class="input" id="drvEmail" type="email" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label>Idioma <span class="req">*</span></label>
+              <select class="select" id="drvIdioma">
+                <option value="">Selecionar idioma</option>
+                <option value="Português">Português</option>
+                <option value="Inglês">Inglês</option>
+                <option value="Espanhol">Espanhol</option>
+                <option value="Francês">Francês</option>
+                <option value="Alemão">Alemão</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Documento de identificação <span class="req">*</span></label>
+              <select class="select" id="drvIdDocType">
+                <option value="CC">Cartão do Cidadão</option>
+                <option value="TR">Título de Residência</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="doc-grid">
+            <div class="doc-card">
+              <h4>Foto do rosto <span class="req">*</span></h4>
+              <div class="field">
+                <label>Upload</label>
+                <input class="input" id="f_fotoRosto" type="file" accept="image/*,application/pdf" />
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <h4>Documento de identificação <span class="req">*</span></h4>
+              <div class="field">
+                <label>Nome no documento <span class="req">*</span></label>
+                <input class="input" id="idDocNome" type="text" />
+              </div>
+              <div class="field">
+                <label>Nº documento <span class="req">*</span></label>
+                <input class="input" id="idDocNumero" type="text" />
+              </div>
+              <div class="field">
+                <label>Validade <span class="req">*</span></label>
+                <input class="input" id="v_idDoc" type="date" />
+              </div>
+              <div class="field">
+                <label>Upload <span class="req">*</span></label>
+                <input class="input" id="f_idDoc" type="file" accept="image/*,application/pdf" />
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <h4>Carta de Condução <span class="req">*</span></h4>
+              <div class="field">
+                <label>Nome no documento <span class="req">*</span></label>
+                <input class="input" id="cartaNome" type="text" />
+              </div>
+              <div class="field">
+                <label>Nº documento <span class="req">*</span></label>
+                <input class="input" id="cartaNumero" type="text" />
+              </div>
+              <div class="field">
+                <label>Validade <span class="req">*</span></label>
+                <input class="input" id="v_cartaConducao" type="date" />
+              </div>
+              <div class="field">
+                <label>Upload <span class="req">*</span></label>
+                <input class="input" id="f_cartaConducao" type="file" accept="image/*,application/pdf" />
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <h4>TVDE / IMTT</h4>
+              <div class="field">
+                <label>Nome no documento</label>
+                <input class="input" id="tvdeNome" type="text" />
+              </div>
+              <div class="field">
+                <label>Nº documento</label>
+                <input class="input" id="tvdeNumero" type="text" />
+              </div>
+              <div class="field">
+                <label>Validade</label>
+                <input class="input" id="v_tvde" type="date" />
+              </div>
+              <div class="field">
+                <label>Upload</label>
+                <input class="input" id="f_tvde" type="file" accept="image/*,application/pdf" />
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <h4>Registo Criminal <span class="req">*</span></h4>
+              <div class="field">
+                <label>Nome no documento <span class="req">*</span></label>
+                <input class="input" id="rcNome" type="text" />
+              </div>
+              <div class="field">
+                <label>Nº documento <span class="req">*</span></label>
+                <input class="input" id="rcNumero" type="text" />
+              </div>
+              <div class="field">
+                <label>Validade <span class="req">*</span></label>
+                <input class="input" id="v_registoCriminal" type="date" />
+              </div>
+              <div class="field">
+                <label>Upload <span class="req">*</span></label>
+                <input class="input" id="f_registoCriminal" type="file" accept="image/*,application/pdf" />
+              </div>
+            </div>
+          </div>
+
+          <div class="helper">
+            Depois de clicar em <b>Enviar para validação</b>, o sistema pergunta se deseja também registar veículo.
+          </div>
+
+          <div class="msg" id="msgDriver">Preencha todos os campos obrigatórios.</div>
+
+          <div class="actions">
+            <button class="btn" id="btnDriverBack" type="button">VOLTAR</button>
+            <button class="btn primary" id="btnDriverSubmit" type="button" disabled>ENVIAR PARA VALIDAÇÃO</button>
+          </div>
+        </section>
+
+        <!-- FORM VEÍCULO -->
+        <section class="screen" id="screen-vehicle">
+          <div class="form-title">Registar dados do veículo</div>
+          <div class="muted">Este registo é independente. Pode enviar apenas o veículo ou enviar juntamente com o motorista já preenchido.</div>
+
+          <div class="grid-3" style="margin-top:14px">
+            <div class="field">
+              <label>Marca <span class="req">*</span></label>
+              <input class="input" id="vehMarca" type="text" />
+            </div>
+            <div class="field">
+              <label>Modelo <span class="req">*</span></label>
+              <input class="input" id="vehModelo" type="text" />
+            </div>
+            <div class="field">
+              <label>Matrícula <span class="req">*</span></label>
+              <input class="input" id="vehMatricula" type="text" />
+            </div>
+          </div>
+
+          <div class="doc-grid">
+            <div class="doc-card">
+              <h4>DUA</h4>
+              <div class="field">
+                <label>Nome no documento</label>
+                <input class="input" id="duaNome" type="text" />
+              </div>
+              <div class="field">
+                <label>Nº documento</label>
+                <input class="input" id="duaNumero" type="text" />
+              </div>
+              <div class="field">
+                <label>Validade</label>
+                <input class="input" id="v_dua" type="date" />
+              </div>
+              <div class="field">
+                <label>Upload</label>
+                <input class="input" id="f_dua" type="file" accept="image/*,application/pdf" />
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <h4>Seguro / Carta Verde</h4>
+              <div class="field">
+                <label>Nome no documento</label>
+                <input class="input" id="seguroNome" type="text" />
+              </div>
+              <div class="field">
+                <label>Nº documento</label>
+                <input class="input" id="seguroNumero" type="text" />
+              </div>
+              <div class="field">
+                <label>Validade</label>
+                <input class="input" id="v_seguro" type="date" />
+              </div>
+              <div class="field">
+                <label>Upload</label>
+                <input class="input" id="f_seguro" type="file" accept="image/*,application/pdf" />
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <h4>Inspeção</h4>
+              <div class="field">
+                <label>Nome no documento</label>
+                <input class="input" id="inspecaoNome" type="text" />
+              </div>
+              <div class="field">
+                <label>Nº documento</label>
+                <input class="input" id="inspecaoNumero" type="text" />
+              </div>
+              <div class="field">
+                <label>Validade</label>
+                <input class="input" id="v_inspecao" type="date" />
+              </div>
+              <div class="field">
+                <label>Upload</label>
+                <input class="input" id="f_inspecao" type="file" accept="image/*,application/pdf" />
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <h4>Fotos do veículo</h4>
+              <div class="field">
+                <label>Uploads múltiplos</label>
+                <input class="input" id="f_fotos" type="file" accept="image/*,application/pdf" multiple />
+              </div>
+            </div>
+          </div>
+
+          <div class="msg" id="msgVehicle">Preencha marca, modelo e matrícula para ativar o envio.</div>
+
+          <div class="actions">
+            <button class="btn" id="btnVehicleBack" type="button">VOLTAR</button>
+            <button class="btn primary" id="btnVehicleSubmit" type="button" disabled>ENVIAR PARA VALIDAÇÃO</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP DECISÃO -->
+  <div class="overlay" id="confirmOverlay">
+    <div class="modal">
+      <h3>Deseja registar o seu veículo?</h3>
+      <p>
+        Pode enviar já os dados do motorista, ou continuar e registar também o veículo antes do envio final.
+      </p>
+      <div class="modal-actions">
+        <button class="btn" id="btnNoVehicle" type="button">NÃO REGISTAR VEÍCULO</button>
+        <button class="btn primary" id="btnYesVehicle" type="button">SIM, REGISTAR VEÍCULO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP SUCESSO -->
+  <div class="overlay" id="successOverlay">
+    <div class="modal">
+      <h3>Registo enviado com sucesso</h3>
+      <p>
+        Seus dados serão verificados o mais breve possível.
+      </p>
+      <div class="modal-actions">
+        <button class="btn primary" id="btnSuccessOk" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const API_BASE = "";
+      const ROUTES = {
+        gestorMe: ["/api/gestor/me", "/gestor/me", "/api/me"],
+        motoristaValidationCreate: ["/api/validation/submissions/driver"],
+        vehicleValidationCreate: ["/api/validation/submissions/vehicle"]
+      };
+
+      const state = {
+        gestor: { id:"", nome:"", email:"" },
+        token: new URLSearchParams(location.search).get("token") || "",
+        driverSubmitted: false,
+        vehicleSubmitted: false,
+        pendingDriverBeforeVehicle: false,
+        waitingCombinedSend: false
+      };
+
+      function joinUrl(base, path){
+        return String(base || "").replace(/\/$/, "") + "/" + String(path || "").replace(/^\//, "");
+      }
+
+      async function api(path, opts = {}){
+        const res = await fetch(joinUrl(API_BASE, path), {
+          credentials: "include",
+          ...opts
+        }).catch(() => null);
+
+        if(!res) throw new Error("Sem ligação ao servidor.");
+
+        const txt = await res.text().catch(() => "");
+        let data = {};
+        try { data = txt ? JSON.parse(txt) : {}; }
+        catch { data = { message: txt }; }
+
+        if(!res.ok) throw new Error(data?.message || ("HTTP " + res.status));
+        return data;
+      }
+
+      async function apiTry(paths, opts = {}){
+        let lastErr = null;
+        for(const p of paths){
+          try { return await api(p, opts); }
+          catch(err){ lastErr = err; }
+        }
+        throw lastErr || new Error("Falha na API");
+      }
+
+      function showScreen(id){
+        document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+        document.getElementById(id).classList.add("active");
+      }
+
+      function openOverlay(id){ document.getElementById(id).classList.add("active"); }
+      function closeOverlay(id){ document.getElementById(id).classList.remove("active"); }
+
+      function setMsg(id, text){ document.getElementById(id).textContent = text; }
+
+      function updateChoiceCards(){
+        const driverChoice = document.getElementById("choiceDriver");
+        const vehicleChoice = document.getElementById("choiceVehicle");
+        const driverBadge = document.getElementById("driverChoiceBadge");
+        const vehicleBadge = document.getElementById("vehicleChoiceBadge");
+        const btnChoiceBack = document.getElementById("btnChoiceBack");
+
+        driverChoice.classList.remove("pending","done");
+        vehicleChoice.classList.remove("pending","done");
+
+        if(state.driverSubmitted){
+          driverChoice.classList.add("done");
+          driverBadge.className = "badge ok";
+          driverBadge.textContent = "ENVIADO";
+        } else {
+          driverChoice.classList.add("pending");
+          driverBadge.className = "badge warn";
+          driverBadge.textContent = "PENDENTE";
+        }
+
+        if(state.vehicleSubmitted){
+          vehicleChoice.classList.add("done");
+          vehicleBadge.className = "badge ok";
+          vehicleBadge.textContent = "ENVIADO";
+        } else {
+          vehicleChoice.classList.add("pending");
+          vehicleBadge.className = "badge warn";
+          vehicleBadge.textContent = "PENDENTE";
+        }
+
+        if(state.driverSubmitted && state.vehicleSubmitted){
+          btnChoiceBack.disabled = false;
+          btnChoiceBack.textContent = "VOLTAR";
+        } else {
+          btnChoiceBack.disabled = true;
+          btnChoiceBack.textContent = "VOLTAR";
+        }
+
+        document.getElementById("headHint").textContent =
+          state.driverSubmitted && state.vehicleSubmitted
+            ? "Ambos os registos já foram enviados."
+            : "Escolha o que pretende registar.";
+      }
+
+      function updateButtonsState(){
+        document.getElementById("btnDriverSubmit").disabled = !isDriverFormValid() || state.driverSubmitted;
+        document.getElementById("btnVehicleSubmit").disabled = !isVehicleFormValid() || state.vehicleSubmitted;
+
+        if(state.driverSubmitted){
+          setMsg("msgDriver", "✅ Motorista já enviado para validação.");
+        }
+        if(state.vehicleSubmitted){
+          setMsg("msgVehicle", "✅ Veículo já enviado para validação.");
+        }
+      }
+
+      function isDriverFormValid(){
+        const requiredFilled =
+          document.getElementById("drvNome").value.trim() &&
+          document.getElementById("drvContacto").value.trim() &&
+          document.getElementById("drvEmail").value.trim() &&
+          document.getElementById("drvIdioma").value.trim() &&
+          document.getElementById("idDocNome").value.trim() &&
+          document.getElementById("idDocNumero").value.trim() &&
+          document.getElementById("v_idDoc").value.trim() &&
+          document.getElementById("cartaNome").value.trim() &&
+          document.getElementById("cartaNumero").value.trim() &&
+          document.getElementById("v_cartaConducao").value.trim() &&
+          document.getElementById("rcNome").value.trim() &&
+          document.getElementById("rcNumero").value.trim() &&
+          document.getElementById("v_registoCriminal").value.trim();
+
+        const requiredFiles =
+          document.getElementById("f_fotoRosto").files[0] &&
+          document.getElementById("f_idDoc").files[0] &&
+          document.getElementById("f_cartaConducao").files[0] &&
+          document.getElementById("f_registoCriminal").files[0];
+
+        return !!(requiredFilled && requiredFiles);
+      }
+
+      function isVehicleFormValid(){
+        return !!(
+          document.getElementById("vehMarca").value.trim() &&
+          document.getElementById("vehModelo").value.trim() &&
+          document.getElementById("vehMatricula").value.trim()
+        );
+      }
+
+      async function loadGestor(){
+        try{
+          const me = await apiTry(ROUTES.gestorMe);
+          const gestor = me?.gestor || me?.user || me?.admin || me || {};
+          state.gestor = {
+            id: String(gestor?._id || gestor?.id || "").trim(),
+            nome: String(gestor?.nome || gestor?.name || "").trim(),
+            email: String(gestor?.email || "").trim()
+          };
+        }catch{
+          state.gestor = { id:"", nome:"", email:"" };
+        }
+      }
+
+      function buildDriverFormData(){
+        const fd = new FormData();
+
+        fd.append("token", state.token);
+        fd.append("gestorId", state.gestor.id || "");
+        fd.append("gestorNome", state.gestor.nome || "");
+        fd.append("gestorEmail", state.gestor.email || "");
+        fd.append("submittedByRole", "gestor_frota");
+        fd.append("submittedAt", new Date().toISOString());
+
+        fd.append("nome", document.getElementById("drvNome").value.trim());
+        fd.append("contacto", document.getElementById("drvContacto").value.trim());
+        fd.append("email", document.getElementById("drvEmail").value.trim());
+        fd.append("idiomas", JSON.stringify([document.getElementById("drvIdioma").value]));
+        fd.append("drvIdDocType", document.getElementById("drvIdDocType").value);
+
+        const idDocType = document.getElementById("drvIdDocType").value;
+        const fId = document.getElementById("f_idDoc").files[0];
+        const fFoto = document.getElementById("f_fotoRosto").files[0];
+        const fCarta = document.getElementById("f_cartaConducao").files[0];
+        const fTvde = document.getElementById("f_tvde").files[0];
+        const fRc = document.getElementById("f_registoCriminal").files[0];
+
+        if(fFoto) fd.append("fotoRosto", fFoto, fFoto.name);
+
+        if(idDocType === "CC"){
+          if(fId) fd.append("cc", fId, fId.name);
+          fd.append("ccNome", document.getElementById("idDocNome").value.trim());
+          fd.append("ccNumero", document.getElementById("idDocNumero").value.trim());
+          fd.append("ccValidade", document.getElementById("v_idDoc").value);
+        } else {
+          if(fId) fd.append("tResidencia", fId, fId.name);
+          fd.append("tResidenciaNome", document.getElementById("idDocNome").value.trim());
+          fd.append("tResidenciaNumero", document.getElementById("idDocNumero").value.trim());
+          fd.append("tResidenciaValidade", document.getElementById("v_idDoc").value);
+        }
+
+        if(fCarta) fd.append("cartaConducao", fCarta, fCarta.name);
+        fd.append("cartaConducaoNome", document.getElementById("cartaNome").value.trim());
+        fd.append("cartaConducaoNumero", document.getElementById("cartaNumero").value.trim());
+        fd.append("cartaConducaoValidade", document.getElementById("v_cartaConducao").value);
+
+        if(fTvde) fd.append("tvde", fTvde, fTvde.name);
+        fd.append("tvdeNome", document.getElementById("tvdeNome").value.trim());
+        fd.append("tvdeNumero", document.getElementById("tvdeNumero").value.trim());
+        fd.append("tvdeValidade", document.getElementById("v_tvde").value);
+
+        if(fRc) fd.append("registoCriminal", fRc, fRc.name);
+        fd.append("registoCriminalNome", document.getElementById("rcNome").value.trim());
+        fd.append("registoCriminalNumero", document.getElementById("rcNumero").value.trim());
+        fd.append("registoCriminalValidade", document.getElementById("v_registoCriminal").value);
+
+        return fd;
+      }
+
+      function buildVehicleFormData(){
+        const fd = new FormData();
+
+        fd.append("token", state.token);
+        fd.append("gestorId", state.gestor.id || "");
+        fd.append("gestorNome", state.gestor.nome || "");
+        fd.append("gestorEmail", state.gestor.email || "");
+        fd.append("submittedByRole", "gestor_frota");
+        fd.append("submittedAt", new Date().toISOString());
+
+        fd.append("marca", document.getElementById("vehMarca").value.trim());
+        fd.append("modelo", document.getElementById("vehModelo").value.trim());
+        fd.append("matricula", document.getElementById("vehMatricula").value.trim().toUpperCase());
+
+        const fDua = document.getElementById("f_dua").files[0];
+        const fSeguro = document.getElementById("f_seguro").files[0];
+        const fInsp = document.getElementById("f_inspecao").files[0];
+        const fotos = Array.from(document.getElementById("f_fotos").files || []);
+
+        if(fDua) fd.append("dua", fDua, fDua.name);
+        fd.append("duaNome", document.getElementById("duaNome").value.trim());
+        fd.append("duaNumero", document.getElementById("duaNumero").value.trim());
+        fd.append("duaValidade", document.getElementById("v_dua").value);
+
+        if(fSeguro) fd.append("seguro", fSeguro, fSeguro.name);
+        fd.append("seguroNome", document.getElementById("seguroNome").value.trim());
+        fd.append("seguroNumero", document.getElementById("seguroNumero").value.trim());
+        fd.append("seguroValidade", document.getElementById("v_seguro").value);
+
+        if(fInsp) fd.append("inspecao", fInsp, fInsp.name);
+        fd.append("inspecaoNome", document.getElementById("inspecaoNome").value.trim());
+        fd.append("inspecaoNumero", document.getElementById("inspecaoNumero").value.trim());
+        fd.append("inspecaoValidade", document.getElementById("v_inspecao").value);
+
+        fotos.forEach(f => fd.append("fotos", f, f.name));
+        return fd;
+      }
+
+      async function submitDriverOnly(){
+        const btn = document.getElementById("btnDriverSubmit");
+        try{
+          btn.disabled = true;
+          setMsg("msgDriver", "A enviar motorista para validação...");
+          const fd = buildDriverFormData();
+          await apiTry(ROUTES.motoristaValidationCreate, {
+            method: "POST",
+            body: fd
+          });
+
+          state.driverSubmitted = true;
+          state.pendingDriverBeforeVehicle = false;
+          state.waitingCombinedSend = false;
+          updateChoiceCards();
+          updateButtonsState();
+          openOverlay("successOverlay");
+        }catch(err){
+          setMsg("msgDriver", "❌ " + (err?.message || err));
+          updateButtonsState();
+        }
+      }
+
+      async function submitVehicleOnly(){
+        const btn = document.getElementById("btnVehicleSubmit");
+        try{
+          btn.disabled = true;
+          setMsg("msgVehicle", "A enviar veículo para validação...");
+          const fd = buildVehicleFormData();
+          await apiTry(ROUTES.vehicleValidationCreate, {
+            method: "POST",
+            body: fd
+          });
+
+          state.vehicleSubmitted = true;
+          updateChoiceCards();
+          updateButtonsState();
+          openOverlay("successOverlay");
+        }catch(err){
+          setMsg("msgVehicle", "❌ " + (err?.message || err));
+          updateButtonsState();
+        }
+      }
+
+      async function submitDriverAndVehicle(){
+        const btn = document.getElementById("btnVehicleSubmit");
+        try{
+          btn.disabled = true;
+          setMsg("msgVehicle", "A enviar motorista e veículo para validação...");
+
+          if(!state.driverSubmitted){
+            const fdDriver = buildDriverFormData();
+            await apiTry(ROUTES.motoristaValidationCreate, {
+              method: "POST",
+              body: fdDriver
+            });
+            state.driverSubmitted = true;
+          }
+
+          if(!state.vehicleSubmitted){
+            const fdVehicle = buildVehicleFormData();
+            await apiTry(ROUTES.vehicleValidationCreate, {
+              method: "POST",
+              body: fdVehicle
+            });
+            state.vehicleSubmitted = true;
+          }
+
+          state.pendingDriverBeforeVehicle = false;
+          state.waitingCombinedSend = false;
+          updateChoiceCards();
+          updateButtonsState();
+          openOverlay("successOverlay");
+        }catch(err){
+          setMsg("msgVehicle", "❌ " + (err?.message || err));
+          updateButtonsState();
+        }
+      }
+
+      // eventos
+      document.getElementById("choiceDriver").onclick = () => {
+        if(state.driverSubmitted) return;
+        showScreen("screen-driver");
+      };
+
+      document.getElementById("choiceVehicle").onclick = () => {
+        if(state.vehicleSubmitted) return;
+        showScreen("screen-vehicle");
+      };
+
+      document.getElementById("btnDriverBack").onclick = () => {
+        showScreen("screen-choice");
+        updateChoiceCards();
+      };
+
+      document.getElementById("btnVehicleBack").onclick = () => {
+        showScreen("screen-choice");
+        updateChoiceCards();
+      };
+
+      document.getElementById("btnChoiceBack").onclick = () => {
+        if(state.driverSubmitted && state.vehicleSubmitted){
+          history.back();
+        }
+      };
+
+      document.getElementById("btnDriverSubmit").onclick = () => {
+        if(!isDriverFormValid() || state.driverSubmitted) return;
+        openOverlay("confirmOverlay");
+      };
+
+      document.getElementById("btnNoVehicle").onclick = async () => {
+        closeOverlay("confirmOverlay");
+        await submitDriverOnly();
+      };
+
+      document.getElementById("btnYesVehicle").onclick = () => {
+        closeOverlay("confirmOverlay");
+        state.pendingDriverBeforeVehicle = true;
+        state.waitingCombinedSend = true;
+        setMsg("msgDriver", "✅ Dados do motorista prontos. Agora preencha o veículo para enviar os dois.");
+        showScreen("screen-vehicle");
+        updateButtonsState();
+      };
+
+      document.getElementById("btnVehicleSubmit").onclick = async () => {
+        if(state.vehicleSubmitted) return;
+        if(!isVehicleFormValid()) return;
+
+        if(state.waitingCombinedSend && !state.driverSubmitted){
+          await submitDriverAndVehicle();
+        } else {
+          await submitVehicleOnly();
+        }
+      };
+
+      document.getElementById("btnSuccessOk").onclick = () => {
+        closeOverlay("successOverlay");
+        showScreen("screen-choice");
+        updateChoiceCards();
+      };
+
+      [
+        "drvNome","drvContacto","drvEmail","drvIdioma","drvIdDocType",
+        "idDocNome","idDocNumero","v_idDoc","f_idDoc","f_fotoRosto",
+        "cartaNome","cartaNumero","v_cartaConducao","f_cartaConducao",
+        "tvdeNome","tvdeNumero","v_tvde","f_tvde",
+        "rcNome","rcNumero","v_registoCriminal","f_registoCriminal",
+        "vehMarca","vehModelo","vehMatricula","duaNome","duaNumero","v_dua","f_dua",
+        "seguroNome","seguroNumero","v_seguro","f_seguro",
+        "inspecaoNome","inspecaoNumero","v_inspecao","f_inspecao","f_fotos"
+      ].forEach(id => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.addEventListener("input", updateButtonsState);
+        el.addEventListener("change", updateButtonsState);
+      });
+
+      (async () => {
+        await loadGestor();
+        updateChoiceCards();
+        updateButtonsState();
+      })();
+    })();
+  </script>
+</body>
+</html>

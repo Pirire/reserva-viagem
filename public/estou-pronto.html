@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Estou Pronto — REALMETROPOLIS</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --bg:#0a0a0b; --surface:#141518; --silver:#c4c9d4; --silver-dim:#8b95a2;
+    --white:#f4f6f8; --line:rgba(255,255,255,.1); --green:#7fffc4; --red:#ff8888;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--white); font-family:Arial,Helvetica,sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:20px;
+    max-width:400px; width:100%; overflow:hidden;
+  }
+  .card-pad{padding:32px 26px; text-align:center}
+  .brand{font-weight:900; letter-spacing:.12em; color:var(--silver); font-size:14px; margin-bottom:24px}
+  .icon{font-size:40px;margin-bottom:14px}
+  h1{font-size:19px; margin-bottom:8px}
+  .codigo{color:var(--silver-dim); font-size:13px; margin-bottom:24px; letter-spacing:.03em}
+  .info{
+    background:rgba(196,201,212,.06); border:1px solid var(--line); border-radius:12px;
+    padding:14px; margin-bottom:24px; font-size:13px; color:var(--silver-dim); line-height:1.7; text-align:left;
+  }
+  .info div b{color:var(--white)}
+  button{
+    width:100%; padding:16px; border:none; border-radius:12px;
+    background:var(--silver); color:#0a0a0b; font-weight:800; font-size:14px;
+    letter-spacing:.03em; cursor:pointer; font-family:inherit;
+  }
+  button:disabled{opacity:.6;cursor:not-allowed}
+  #msg{margin-top:14px; font-size:13px; min-height:18px}
+  #estado-procurando, #estado-atribuido{display:none}
+  #estado-procurando .icon{color:var(--green)}
+
+  /* ── Ecrã do motorista atribuído — mesmo desenho já usado no
+     minha-conta.html: nome/carro à esquerda, foto/avaliação à
+     direita, mapa com localização em baixo. ── */
+  .md-info-row{display:flex;gap:16px;align-items:center;padding:20px 20px 0}
+  .md-dados{flex:1;min-width:0;text-align:left}
+  .md-nome{font-size:17px;font-weight:900;color:#fff;margin-bottom:8px}
+  .md-modelo,.md-matricula{font-size:13px;color:var(--silver-dim)}
+  .md-foto-col{flex:0 0 auto;width:84px;text-align:center}
+  .md-foto{width:84px;height:84px;border-radius:16px;object-fit:cover;border:2px solid rgba(196,201,212,.25)}
+  .md-foto-placeholder{
+    width:84px;height:84px;border-radius:16px;background:linear-gradient(180deg,#21252c,#141720);
+    border:2px solid rgba(196,201,212,.18);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--silver-dim);
+  }
+  .md-rating{margin-top:8px;font-size:12px;color:var(--silver-dim)}
+  .md-rating .stars{color:#f4c56b}
+  .md-mapa{width:100%;height:170px;margin-top:16px;position:relative;background:#1a1c20}
+  .md-eta-badge{
+    position:absolute;top:10px;right:10px;padding:6px 12px;border-radius:10px;text-align:center;
+    background:rgba(10,11,13,.85);border:1px solid rgba(196,201,212,.35);z-index:400;
+  }
+  .md-eta-badge-label{font-size:9px;font-weight:800;letter-spacing:.06em;color:var(--silver-dim)}
+  .md-eta-badge strong{display:block;font-size:15px;font-weight:900;color:#fff;margin-top:1px}
+  .md-footer{padding:16px 20px 20px;font-size:11px;color:var(--silver-dim);text-align:center}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-pad" id="estado-inicial">
+    <div class="brand">REALMETROPOLIS</div>
+    <div class="icon">🚗</div>
+    <h1>Está pronto para a sua viagem?</h1>
+    <div class="codigo" id="codigoTxt">A carregar…</div>
+    <div class="info" id="infoBox">
+      <div>A carregar detalhes da reserva…</div>
+    </div>
+    <button type="button" id="btnPronto">ESTOU PRONTO — CHAMAR MOTORISTA</button>
+    <div id="msg"></div>
+  </div>
+
+  <div class="card-pad" id="estado-procurando">
+    <div class="brand">REALMETROPOLIS</div>
+    <div class="icon">✅</div>
+    <h1>A procurar o seu motorista</h1>
+    <p style="color:var(--silver-dim);font-size:13px;margin-top:8px">Pode deixar esta página aberta — assim que houver um motorista atribuído, aparece aqui automaticamente.</p>
+  </div>
+
+  <div id="estado-atribuido">
+    <div class="card-pad" style="padding-bottom:0">
+      <div class="brand" style="margin-bottom:0">REALMETROPOLIS</div>
+    </div>
+    <div class="md-info-row">
+      <div class="md-dados">
+        <div class="md-nome" id="mdNome">—</div>
+        <div class="md-modelo" id="mdModelo">—</div>
+        <div class="md-matricula" id="mdMatricula">—</div>
+      </div>
+      <div class="md-foto-col">
+        <div class="md-foto-placeholder" id="mdFotoWrap">👤</div>
+        <div class="md-rating"><span class="stars" id="mdStars">★★★★★</span> <span id="mdRatingVal">5.0</span></div>
+      </div>
+    </div>
+    <div class="md-mapa" id="mdMapaWrap">
+      <div class="md-eta-badge">
+        <div class="md-eta-badge-label">A CAMINHO</div>
+        <strong id="mdEta">A calcular…</strong>
+      </div>
+      <div id="mdMapa" style="width:100%;height:100%"></div>
+    </div>
+    <div style="padding:16px 20px 0">
+      <button type="button" id="mdBtnCamera" style="background:transparent;border:1px solid var(--line);color:var(--white)">
+        📷 Enviar foto do local ao motorista
+      </button>
+      <input type="file" id="mdCameraInput" accept="image/*" capture="environment" style="display:none">
+    </div>
+    <div class="md-footer">O motorista está a caminho do local de recolha.</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const codigo = (params.get('codigo') || '').trim().toUpperCase();
+
+  const codigoTxt   = document.getElementById('codigoTxt');
+  const infoBox     = document.getElementById('infoBox');
+  const btnPronto   = document.getElementById('btnPronto');
+  const msg         = document.getElementById('msg');
+  const estadoInicial    = document.getElementById('estado-inicial');
+  const estadoProcurando = document.getElementById('estado-procurando');
+  const estadoAtribuido  = document.getElementById('estado-atribuido');
+
+  if (!codigo) {
+    infoBox.innerHTML = '<div>Link inválido — falta o código da reserva.</div>';
+    btnPronto.disabled = true;
+    return;
+  }
+
+  codigoTxt.textContent = 'Reserva ' + codigo;
+
+  let mdMap = null, mdMarker = null;
+
+  function garantirMapa(){
+    if (mdMap || typeof L === 'undefined') return;
+    mdMap = L.map('mdMapa', { zoomControl:false, attributionControl:false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(mdMap);
+  }
+
+  function atualizarMapa(lat, lng){
+    garantirMapa();
+    if (!mdMap || lat == null || lng == null) return;
+    if (mdMarker) { mdMap.removeLayer(mdMarker); mdMarker = null; }
+    const pin = L.divIcon({
+      html: '<div style="width:16px;height:16px;border-radius:50%;background:#c4c9d4;border:3px solid rgba(255,255,255,.8);box-shadow:0 0 0 5px rgba(196,201,212,.25)"></div>',
+      className: '', iconSize: [16,16], iconAnchor: [8,8],
+    });
+    mdMarker = L.marker([lat, lng], { icon: pin }).addTo(mdMap);
+    mdMap.setView([lat, lng], 14);
+  }
+
+  function mostrarMotoristaAtribuido(m){
+    document.getElementById('mdNome').textContent = m.motoristaNome || m.nome || '—';
+    document.getElementById('mdModelo').textContent = m.veiculo || '—';
+    document.getElementById('mdMatricula').textContent = m.matricula || '—';
+    document.getElementById('mdEta').textContent = m.eta ? ('~' + m.eta + ' minutos') : 'A calcular…';
+    const r = Number(m.rating || 5).toFixed(1);
+    const s = Math.round(Number(r));
+    document.getElementById('mdStars').textContent = '★'.repeat(s) + '☆'.repeat(5 - s);
+    document.getElementById('mdRatingVal').textContent = r;
+    document.getElementById('mdBtnCamera').dataset.numero = m.contacto || '';
+
+    if (m.foto) {
+      const fw = document.getElementById('mdFotoWrap');
+      fw.outerHTML = `<img class="md-foto" id="mdFotoWrap" src="${m.foto}" alt="">`;
+    }
+
+    estadoProcurando.style.display = 'none';
+    estadoAtribuido.style.display = 'block';
+
+    if (m.lat != null && m.lng != null) {
+      setTimeout(() => atualizarMapa(m.lat, m.lng), 50);
+    }
+  }
+
+  // Botão de câmara — abre a câmara do telemóvel diretamente
+  // (capture="environment", não a galeria) para tirar uma foto de
+  // referência do local de recolha, e partilha-a com o motorista via
+  // Web Share API (abre a app de Mensagens já com a imagem anexada).
+  // Sem suporte a partilha de ficheiros, cai para descarregar a foto
+  // e abrir a app de SMS para anexar à mão.
+  document.getElementById('mdBtnCamera').addEventListener('click', () => {
+    document.getElementById('mdCameraInput').click();
+  });
+  document.getElementById('mdCameraInput').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const numero = document.getElementById('mdBtnCamera').dataset.numero || '';
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Foto para o motorista', text: 'Referência para a recolha' });
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    const tmpUrl = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = tmpUrl; a.download = 'foto-recolha.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(tmpUrl), 4000);
+    if (numero) setTimeout(() => { window.location.href = 'sms:' + numero; }, 600);
+  });
+
+  // Sem login (identificado só pelo código) — a rota
+  // /motorista-atribuido já foi corrigida para não exigir sessão de
+  // cliente quando um código é fornecido na consulta.
+  async function poll(n){
+    if (n > 60) return; // ~5 minutos de tentativas — a reserva continua no sistema mesmo que a página desista de perguntar
+    try {
+      const d = await fetch(`/api/reservas/motorista-atribuido?codigo=${encodeURIComponent(codigo)}`).then(r => r.json());
+      if (d && d.ok && d.atribuido && d.motorista) {
+        mostrarMotoristaAtribuido(d.motorista);
+        return;
+      }
+    } catch (_) {}
+    setTimeout(() => poll(n + 1), 5000);
+  }
+
+  btnPronto.addEventListener('click', async () => {
+    btnPronto.disabled = true;
+    btnPronto.textContent = 'A CHAMAR MOTORISTA…';
+    msg.style.color = 'var(--silver-dim)';
+    msg.textContent = '';
+    try {
+      const r = await fetch('/api/reservas/estou-pronto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo }),
+      });
+      const d = await r.json();
+      if (d && d.ok) {
+        estadoInicial.style.display = 'none';
+        estadoProcurando.style.display = 'block';
+        poll(0);
+      } else {
+        btnPronto.disabled = false;
+        btnPronto.textContent = 'ESTOU PRONTO — CHAMAR MOTORISTA';
+        msg.style.color = 'var(--red)';
+        msg.textContent = (d && d.message) || 'Não foi possível chamar o motorista. Tente novamente.';
+      }
+    } catch (err) {
+      btnPronto.disabled = false;
+      btnPronto.textContent = 'ESTOU PRONTO — CHAMAR MOTORISTA';
+      msg.style.color = 'var(--red)';
+      msg.textContent = 'Erro de rede. Tente novamente.';
+    }
+  });
+
+  infoBox.innerHTML = '<div>Toque no botão abaixo assim que estiver pronto para ser recolhido — o motorista mais próximo será chamado de imediato.</div>';
+})();
+</script>
+
+</body>
+</html>

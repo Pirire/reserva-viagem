@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Definir Senha | Motorista</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;}
+body{height:100vh;display:flex;justify-content:center;align-items:center;background:linear-gradient(135deg,#050505,#0d0f12);color:white;}
+.card{width:440px;padding:40px;border-radius:20px;background:#0a0b0d;box-shadow:0 30px 80px rgba(0,0,0,.7);border:1px solid #2c323a;}
+.logo{font-size:26px;font-weight:bold;margin-bottom:10px;color:#c8cdd5;}
+h1{margin-bottom:8px;}
+p{color:#8b95a2;margin-bottom:25px;}
+input{width:100%;padding:15px;border-radius:12px;border:none;background:#111318;color:white;margin-bottom:12px;font-size:15px;}
+button{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(180deg,#e3e8ef,#bfc7d2);color:black;font-weight:bold;cursor:pointer;font-size:16px;}
+button:hover{opacity:.9;}
+button:disabled{opacity:.5;cursor:not-allowed;}
+.msg{margin-top:15px;text-align:center;font-weight:bold;}
+.ok{color:#22c55e;}
+.err{color:#ef4444;}
+.loader{display:none;margin:20px auto;border:4px solid #020617;border-top:4px solid #c8cdd5;width:28px;height:28px;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.toggle-pwd{display:block;margin:-6px 0 14px;font-size:12px;color:#5f6874;cursor:pointer;text-align:right;user-select:none;transition:color .15s;}
+.toggle-pwd:hover{color:#b8c0ca;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">REALMETROPOLIS</div>
+  <h1>Definir senha 🚗</h1>
+  <p>Crie a sua senha para activar a sua conta de motorista.</p>
+  <input id="senha"     type="password" placeholder="Nova senha (mínimo 6 caracteres)">
+  <input id="confirmar" type="password" placeholder="Confirmar senha">
+  <span class="toggle-pwd" onclick="toggleSenha()">Mostrar senha</span>
+  <button id="btn" onclick="definirSenha()">ACTIVAR CONTA</button>
+  <div class="loader" id="loader"></div>
+  <div id="msg" class="msg"></div>
+</div>
+<script>
+const API_BASE = location.origin;
+
+function getToken() {
+  return new URLSearchParams(window.location.search).get("token");
+}
+
+function toggleSenha() {
+  const s = document.getElementById("senha");
+  const c = document.getElementById("confirmar");
+  const t = document.querySelector(".toggle-pwd");
+  const show = s.type === "password";
+  s.type = show ? "text" : "password";
+  c.type = show ? "text" : "password";
+  t.textContent = show ? "Ocultar senha" : "Mostrar senha";
+}
+
+async function definirSenha() {
+  const token     = getToken();
+  const senha     = document.getElementById("senha").value;
+  const confirmar = document.getElementById("confirmar").value;
+  const msg       = document.getElementById("msg");
+  const loader    = document.getElementById("loader");
+  const btn       = document.getElementById("btn");
+
+  msg.textContent = "";
+  msg.className   = "msg";
+
+  if (!token) {
+    msg.textContent = "Link inválido ou expirado.";
+    msg.className   = "msg err";
+    return;
+  }
+  if (senha.length < 6) {
+    msg.textContent = "A senha deve ter pelo menos 6 caracteres.";
+    msg.className   = "msg err";
+    return;
+  }
+  if (senha !== confirmar) {
+    msg.textContent = "As senhas não coincidem.";
+    msg.className   = "msg err";
+    return;
+  }
+
+  btn.disabled         = true;
+  loader.style.display = "block";
+
+  try {
+    const res  = await fetch(API_BASE + "/api/motorista/definir-senha", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ token, senha })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    loader.style.display = "none";
+
+    if (!res.ok) {
+      msg.textContent = data.message || "Erro ao definir senha.";
+      msg.className   = "msg err";
+      btn.disabled    = false;
+      return;
+    }
+
+    msg.textContent = "Conta activada! A entrar na sua área...";
+    msg.className   = "msg ok";
+
+    // Login automático com o token de sessão devolvido pelo servidor
+    // O servidor deve devolver { token, email } ou criar sessão via cookie
+    const tokenSessao = data.token || data.sessionToken || "";
+    if (tokenSessao) {
+      // Guardar token de sessão para o motorista.html usar
+      // (apenas em memória — o motorista.html lê via cookie httpOnly ou query)
+    }
+
+    setTimeout(() => {
+      // Redirecionar directamente para a área do motorista
+      // O servidor já criou a sessão ao definir a senha
+      window.location.href = "/motorista.html";
+    }, 1500);
+
+  } catch {
+    loader.style.display = "none";
+    msg.textContent = "Erro de ligação com o servidor.";
+    msg.className   = "msg err";
+    btn.disabled    = false;
+  }
+}
+</script>
+</body>
+</html>

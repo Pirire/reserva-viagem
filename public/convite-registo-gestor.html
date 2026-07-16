@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>REALMETROPOLIS — Registo Operador de Frota</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,system-ui,sans-serif;}
+    html,body{min-height:100%;background:#050507;color:#d9dde3;}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;}
+    .card{width:min(860px,96vw);background:linear-gradient(180deg,#0e1012,#08090b);
+          border:1px solid rgba(196,201,212,.15);border-radius:22px;padding:28px;
+          box-shadow:0 30px 80px rgba(0,0,0,.7);}
+    .head{display:flex;align-items:center;gap:14px;margin-bottom:8px;}
+    .rm{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(196,201,212,.35);
+        display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;
+        color:#c4c9d4;flex:0 0 auto;}
+    h1{font-size:18px;color:#edf0f5;letter-spacing:.04em;}
+    .badge{display:inline-block;padding:5px 13px;border-radius:999px;font-size:10px;font-weight:900;
+           letter-spacing:.1em;text-transform:uppercase;background:rgba(196,201,212,.08);
+           border:1px solid rgba(196,201,212,.25);color:#c4c9d4;margin-bottom:16px;}
+    .hint{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:6px;min-height:20px;}
+    .hint-ok{padding:9px 13px;border-radius:10px;font-size:12px;font-weight:600;
+             background:rgba(25,214,139,.06);border:1px solid rgba(25,214,139,.18);
+             color:#7fffc4;margin-bottom:16px;display:none;}
+    .hint-ok.show{display:block;}
+    .sec-label{font-size:10px;font-weight:900;letter-spacing:.14em;color:rgba(255,255,255,.45);
+                text-transform:uppercase;margin:20px 0 10px;padding-bottom:6px;
+                border-bottom:1px solid rgba(255,255,255,.08);}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .full{grid-column:1/-1;}
+    label{display:block;font-size:11px;font-weight:700;color:rgba(255,255,255,.55);
+          letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;margin-top:2px;}
+    input{width:100%;padding:12px 14px;border-radius:12px;
+      border:1.5px solid rgba(196,201,212,.18);background:#0d1014;color:#edf0f5;
+      font-size:14px;outline:none;transition:.18s;}
+    input:focus{border-color:rgba(196,201,212,.5);box-shadow:0 0 0 3px rgba(196,201,212,.07);}
+    input::placeholder{color:#3d4655;}
+    input[type="file"]{padding:10px 12px;color:#8b95a2;cursor:pointer;}
+    input[type="date"]{color:#8b95a2;}
+    .actions{display:flex;justify-content:flex-end;margin-top:22px;}
+    .btn{padding:13px 28px;border-radius:13px;border:none;
+         background:linear-gradient(180deg,#e0e4ea,#bec6d1);color:#07080a;
+         font-weight:900;font-size:13px;letter-spacing:.06em;cursor:pointer;transition:.18s;
+         box-shadow:0 4px 16px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.6);}
+    .btn:hover{filter:brightness(1.05);transform:translateY(-1px);}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+    .msg{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;}
+    .msg.show{display:block;}
+    .msg.ok{background:rgba(25,214,139,.07);border:1px solid rgba(25,214,139,.2);color:#7fffc4;}
+    .msg.err{background:rgba(255,80,80,.07);border:1px solid rgba(255,80,80,.2);color:#ff9999;}
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);
+             backdrop-filter:blur(14px);align-items:center;justify-content:center;z-index:999;}
+    .overlay.active{display:flex;}
+    .modal{width:min(460px,92vw);background:linear-gradient(160deg,#0e1012,#07080a);
+           border:1px solid rgba(196,201,212,.15);border-radius:22px;padding:32px;text-align:center;}
+    .modal .icon{font-size:40px;margin-bottom:14px;}
+    .modal h2{color:#edf0f5;font-size:18px;margin-bottom:10px;}
+    .modal p{color:#7d8896;font-size:13px;line-height:1.55;margin-bottom:22px;}
+    @media(max-width:600px){.grid{grid-template-columns:1fr;}.full{grid-column:1;}.card{padding:20px;}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <div class="rm">RM</div>
+      <div><h1>Registo — Operador de Frota</h1></div>
+    </div>
+    <div class="badge">Operador de Frota</div>
+    <p class="hint" id="hint">A validar convite…</p>
+    <div class="hint-ok" id="hintOk">✅ Convite válido. Preencha os dados para completar o registo.</div>
+
+    <form id="form" enctype="multipart/form-data" autocomplete="off">
+      <div class="sec-label">Dados da Empresa</div>
+      <div class="grid">
+        <div>
+          <label>Nome da empresa *</label>
+          <input id="empresa" name="empresa" type="text" placeholder="Nome da empresa" required>
+        </div>
+        <div>
+          <label>NIF *</label>
+          <input id="nif" name="nif" type="text" placeholder="Ex: 514815000" required>
+        </div>
+        <div>
+          <label>Email *</label>
+          <input id="email" name="email" type="email" placeholder="email@empresa.pt" required>
+        </div>
+        <div>
+          <label>Contacto *</label>
+          <input id="contacto" name="contacto" type="tel" placeholder="+351 912 345 678" required>
+        </div>
+        <div>
+          <label>País *</label>
+          <select id="pais" name="pais" required style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(196,201,212,.2);background:#0d1014;color:#edf0f5;font-size:14px;outline:none">
+            <option value="">Seleccione...</option>
+            <option value="PT">🇵🇹 Portugal</option>
+            <option value="BR">🇧🇷 Brasil</option>
+            <option value="AO">🇦🇴 Angola</option>
+            <option value="MZ">🇲🇿 Moçambique</option>
+            <option value="CV">🇨🇻 Cabo Verde</option>
+            <option value="GW">🇬🇼 Guiné-Bissau</option>
+            <option value="ST">🇸🇹 São Tomé e Príncipe</option>
+            <option value="ES">🇪🇸 Espanha</option>
+            <option value="FR">🇫🇷 França</option>
+            <option value="DE">🇩🇪 Alemanha</option>
+            <option value="GB">🇬🇧 Reino Unido</option>
+            <option value="IT">🇮🇹 Itália</option>
+          </select>
+        </div>
+        <div id="concelhoWrap" style="display:none">
+          <label id="concelhoLabel">Concelho</label>
+          <input id="concelho" name="concelho" type="text" placeholder="Concelho">
+        </div>
+        <div>
+          <label>Cidade *</label>
+          <input id="cidade" name="cidade" type="text" placeholder="Cidade" required>
+        </div>
+        <div class="full">
+          <label>Nome do responsável *</label>
+          <input id="nome" name="nome" type="text" placeholder="Nome completo do responsável" required>
+        </div>
+      </div>
+
+      <div class="sec-label">Documentos (PDF) *</div>
+      <div class="grid">
+        <div>
+          <label>Certidão Permanente *</label>
+          <input type="file" name="certidaoPermanente" accept="application/pdf" required>
+        </div>
+        <div>
+          <label>Validade *</label>
+          <input type="date" name="validadeCertidao" required>
+        </div>
+        <div>
+          <label>Seguro Responsabilidade Civil *</label>
+          <input type="file" name="seguroResponsabilidadeCivil" accept="application/pdf" required>
+        </div>
+        <div>
+          <label>Validade *</label>
+          <input type="date" name="validadeSeguroRC" required>
+        </div>
+        <div>
+          <label>Seguro Acidente de Trabalho *</label>
+          <input type="file" name="seguroAcidenteTrabalho" accept="application/pdf" required>
+        </div>
+        <div>
+          <label>Validade *</label>
+          <input type="date" name="validadeSeguroAT" required>
+        </div>
+        <div>
+          <label>Autorização IMTT/IMT (opcional)</label>
+          <input type="file" name="autorizacaoImtt" accept="application/pdf">
+        </div>
+        <div>
+          <label>Validade (opcional)</label>
+          <input type="date" name="validadeImtt">
+        </div>
+      </div>
+
+      <div class="sec-label" style="margin-top:20px">IBAN / NIB</div>
+      <div class="grid">
+        <div>
+          <label>IBAN / NIB *</label>
+          <input type="text" id="iban" name="iban" placeholder="Ex: PT50 0000 0000 0000 0000 0000 0" required>
+        </div>
+        <div>
+          <label>Comprovativo IBAN / NIB *</label>
+          <input type="file" name="ibanComprovativo" id="ibanComprovativo" accept=".pdf,image/*" required>
+        </div>
+      </div>
+
+      <input type="hidden" name="tipo"  value="frota">
+      <input type="hidden" name="token" id="tokenHidden">
+      <input type="hidden" name="senha" id="senhaHidden">
+
+      <div class="actions">
+        <button class="btn" id="btnEnviar" type="submit" disabled>COMPLETAR REGISTO</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="ovOk">
+  <div class="modal">
+    <div class="icon">✅</div>
+    <h2>Registo Enviado</h2>
+    <p>A sua candidatura foi recebida com sucesso.<br>
+       A equipa irá validar os documentos e, após aprovação, receberá acesso ao portal.</p>
+    <button class="btn" id="btnFechar" type="button">FECHAR</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const token = new URLSearchParams(location.search).get("token") || "";
+  const hint   = document.getElementById("hint");
+  const hintOk = document.getElementById("hintOk");
+  const btn    = document.getElementById("btnEnviar");
+  const msg    = document.getElementById("msg");
+
+  document.getElementById("tokenHidden").value = token;
+  const tb = crypto.getRandomValues(new Uint8Array(16));
+  document.getElementById("senhaHidden").value = Array.from(tb).map(b=>b.toString(36)).join("").slice(0,14);
+
+  function showMsg(tipo, texto) {
+    msg.className = "msg show " + tipo;
+    msg.textContent = texto;
+  }
+
+  // Activar botão quando tudo está preenchido + mostrar o que falta
+  function checkForm() {
+    var _paisComConc = { PT:1, ES:1, GB:1 };
+    var _camposBase  = ["empresa","nif","email","contacto","nome","pais","cidade"];
+    var _camposAll   = _paisComConc[document.getElementById("pais")?.value] ? _camposBase.concat(["concelho"]) : _camposBase;
+
+    var camposFaltam = [];
+    var camposLabels = { empresa:"Nome da Empresa", nif:"NIF", email:"Email", contacto:"Contacto", nome:"Nome do Responsável", pais:"País", cidade:"Cidade", concelho:"Concelho" };
+    _camposAll.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el || !el.value.trim()) camposFaltam.push(camposLabels[id] || id);
+    });
+
+    var certidao = (document.querySelector("[name='certidaoPermanente']") || {files:[]}).files.length > 0;
+    var seguroRC = (document.querySelector("[name='seguroResponsabilidadeCivil']") || {files:[]}).files.length > 0;
+    var seguroAT = (document.querySelector("[name='seguroAcidenteTrabalho']") || {files:[]}).files.length > 0;
+    var datasOk  = ["validadeCertidao","validadeSeguroRC","validadeSeguroAT"].every(function(n) {
+      var el = document.querySelector("[name='" + n + "']");
+      return el && el.value !== "";
+    });
+
+    if (!certidao) camposFaltam.push("Certidão Permanente (PDF)");
+    if (!seguroRC) camposFaltam.push("Seguro Responsabilidade Civil (PDF)");
+    if (!seguroAT) camposFaltam.push("Seguro Acidente Trabalho (PDF)");
+    if (!datasOk)  camposFaltam.push("Datas de validade dos documentos");
+
+    var tudo = camposFaltam.length === 0;
+    btn.disabled = !tudo;
+
+    // Mostrar hint com campos em falta
+    var hintFalta = document.getElementById("hintFalta");
+    if (!hintFalta) {
+      hintFalta = document.createElement("p");
+      hintFalta.id = "hintFalta";
+      hintFalta.style.cssText = "font-size:12px;color:#f0a020;margin-top:8px;line-height:1.5;min-height:16px";
+      btn.parentNode.insertBefore(hintFalta, btn);
+    }
+    hintFalta.textContent = tudo ? "" : "⚠️ Em falta: " + camposFaltam.join(", ") + ".";
+  }
+
+  // Ligar a todos os inputs
+  // Países com Concelho / Municipio
+  var PAISES_COM_CONCELHO = { PT: 'Concelho', ES: 'Municipio', GB: 'District' };
+
+  document.getElementById('pais').addEventListener('change', function() {
+    var pais  = this.value;
+    var wrap  = document.getElementById('concelhoWrap');
+    var label = document.getElementById('concelhoLabel');
+    var inp   = document.getElementById('concelho');
+    if (PAISES_COM_CONCELHO[pais]) {
+      wrap.style.display = '';
+      label.textContent  = PAISES_COM_CONCELHO[pais] + ' *';
+      inp.placeholder    = PAISES_COM_CONCELHO[pais];
+    } else {
+      wrap.style.display = 'none';
+      inp.value          = '';
+    }
+    checkForm();
+  });
+
+  document.getElementById("form").querySelectorAll("input, select").forEach(function(el) {
+    el.addEventListener("input",  checkForm);
+    el.addEventListener("change", checkForm);
+  });
+
+  function preencherCampos(dados) {
+    ["empresa","nif","email","contacto","nome","cidade"].forEach(function(k) {
+      var el = document.getElementById(k);
+      if (el && dados[k]) el.value = dados[k];
+    });
+    if (dados.pais) { var elP = document.getElementById("pais"); if(elP){ elP.value = dados.pais; elP.dispatchEvent(new Event("change")); } }
+    if (dados.concelho) { var elC = document.getElementById("concelho"); if(elC) elC.value = dados.concelho; }
+    checkForm();
+  }
+
+  if (!token) {
+    hint.textContent = "Link invalido.";
+    return;
+  }
+
+  hint.textContent = "";
+  hintOk.classList.add("show");
+
+  // Buscar dados completos via API
+  try {
+    var r = await fetch("/api/colaboradores/dados-por-token?token=" + encodeURIComponent(token));
+    var d = await r.json().catch(function(){ return {}; });
+    if (r.ok && d.ok && d.dados) {
+      preencherCampos(d.dados);
+    } else {
+      // Fallback JWT local
+      var partes = token.split(".");
+      if (partes.length === 3) {
+        try {
+          var b64 = partes[1].replace(/-/g,"+").replace(/_/g,"/");
+          var pad = b64 + "=".repeat((4 - b64.length % 4) % 4);
+          var payload = JSON.parse(atob(pad));
+          if (!payload.exp || payload.exp * 1000 >= Date.now()) {
+            preencherCampos(payload);
+          }
+        } catch(e) {}
+      }
+    }
+  } catch(e) {}
+
+  // Submit
+  document.getElementById("form").addEventListener("submit", async function(ev) {
+    ev.preventDefault();
+    msg.className = "msg";
+    btn.disabled = true;
+    btn.textContent = "A enviar...";
+
+    try {
+      var fd = new FormData(document.getElementById("form"));
+      fd.set("tipo",  "frota");
+      fd.set("token", token);
+      // Garantir que pais e cidade vão explicitamente
+      fd.set("pais",    document.getElementById("pais")?.value || "");
+      fd.set("cidade",  document.getElementById("cidade")?.value?.trim() || "");
+      fd.set("concelho",document.getElementById("concelho")?.value?.trim() || "");
+
+      var r = await fetch("/api/colaboradores/register", {
+        method: "POST", body: fd, credentials: "include"
+      });
+      var d = await r.json().catch(function(){ return {}; });
+
+      if (r.ok) {
+        document.getElementById("ovOk").classList.add("active");
+      } else {
+        showMsg("err", d && d.message ? d.message : "Erro ao enviar registo.");
+        checkForm();
+        btn.textContent = "COMPLETAR REGISTO";
+      }
+    } catch(e) {
+      showMsg("err", "Erro de ligacao ao servidor.");
+      checkForm();
+      btn.textContent = "COMPLETAR REGISTO";
+    }
+  });
+
+  document.getElementById("btnFechar").onclick = function() {
+    window.location.href = "/index.html";
+  };
+});
+</script>E html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>REALMETROPOLIS — Registo Operador de Frota</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,system-ui,sans-serif;}
+    html,body{min-height:100%;background:#050507;color:#d9dde3;}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;}
+    .card{width:min(860px,96vw);background:linear-gradient(180deg,#0e1012,#08090b);
+          border:1px solid rgba(196,201,212,.15);border-radius:22px;padding:28px;
+          box-shadow:0 30px 80px rgba(0,0,0,.7);}
+    .head{display:flex;align-items:center;gap:14px;margin-bottom:8px;}
+    .rm{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(196,201,212,.35);
+        display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;
+        color:#c4c9d4;flex:0 0 auto;}
+    h1{font-size:18px;color:#edf0f5;letter-spacing:.04em;}
+    .badge{display:inline-block;padding:5px 13px;border-radius:999px;font-size:10px;font-weight:900;
+           letter-spacing:.1em;text-transform:uppercase;background:rgba(196,201,212,.08);
+           border:1px solid rgba(196,201,212,.25);color:#c4c9d4;margin-bottom:16px;}
+    .hint{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:6px;min-height:20px;}
+    .hint-ok{padding:9px 13px;border-radius:10px;font-size:12px;font-weight:600;
+             background:rgba(25,214,139,.06);border:1px solid rgba(25,214,139,.18);
+             color:#7fffc4;margin-bottom:16px;display:none;}
+    .hint-ok.show{display:block;}
+    .sec-label{font-size:10px;font-weight:900;letter-spacing:.14em;color:rgba(255,255,255,.45);
+                text-transform:uppercase;margin:20px 0 10px;padding-bottom:6px;
+                border-bottom:1px solid rgba(255,255,255,.08);}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .full{grid-column:1/-1;}
+    label{display:block;font-size:11px;font-weight:700;color:rgba(255,255,255,.55);
+          letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;margin-top:2px;}
+    input{width:100%;padding:12px 14px;border-radius:12px;
+      border:1.5px solid rgba(196,201,212,.18);background:#0d1014;color:#edf0f5;
+      font-size:14px;outline:none;transition:.18s;}
+    input:focus{border-color:rgba(196,201,212,.5);box-shadow:0 0 0 3px rgba(196,201,212,.07);}
+    input::placeholder{color:#3d4655;}
+    input[type="file"]{padding:10px 12px;color:#8b95a2;cursor:pointer;}
+    input[type="date"]{color:#8b95a2;}
+    .actions{display:flex;justify-content:flex-end;margin-top:22px;}
+    .btn{padding:13px 28px;border-radius:13px;border:none;
+         background:linear-gradient(180deg,#e0e4ea,#bec6d1);color:#07080a;
+         font-weight:900;font-size:13px;letter-spacing:.06em;cursor:pointer;transition:.18s;
+         box-shadow:0 4px 16px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.6);}
+    .btn:hover{filter:brightness(1.05);transform:translateY(-1px);}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+    .msg{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;}
+    .msg.show{display:block;}
+    .msg.ok{background:rgba(25,214,139,.07);border:1px solid rgba(25,214,139,.2);color:#7fffc4;}
+    .msg.err{background:rgba(255,80,80,.07);border:1px solid rgba(255,80,80,.2);color:#ff9999;}
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);
+             backdrop-filter:blur(14px);align-items:center;justify-content:center;z-index:999;}
+    .overlay.active{display:flex;}
+    .modal{width:min(460px,92vw);background:linear-gradient(160deg,#0e1012,#07080a);
+           border:1px solid rgba(196,201,212,.15);border-radius:22px;padding:32px;text-align:center;}
+    .modal .icon{font-size:40px;margin-bottom:14px;}
+    .modal h2{color:#edf0f5;font-size:18px;margin-bottom:10px;}
+    .modal p{color:#7d8896;font-size:13px;line-height:1.55;margin-bottom:22px;}
+    @media(max-width:600px){.grid{grid-template-columns:1fr;}.full{grid-column:1;}.card{padding:20px;}}
+  </style>
+</head>
+<body>
+</body>
+</html>

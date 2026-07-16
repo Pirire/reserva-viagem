@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registo Motorista (Convite) — REALMETROPOLIS</title>
+  <style>
+    *{box-sizing:border-box;font-family:Arial;margin:0;padding:0}
+    body{background:#050505;color:#fff;padding:16px}
+    .card{max-width:860px;margin:0 auto;background:#0d0f12;border:1px solid #2c323a;border-radius:16px;padding:16px}
+    h1{color:#c8cdd5;margin-bottom:8px}
+    .muted{color:#9fb0cc;font-size:13px;line-height:1.4;margin-bottom:12px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:720px){.grid{grid-template-columns:1fr}}
+    input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #2c323a;background:#050505;color:#fff;outline:none}
+    label{font-size:12px;color:#9fb0cc;margin-bottom:6px;display:block}
+    .row{margin-top:10px}
+    button{width:100%;padding:14px;border:0;border-radius:10px;background:linear-gradient(180deg,#e3e8ef,#bfc7d2);color:#000;font-weight:bold;cursor:pointer;margin-top:12px}
+    .msg{margin-top:10px;font-weight:bold}
+    .ok{color:#22c55e}.err{color:#ef4444}
+    .box{padding:10px;border:1px solid #2c323a;border-radius:12px;background:rgba(255,255,255,.03)}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Registo de Motorista (Convite)</h1>
+    <div class="muted">
+      Preenche os dados e anexa os documentos. O pedido será enviado para validação.
+    </div>
+
+    <div id="msg" class="msg"></div>
+
+    <form id="f">
+      <div class="grid">
+        <div class="row"><label>Nome</label><input name="nome" required></div>
+        <div class="row"><label>Sobrenome</label><input name="sobrenome" required></div>
+
+        <div class="row"><label>Data de Nascimento</label><input type="date" name="dataNascimento" required></div>
+        <div class="row"><label>Contacto</label><input name="contacto" required placeholder="+351..."></div>
+
+        <div class="row"><label>Morada</label><input name="morada" required></div>
+        <div class="row"><label>Email</label><input type="email" name="email" required></div>
+
+        <div class="row"><label>Nº Carta de Condução</label><input name="cartaNumero" required></div>
+        <div class="row"><label>Validade Carta de Condução</label><input type="date" name="cartaValidade" required></div>
+      </div>
+
+      <div class="row box" style="margin-top:14px;">
+        <label style="margin-bottom:8px;">Tipo (obrigatório)</label>
+        <select name="tipoMotorista" id="tipoMotorista" required>
+          <option value="" selected disabled>Selecionar…</option>
+          <option value="executivo">Motorista Executivo</option>
+          <option value="tvde">TVDE</option>
+        </select>
+
+        <div id="tvdeBlock" style="display:none;margin-top:10px;">
+          <label>Validade Cartão TVDE</label>
+          <input type="date" name="tvdeValidade" id="tvdeValidade">
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px;">
+        <div class="box">
+          <div class="muted" style="margin-bottom:8px;"><b>Cartão de Cidadão</b> (frente e verso) + validade</div>
+          <div class="grid">
+            <div><label>Validade CC</label><input type="date" name="ccValidade" required></div>
+            <div><label>CC Frente (foto)</label><input type="file" name="ccFrente" accept="image/*" required></div>
+            <div><label>CC Verso (foto)</label><input type="file" name="ccVerso" accept="image/*" required></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px;">
+        <div class="box">
+          <div class="muted" style="margin-bottom:8px;"><b>Carta de Condução</b> (frente e verso)</div>
+          <div class="grid">
+            <div><label>Carta Frente (foto)</label><input type="file" name="cartaFrente" accept="image/*" required></div>
+            <div><label>Carta Verso (foto)</label><input type="file" name="cartaVerso" accept="image/*" required></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px;">
+        <div class="box">
+          <div class="muted" style="margin-bottom:8px;"><b>Registo Criminal</b> (obrigatório)</div>
+          <div class="grid">
+            <div><label>Registo Criminal (foto/pdf)</label><input type="file" name="registoCriminal" accept="image/*,application/pdf" required></div>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" name="token" id="token">
+
+      <button type="submit">REGISTAR</button>
+    </form>
+
+    <div class="muted" style="margin-top:10px;">
+      Ao submeter este pedido o Seu Gestor de Frota terá acesso e enviará para Validação.
+    </div>
+  </div>
+
+<script>
+const API_BASE = (location.origin.includes("10000")) ? location.origin : "http://localhost:10000";
+const msg = document.getElementById("msg");
+const token = new URLSearchParams(location.search).get("token") || "";
+document.getElementById("token").value = token;
+
+if(!token){
+  msg.textContent = "Token inválido. Peça um novo convite ao gestor.";
+  msg.className = "msg err";
+}
+
+const tipoSel = document.getElementById("tipoMotorista");
+const tvdeBlock = document.getElementById("tvdeBlock");
+const tvdeValidade = document.getElementById("tvdeValidade");
+
+tipoSel.addEventListener("change", ()=>{
+  const isTvde = tipoSel.value === "tvde";
+  tvdeBlock.style.display = isTvde ? "block" : "none";
+  tvdeValidade.required = isTvde;
+  if(!isTvde) tvdeValidade.value = "";
+});
+
+document.getElementById("f").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  msg.textContent = "";
+  msg.className = "msg";
+
+  if(!token){
+    msg.textContent = "Token inválido.";
+    msg.className = "msg err";
+    return;
+  }
+
+  const fd = new FormData(e.target);
+
+  try{
+    const res = await fetch(`${API_BASE}/api/motorista/invite/register`, {
+      method:"POST",
+      body: fd
+    });
+
+    const data = await res.json().catch(()=> ({}));
+    if(!res.ok) throw new Error(data?.message || ("HTTP " + res.status));
+
+    msg.textContent = "Pedido enviado com sucesso ✅";
+    msg.className = "msg ok";
+
+    setTimeout(()=> location.href = "/index.html", 1600);
+  }catch(err){
+    msg.textContent = "Erro: " + err.message;
+    msg.className = "msg err";
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,3392 @@
+<!DOCTYPE html>
+<!--
+  REALMETROPOLIS — Área do Cliente
+  ================================================================
+  v7 — Código limpo, sem duplicações, responsivo mobile + PC
+
+  ESTRUTURA:
+    1. CSS   — variáveis, topbar, banners, painéis, partilha,
+               cartões, popups, motorista, responsivo
+    2. HTML  — topbar, dropdown, modos, painéis, popups
+    3. JS    — init, eventos, API, partilha, overlay motorista
+
+  API ENDPOINTS:
+    POST /api/reserva
+    POST /api/reserva/cancelar
+    GET  /api/reservas/pendentes
+    GET  /api/reservas/motorista-atribuido
+    GET  /api/user/preferences/last-trips
+    POST /api/partilha/confirmar-contacto
+    POST /api/partilha/criar
+    GET  /api/partilha/status
+    POST /api/partilha/cancelar
+    POST /api/partilha/invite/verify
+    POST /api/partilha/location/update
+    POST /api/atividade/artigo-perdido
+    POST /api/seguranca/reportar
+    POST /api/faturas/solicitar
+  ================================================================
+-->
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REALMETROPOLIS — Área do Cliente</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+
+  /* ── VARIÁVEIS GLOBAIS ─────────────────────────────────────── */
+  :root {
+    --silver:        #d9dde3;
+    --silver-2:      #aab3bd;
+    --silver-3:      #7f8994;
+    --green:         #19d68b;
+    --orange:        #ff9f43;
+    --red:           #ff6363;
+    --line:          rgba(217,221,227,.24);
+    --line-strong:   rgba(217,221,227,.42);
+    --lux-warm:      rgba(236,226,205,.34);
+    --lux-shadow:    0 18px 40px rgba(0,0,0,.22);
+    --shadow:        0 18px 50px rgba(0,0,0,.56);
+    --header-h:      78px;
+    --safe-b:        calc(env(safe-area-inset-bottom,0px) + 14px);
+  }
+
+  /* ── RESET ─────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: Inter, Arial, sans-serif;
+    background: #000;
+    color: var(--silver);
+  }
+
+  body {
+    background:
+      radial-gradient(circle at top right, rgba(255,255,255,.05), transparent 18%),
+      radial-gradient(circle at bottom left, rgba(255,255,255,.03), transparent 20%),
+      linear-gradient(180deg, #060606 0%, #010101 100%);
+  }
+
+  /* ── MAPA LEAFLET ──────────────────────────────────────────── */
+  #map {
+    position: fixed; inset: 0; z-index: 0;
+    filter: brightness(.88) contrast(1.02) saturate(.9);
+  }
+
+  /* ── AUTOCOMPLETE NOMINATIM (OpenStreetMap) ────────────────── */
+  .nm-wrap { position: relative; }
+
+  .nm-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    z-index: 999999;
+    background: #101216;
+    border: 1px solid rgba(217,221,227,.22);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 18px 40px rgba(0,0,0,.55);
+    display: none;
+  }
+  .nm-dropdown.open { display: block; }
+
+  .nm-item {
+    padding: 11px 14px;
+    font-size: 13px; font-weight: 700;
+    color: var(--silver);
+    cursor: pointer;
+    border-top: 1px solid rgba(217,221,227,.07);
+    line-height: 1.35;
+    transition: background .15s;
+  }
+  .nm-item:first-child { border-top: none; }
+  .nm-item:hover, .nm-item.active { background: #171a20; color: #fff; }
+  .nm-item small { display: block; font-size: 11px; color: var(--silver-3); margin-top: 2px; }
+
+  /* ── TOPBAR ────────────────────────────────────────────────── */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 1200;
+    min-height: var(--header-h);
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 12px;
+    padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(0,0,0,.84), rgba(0,0,0,.46));
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+  .brand-mark {
+    width: 46px; height: 46px; border-radius: 50%;
+    display: grid; place-items: center;
+    border: 2px solid var(--line-strong);
+    color: var(--silver); font-weight: 900; letter-spacing: .08em;
+    background: rgba(255,255,255,.03);
+    box-shadow: 0 0 0 4px rgba(255,255,255,.03);
+    flex: 0 0 auto;
+  }
+
+  .brand-copy h1 {
+    font-size: 14px; color: var(--silver);
+    letter-spacing: .16em; font-weight: 900; white-space: nowrap;
+  }
+  .brand-copy p {
+    margin-top: 4px; font-size: 12px; color: var(--silver-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 46vw;
+  }
+
+  .top-actions {
+    display: flex; gap: 8px; align-items: center;
+    flex-wrap: wrap; justify-content: flex-end;
+  }
+
+  /* ── BOTÕES TOPBAR ─────────────────────────────────────────── */
+  .soft-btn {
+    min-height: 42px; padding: 0 14px;
+    border-radius: 18px; border: 1px solid var(--line);
+    background: linear-gradient(180deg, #111214, #0b0c0e);
+    color: var(--silver); font-size: 13px; font-weight: 800;
+    cursor: pointer; transition: .22s ease; white-space: nowrap;
+  }
+  .soft-btn:hover {
+    transform: translateY(-1px);
+    border-color: var(--line-strong);
+    background: linear-gradient(180deg, #17191d, #0f1013);
+  }
+
+  /* Reserva ativa — pulsa */
+  .reserva-ativa-btn {
+    background: linear-gradient(180deg, #dfe4ea, #aeb7c1);
+    color: #000; border: 1px solid rgba(255,255,255,.55);
+    animation: btnPulse 1.6s ease-in-out infinite;
+  }
+  .reserva-ativa-btn.hidden { display: none; }
+  @keyframes btnPulse {
+    0%,100% { box-shadow: 0 0 0 rgba(220,225,232,0); }
+    50%      { box-shadow: 0 0 18px rgba(220,225,232,.55); }
+  }
+
+  /* Viagens pendentes — badge */
+  .viagens-btn { position: relative; }
+  .viagens-btn.tem-pendentes { animation: pendPulse 1.8s ease-in-out infinite; }
+  .viagens-btn.tem-pendentes::after {
+    content: attr(data-count);
+    position: absolute; top: -6px; right: -6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #ff4444; color: #fff;
+    font-size: 11px; font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #000;
+  }
+  @keyframes pendPulse {
+    0%,100% { border-color: var(--line); }
+    50%      { border-color: rgba(255,100,100,.7); box-shadow: 0 0 14px rgba(255,80,80,.3); }
+  }
+
+  /* ── HAMBÚRGUER ─────────────────────────────────────────────── */
+  .hamburger-btn {
+    width: 46px; min-height: 42px; padding: 0;
+    border-radius: 18px; border: 1px solid var(--line);
+    background: linear-gradient(180deg, #111214, #0b0c0e);
+    color: var(--silver); cursor: pointer; transition: .22s ease;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 5px;
+  }
+  .hamburger-btn:hover { border-color: var(--line-strong); background: linear-gradient(180deg,#17191d,#0f1013); }
+  .hamburger-line { width: 18px; height: 2px; background: var(--silver); border-radius: 2px; display: block; }
+
+  /* Dropdown hambúrguer — canto direito, abaixo do botão */
+  .hamburger-dropdown {
+    position: fixed; top: calc(var(--header-h) + 4px); right: 16px;
+    z-index: 1500;
+    background: linear-gradient(180deg, #0e0f12, #090a0c);
+    border: 1px solid var(--line); border-radius: 18px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.55);
+    display: none; flex-direction: column; gap: 6px;
+    padding: 10px; min-width: 180px;
+  }
+  .hamburger-dropdown.open { display: flex; }
+  .hamburger-dropdown .drop-btn {
+    min-height: 42px; padding: 0 16px; border-radius: 12px;
+    border: 1px solid var(--line); background: transparent;
+    color: var(--silver); font-size: 13px; font-weight: 800;
+    cursor: pointer; text-align: left; transition: .18s ease;
+  }
+  .hamburger-dropdown .drop-btn:hover { background: rgba(255,255,255,.06); border-color: var(--line-strong); }
+
+  /* ── SELETOR DE MODO ────────────────────────────────────────── */
+  .trip-type-wrap {
+    position: fixed; top: calc(var(--header-h) + 14px);
+    left: 50%; transform: translateX(-50%);
+    z-index: 1150; width: min(720px, calc(100% - 22px));
+    display: flex; gap: 8px; padding: 8px;
+    border-radius: 28px; border: 1px solid var(--line);
+    background: linear-gradient(180deg, #0e0f12, #090a0c);
+    backdrop-filter: blur(16px); box-shadow: var(--shadow);
+    transition: .22s ease;
+  }
+  .trip-type-wrap.hidden {
+    opacity: 0; pointer-events: none;
+    transform: translateX(-50%) translateY(-8px);
+  }
+  .trip-type-btn {
+    flex: 1; min-height: 50px; border: none; border-radius: 18px;
+    background: transparent; color: var(--silver-2);
+    font-size: 14px; font-weight: 900; cursor: pointer; transition: .22s ease;
+  }
+  .trip-type-btn.active {
+    background: linear-gradient(180deg, #dfe4ea, #b6bec8);
+    color: #000; border: 1px solid #eef2f7;
+  }
+
+  /* ── NOTIFICAÇÕES (toast, banner, invite) ───────────────────── */
+  .notif {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    z-index: 1300; width: min(580px, calc(100% - 24px));
+    min-height: 56px; display: none; align-items: center;
+    justify-content: center; text-align: center;
+    padding: 12px 14px; border-radius: 22px;
+    border: 1px solid rgba(217,221,227,.18);
+    background: #111216; color: #fff;
+    box-shadow: var(--shadow); backdrop-filter: blur(18px);
+    font-size: 13px; line-height: 1.45; font-weight: 800;
+  }
+  .notif.show { display: flex; }
+  #shareBanner { top: calc(var(--header-h) + 74px); }
+  #toast       { top: calc(var(--header-h) + 144px); }
+  #inviteBar   { top: calc(var(--header-h) + 214px); }
+
+  /* ── SHELL FLUTUANTE (painel de reserva) ────────────────────── */
+  .floating-shell {
+    position: fixed; left: 50%; bottom: var(--safe-b);
+    transform: translateX(-50%);
+    width: min(1320px, calc(100% - 20px));
+    z-index: 1100; pointer-events: none;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+
+  .panel {
+    width: 100%; pointer-events: auto;
+    border-radius: 28px; overflow: hidden;
+    background: linear-gradient(180deg, #0e0f12, #090a0c);
+    border: 1px solid var(--line); box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+  }
+  .panel.hidden { display: none; }
+
+  .panel-head {
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 12px;
+    padding: 18px 18px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+  .panel-head h2 { font-size: 15px; font-weight: 900; letter-spacing: .12em; color: #f0f2f5; }
+  .panel-head p  { margin-top: 4px; color: var(--silver-2); font-size: 12px; line-height: 1.4; }
+
+  .panel-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  .info-note {
+    background: linear-gradient(180deg, #17181c, #101114);
+    border: 1px solid rgba(217,221,227,.16);
+    border-radius: 22px; padding: 12px 14px;
+    font-size: 12px; line-height: 1.5; color: var(--silver-2);
+  }
+
+  .close-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,.05); color: #fff;
+    cursor: pointer; font-size: 16px; font-weight: 900; transition: .2s ease;
+  }
+  .close-btn:hover { background: rgba(255,255,255,.09); }
+
+  /* ── GRELHA DE MOTORISTAS ───────────────────────────────────── */
+  .driver-grid {
+    display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px;
+  }
+
+  .driver-card {
+    min-height: 236px; border-radius: 22px;
+    border: 1px solid rgba(217,221,227,.16);
+    background: linear-gradient(180deg, #17181c, #101114);
+    padding: 12px; display: flex; flex-direction: column;
+    gap: 10px; position: relative; transition: .22s ease;
+  }
+  .driver-card.selected-target {
+    border-color: var(--line-strong);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 0 22px rgba(255,255,255,.07);
+    transform: translateY(-1px);
+  }
+  .driver-card.oscilar { animation: pulseBorder 1s infinite; }
+  @keyframes pulseBorder {
+    0%,100% { box-shadow: none; border-color: rgba(217,221,227,.16); }
+    50%      { box-shadow: 0 0 18px rgba(255,255,255,.14); border-color: rgba(217,221,227,.32); }
+  }
+
+  .driver-top { display: flex; align-items: center; gap: 10px; }
+  .driver-top img {
+    width: 58px; height: 58px; border-radius: 50%; object-fit: cover;
+    border: 2px solid rgba(255,255,255,.14); flex: 0 0 auto;
+  }
+  .driver-top strong { display: block; color: #f4f6f8; font-size: 14px; margin-bottom: 4px; }
+  .driver-top span, .driver-meta { color: var(--silver-2); font-size: 12px; line-height: 1.35; }
+  .driver-meta { display: flex; flex-direction: column; gap: 6px; }
+  .driver-meta b { color: #fff; }
+
+  .mini-chip {
+    display: inline-flex; align-items: center;
+    min-height: 28px; width: max-content; padding: 0 10px;
+    border-radius: 999px; border: 1px solid rgba(217,221,227,.18);
+    background: #111216; color: var(--silver);
+    font-size: 11px; font-weight: 900;
+  }
+
+  .card-action {
+    margin-top: auto; min-height: 40px; border-radius: 18px;
+    border: 1px solid rgba(217,221,227,.16);
+    background: linear-gradient(180deg, #17191d, #0e1013);
+    color: var(--silver); font-weight: 900;
+    cursor: pointer; transition: .2s ease;
+  }
+  .card-action.selected-add {
+    background: linear-gradient(180deg, rgba(25,214,139,.22), rgba(25,214,139,.12));
+    border-color: rgba(25,214,139,.52); color: #e7fff5;
+  }
+  .card-action.selected-replace {
+    background: linear-gradient(180deg, rgba(255,159,67,.24), rgba(255,159,67,.12));
+    border-color: rgba(255,159,67,.58); color: #fff2e5;
+  }
+  .card-action.replace { background: linear-gradient(180deg, #221912, #15110d); }
+
+  /* ── CATEGORIA & FORMULÁRIO ─────────────────────────────────── */
+  .category-row {
+    display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px;
+  }
+
+  .cat-btn {
+    min-height: 46px; border-radius: 18px;
+    border: 1px solid rgba(217,221,227,.14);
+    background: linear-gradient(180deg, #121318, #0b0c10);
+    color: var(--silver); font-size: 12px; font-weight: 900;
+    letter-spacing: .04em; cursor: pointer; transition: .22s ease; padding: 0 10px;
+  }
+  .cat-btn.selected {
+    background: linear-gradient(180deg, #dfe4ea, #b6bec8);
+    color: #000; border-color: #eef2f7;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1.1fr 1.1fr .9fr auto auto;
+    gap: 10px; align-items: center;
+  }
+
+  .field {
+    min-height: 50px; border-radius: 18px;
+    border: 1px solid rgba(217,221,227,.18);
+    background: #0a0b0d; color: var(--silver);
+    padding: 0 14px; outline: none; font-size: 14px;
+  }
+  .field::placeholder { color: rgba(217,221,227,.4); }
+
+  /* ── BOTÕES DE AÇÃO ─────────────────────────────────────────── */
+  .action-btn {
+    min-height: 50px; padding: 0 16px; border: none;
+    border-radius: 18px; font-weight: 900;
+    cursor: pointer; transition: .22s ease; white-space: nowrap;
+  }
+  .action-btn.secondary {
+    background: linear-gradient(180deg, #15171b, #0d0f12);
+    color: var(--silver); border: 1px solid rgba(217,221,227,.18);
+  }
+  .action-btn.secondary.active { background: rgba(255,255,255,.14); color: #fff; }
+  .action-btn.primary {
+    background: linear-gradient(180deg, #dfe4ea, #b6bec8);
+    color: #000; box-shadow: 0 12px 28px rgba(255,255,255,.08);
+  }
+
+  /* ── PAINEL DE PREFERÊNCIA ──────────────────────────────────── */
+  .preference-panel { display: none; width: 100%; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.05); }
+  .preference-panel.show { display: block; }
+  .preference-head { text-align: center; color: #fff; font-weight: 900; font-size: 13px; margin-bottom: 10px; letter-spacing: .06em; }
+
+  .last-trips-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 940px; margin: 0 auto; }
+
+  .last-trip-card {
+    min-height: 136px; border-radius: 22px;
+    border: 1px solid rgba(217,221,227,.16);
+    background: linear-gradient(180deg, #17181c, #101114);
+    padding: 12px; display: flex; align-items: center;
+    gap: 12px; cursor: pointer; transition: .22s ease;
+  }
+  .last-trip-card.selected { border-color: rgba(217,221,227,.38); box-shadow: 0 0 16px rgba(255,255,255,.08); }
+  .last-trip-card img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,.12); flex: 0 0 auto; }
+  .last-trip-card strong { display: block; color: #fff; font-size: 14px; margin-bottom: 6px; }
+  .last-trip-card span   { display: block; color: var(--silver-2); font-size: 12px; line-height: 1.35; }
+
+  /* ── FOLHA DE PARTILHA ──────────────────────────────────────── */
+  .share-sheet {
+    position: fixed; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(980px, calc(100% - 20px));
+    z-index: 1110; display: flex; flex-direction: column; gap: 12px;
+    background: transparent; overflow: visible; pointer-events: none;
+  }
+  .share-sheet.hidden { display: none; }
+  .share-sheet > * { pointer-events: auto; }
+
+  /* Pilha de cartões de participante */
+  .share-stack {
+    width: 100%; min-height: 220px;
+    display: flex; justify-content: center; align-items: flex-end;
+    overflow: visible; background: transparent;
+  }
+  .stack-wrap {
+    position: relative; width: min(560px, 100%); min-height: 210px;
+    display: flex; justify-content: center; align-items: flex-end;
+  }
+
+  .share-card {
+    position: absolute; left: 50%; bottom: 0; width: 100%;
+    min-height: 180px; border-radius: 26px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: linear-gradient(180deg, rgba(20,22,26,.88), rgba(12,14,18,.78));
+    backdrop-filter: blur(20px); padding: 16px;
+    box-shadow: 0 20px 45px rgba(0,0,0,.28);
+    transform: translateX(-50%) translateY(12px) scale(.98);
+    opacity: 0; pointer-events: none; transition: .25s ease;
+    font-weight: 800;
+  }
+  .share-card.active { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0) scale(1); }
+  .share-card.paid    { border-color: rgba(25,214,139,.42); box-shadow: 0 0 16px rgba(25,214,139,.10), 0 20px 45px rgba(0,0,0,.28); }
+  .share-card.refused { border-color: rgba(255,99,99,.42); box-shadow: 0 0 16px rgba(255,99,99,.10), 0 20px 45px rgba(0,0,0,.28); }
+
+  .share-count { position: absolute; top: 12px; right: 14px; color: #fff; font-size: 12px; font-weight: 900; opacity: .9; }
+  .share-card label { display: block; color: #fff; font-size: 13px; font-weight: 800; margin-bottom: 12px; }
+
+  .share-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; }
+  .share-row input {
+    width: 100%; min-height: 42px; border-radius: 14px;
+    border: 1px solid rgba(217,221,227,.18);
+    background: rgba(12,13,16,.46); color: #e6eaef;
+    padding: 0 10px; outline: none; font-size: 13px; font-weight: 800;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .share-row input::placeholder { color: rgba(217,221,227,.4); font-weight: 800; }
+  .share-row button {
+    min-height: 42px; padding: 0 10px; border: none; border-radius: 14px;
+    font-weight: 900; cursor: pointer; font-size: 11px; white-space: nowrap;
+  }
+  .share-row button:first-of-type {
+    background: linear-gradient(180deg, #f3efe6, #d9ccb3); color: #171411;
+    box-shadow: 0 8px 18px rgba(217,204,179,.14);
+  }
+  .share-next-btn {
+    background: rgba(255,255,255,.05); color: #edf1f6;
+    border: 1px solid rgba(255,255,255,.10);
+  }
+  .share-contacts-btn {
+    background: rgba(91,155,247,.12); color: #9ec5fe;
+    border: 1px solid rgba(91,155,247,.25) !important;
+    position: relative;
+  }
+  .share-contacts-btn:hover { background: rgba(91,155,247,.2); }
+
+  /* Dropdown de contactos na partilha */
+  .share-contacts-drop {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    z-index: 9999; width: 220px;
+    background: #0e0f14; border: 1px solid rgba(217,221,227,.2);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 18px 40px rgba(0,0,0,.6);
+  }
+  .share-contacts-drop.open { display: block; }
+  .scd-item {
+    padding: 10px 14px; cursor: pointer;
+    border-top: 1px solid rgba(255,255,255,.06);
+    transition: background .15s;
+  }
+  .scd-item:first-child { border-top: none; }
+  .scd-item:hover { background: rgba(255,255,255,.06); }
+  .scd-item strong { display: block; font-size: 13px; color: #fff; font-weight: 800; }
+  .scd-item span   { font-size: 11px; color: var(--silver-2); }
+
+  .share-result { margin-top: 10px; min-height: 36px; color: var(--silver-2); font-size: 13px; line-height: 1.5; }
+  .share-ok   { color: var(--green); }
+  .share-err  { color: var(--red); }
+  .share-warn { color: #f0f0f0; }
+
+  /* Botões dentro do cartão */
+  .share-card-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .share-card-btn {
+    width: 100%; min-height: 34px; border-radius: 999px;
+    border: 1px solid rgba(217,221,227,.22);
+    background: linear-gradient(180deg, #13151b, #0b0c10);
+    color: var(--silver-2); font-size: 11px; font-weight: 900;
+    letter-spacing: .06em; cursor: pointer; transition: .2s ease;
+  }
+  .share-card-btn:hover { border-color: rgba(217,221,227,.4); color: var(--silver); }
+  .share-card-btn.cancelar-partilha {
+    border-color: rgba(255,80,80,.35);
+    background: linear-gradient(180deg, rgba(140,20,20,.18), rgba(100,15,15,.12));
+    color: #ff8080; display: none;
+  }
+  .share-card.active .share-card-btn.cancelar-partilha { display: block; }
+  .share-card-btn.cancelar-partilha:hover {
+    background: linear-gradient(180deg, rgba(180,30,30,.28), rgba(130,20,20,.2));
+    border-color: rgba(255,80,80,.55); color: #ffaaaa;
+  }
+
+  /* Barra de configuração da partilha */
+  .share-topbar {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 24px;
+    background: linear-gradient(180deg, rgba(20,22,26,.84), rgba(12,14,18,.74));
+    backdrop-filter: blur(16px) saturate(1.08);
+    box-shadow: var(--lux-shadow);
+  }
+
+  .share-cat-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .share-cat-pill {
+    flex: 1; min-width: 80px; min-height: 36px; border-radius: 999px;
+    border: 1px solid rgba(217,221,227,.18);
+    background: linear-gradient(180deg, #12141a, #0b0c10);
+    color: var(--silver-2); font-size: 11px; font-weight: 900;
+    letter-spacing: .06em; cursor: pointer; transition: .2s ease; padding: 0 10px;
+  }
+  .share-cat-pill.selected { background: linear-gradient(180deg, #dfe4ea, #b6bec8); color: #000; border-color: #eef2f7; }
+
+  .share-fields-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: center;
+  }
+  .share-topbar .field {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .share-topbar .field:focus { border-color: var(--lux-warm); box-shadow: 0 0 0 3px rgba(236,226,205,.08); }
+  .share-topbar .action-btn.primary {
+    background: linear-gradient(180deg, #f3efe6, #d9ccb3); color: #171411;
+    box-shadow: 0 12px 24px rgba(217,204,179,.16); border: 1px solid rgba(255,255,255,.22);
+  }
+
+  /* ── PAINEL DE PREÇO ESTIMADO ───────────────────────────────── */
+  .share-preco-panel {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(25,214,139,.25);
+    background: linear-gradient(180deg, rgba(25,214,139,.08), rgba(25,214,139,.03));
+  }
+  .share-preco-panel.show { display: flex; }
+  .share-preco-panel.a-calcular { opacity: .55; }
+
+  /* Linha única: KM · Tempo */
+  .share-preco-linha {
+    display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0;
+  }
+  .share-preco-km {
+    font-size: 14px; font-weight: 900; color: #fff; white-space: nowrap;
+  }
+  .share-preco-sep {
+    font-size: 12px; color: var(--silver-3);
+  }
+  .share-preco-tempo {
+    font-size: 14px; font-weight: 800; color: var(--silver-2); white-space: nowrap;
+  }
+  .share-preco-tempo::before { content: '⏱ '; }
+
+  /* Valor à direita */
+  .share-preco-total-valor {
+    font-size: 22px; font-weight: 900; color: var(--green);
+    letter-spacing: .02em; white-space: nowrap; flex: 0 0 auto;
+  }
+  .share-preco-total-valor.erro { color: var(--red); font-size: 13px; }
+
+  .share-preco-portagens {
+    display: none;
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,159,67,.25);
+    background: rgba(255,159,67,.07);
+    font-size: 11px; font-weight: 800; color: #ffd09b;
+  }
+  .share-preco-portagens.show { display: block; }
+
+  /* ── OVERLAY DE ESPERA (após PARTILHAR) ─────────────────────── */
+  .share-aguarda-overlay {
+    position: fixed; inset: 0; z-index: 1050;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .share-aguarda-overlay.show { display: flex; pointer-events: auto; }
+
+  .share-aguarda-card {
+    background: linear-gradient(180deg, rgba(10,11,14,.96), rgba(6,7,9,.94));
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 28px;
+    padding: 32px 28px;
+    width: min(480px, calc(100% - 32px));
+    display: flex; flex-direction: column; gap: 20px;
+    align-items: center; text-align: center;
+    box-shadow: 0 32px 80px rgba(0,0,0,.7);
+    backdrop-filter: blur(24px);
+  }
+
+  .aguarda-pulse {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(25,214,139,.15);
+    border: 2px solid rgba(25,214,139,.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    animation: aguardaPulse 2s ease-in-out infinite;
+  }
+  @keyframes aguardaPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(25,214,139,.3); }
+    50%      { box-shadow: 0 0 0 16px rgba(25,214,139,0); }
+  }
+
+  .aguarda-titulo {
+    font-size: 15px; font-weight: 900; letter-spacing: .14em;
+    color: #fff; line-height: 1.3;
+  }
+  .aguarda-sub {
+    font-size: 13px; color: var(--silver-2); font-weight: 800; line-height: 1.5;
+  }
+
+  .aguarda-participantes {
+    width: 100%; display: flex; flex-direction: column; gap: 8px;
+  }
+  .aguarda-part-item {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 10px 14px; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.04);
+  }
+  .aguarda-part-nome { font-size: 13px; font-weight: 800; color: #eef2f7; flex: 1; text-align: left; }
+  .aguarda-part-status {
+    font-size: 11px; font-weight: 900; letter-spacing: .06em; padding: 4px 10px;
+    border-radius: 999px; white-space: nowrap;
+  }
+  .aguarda-part-status.pendente  { background: rgba(255,255,255,.08); color: var(--silver-2); }
+  .aguarda-part-status.aceitou   { background: rgba(25,214,139,.18); color: #7fffc4; border: 1px solid rgba(25,214,139,.3); }
+  .aguarda-part-status.recusou   { background: rgba(255,99,99,.14); color: #ffaaaa; border: 1px solid rgba(255,99,99,.3); }
+  .aguarda-part-status.pagou     { background: rgba(25,214,139,.25); color: #dffcef; border: 1px solid rgba(25,214,139,.5); }
+
+  .aguarda-btn-cancelar {
+    width: 100%; min-height: 46px; border-radius: 18px;
+    border: 1px solid rgba(255,80,80,.3);
+    background: rgba(140,20,20,.12); color: #ff8080;
+    font-size: 12px; font-weight: 900; letter-spacing: .08em;
+    cursor: pointer; transition: .2s ease;
+  }
+  .aguarda-btn-cancelar:hover {
+    background: rgba(180,30,30,.22); border-color: rgba(255,80,80,.5); color: #ffaaaa;
+  }
+
+  /* ── OVERLAY DE ROTA AO VIVO ────────────────────────────────── */
+  .share-rota-overlay {
+    position: fixed; bottom: var(--safe-b); left: 50%;
+    transform: translateX(-50%);
+    z-index: 1050;
+    width: min(480px, calc(100% - 24px));
+    display: none; flex-direction: column; gap: 8px;
+    pointer-events: none;
+  }
+  .share-rota-overlay.show { display: flex; pointer-events: auto; }
+
+  .share-rota-card {
+    background: linear-gradient(180deg, rgba(10,11,14,.95), rgba(6,7,9,.90));
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 24px; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 12px;
+    box-shadow: var(--shadow); backdrop-filter: blur(20px);
+  }
+
+  .rota-titulo {
+    font-size: 12px; font-weight: 900; letter-spacing: .14em;
+    color: var(--silver-2); text-align: center;
+  }
+
+  .rota-participantes { display: flex; flex-direction: column; gap: 6px; }
+  .rota-part-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: 12px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+  }
+  .rota-part-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto;
+    box-shadow: 0 0 8px currentColor;
+  }
+  .rota-part-nome { flex: 1; font-size: 13px; font-weight: 800; color: #eef2f7; }
+  .rota-part-dist { font-size: 12px; color: var(--silver-2); font-weight: 800; }
+
+  .rota-destino {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-radius: 14px;
+    background: rgba(25,214,139,.08); border: 1px solid rgba(25,214,139,.2);
+  }
+  .rota-destino-icon { font-size: 16px; }
+  .rota-destino-texto { font-size: 13px; font-weight: 800; color: #7fffc4; flex: 1; }
+
+  /* ── POPUPS / OVERLAYS ──────────────────────────────────────── */
+  .popup-overlay {
+    position: fixed; inset: 0; z-index: 1400;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.78); backdrop-filter: blur(10px); padding: 16px;
+  }
+  .popup-overlay.show { display: flex; }
+
+  .popup-card {
+    width: min(460px, 100%); border-radius: 28px;
+    border: 1px solid rgba(217,221,227,.18);
+    background: #111216; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .popup-head {
+    padding: 16px 18px 12px; border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .popup-head h3 { color: #fff; font-size: 15px; font-weight: 900; letter-spacing: .08em; }
+  .popup-head p  { margin-top: 6px; color: var(--silver-2); font-size: 12px; line-height: 1.4; }
+  .popup-body    { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+
+  .popup-body input, .popup-body textarea {
+    width: 100%; border-radius: 18px;
+    border: 1px solid rgba(217,221,227,.18);
+    background: #0a0b0d; color: var(--silver);
+    padding: 14px; outline: none; font-size: 14px;
+  }
+  .popup-body input    { min-height: 50px; }
+  .popup-body textarea { min-height: 120px; resize: vertical; }
+  .popup-hint  { font-size: 12px; color: var(--silver-2); }
+  .popup-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+  .popup-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .option-pill {
+    min-height: 46px; border-radius: 18px;
+    border: 1px solid rgba(217,221,227,.18);
+    background: #15171b; color: #fff;
+    padding: 10px 12px; font-size: 12px; font-weight: 800;
+    cursor: pointer; transition: .2s ease;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+  }
+  .option-pill.selected { background: linear-gradient(180deg,#dfe4ea,#b6bec8); color: #000; border-color: #fff; }
+
+  .security-panel {
+    background: linear-gradient(180deg,#17181c,#101114);
+    border: 1px solid rgba(217,221,227,.16); border-radius: 22px;
+    padding: 12px 14px; font-size: 12px; line-height: 1.5; color: var(--silver-2);
+  }
+
+  /* Atividade */
+  .activity-actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-top: 6px; }
+  .activity-btn {
+    min-height: 48px; border-radius: 18px;
+    border: 1px solid rgba(217,221,227,.18); background: #15171b;
+    color: #fff; font-weight: 900; cursor: pointer;
+    transition: .2s ease; padding: 0 12px; font-size: 12px;
+  }
+  .activity-btn:hover { background: #1c1f26; }
+
+  /* Gestão de viagens */
+  .manager-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+  .manager-card {
+    background: linear-gradient(180deg,#17181c,#101114);
+    border: 1px solid rgba(217,221,227,.16); border-radius: 22px; padding: 14px;
+  }
+  .manager-card h4 { color: #f0f2f5; font-size: 13px; letter-spacing: .08em; margin-bottom: 10px; }
+  .manager-card p  { color: var(--silver-2); font-size: 12px; line-height: 1.45; }
+
+  .trip-flow-card {
+    background: linear-gradient(180deg,#181a1f,#111318);
+    border: 1px solid rgba(217,221,227,.18); border-radius: 22px;
+    padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .trip-flow-card strong { color: #f4f6f8; font-size: 14px; }
+  .trip-flow-card span   { color: var(--silver-2); font-size: 12px; line-height: 1.45; }
+
+  .status-pill {
+    display: inline-flex; align-items: center;
+    min-height: 30px; padding: 0 12px; border-radius: 999px;
+    font-size: 11px; font-weight: 900; width: max-content;
+  }
+  .status-pill.live { background: rgba(25,214,139,.16); color: #dffcef; border: 1px solid rgba(25,214,139,.42); }
+  .status-pill.warn { background: rgba(255,159,67,.16); color: #fff2e5; border: 1px solid rgba(255,159,67,.42); }
+
+  /* Faturas */
+  .invoice-list { display: flex; flex-direction: column; gap: 10px; }
+  .invoice-item {
+    min-height: 56px; border-radius: 18px;
+    border: 1px solid rgba(217,221,227,.18); background: #15171b;
+    padding: 12px 14px; cursor: pointer; transition: .2s ease;
+    color: #fff; font-size: 13px; display: flex; align-items: center;
+  }
+  .invoice-item.selected { background: linear-gradient(180deg,#dfe4ea,#b6bec8); color: #000; border-color: #fff; }
+
+  /* Meus contactos */
+  .meus-contactos-lista { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+  .contacto-item {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 12px 14px; border-radius: 14px;
+    border: 1px solid rgba(217,221,227,.14); background: #13151a;
+    transition: .18s ease;
+  }
+  .contacto-item:hover { border-color: rgba(217,221,227,.3); }
+  .contacto-item .ci-info strong { display: block; color: #fff; font-size: 13px; margin-bottom: 3px; }
+  .contacto-item .ci-info span   { color: var(--silver-2); font-size: 12px; }
+  .contacto-item .ci-del {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid rgba(255,100,100,.3); background: rgba(255,100,100,.08);
+    color: #ff8080; font-size: 14px; cursor: pointer;
+    display: grid; place-items: center; flex: 0 0 auto; transition: .15s ease;
+  }
+  .contacto-item .ci-del:hover { background: rgba(255,100,100,.18); }
+  .add-contacto-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 4px; }
+
+  /* Viagens pendentes */
+  .viagens-pendentes-lista { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 60vh; }
+  .viagem-pendente-item {
+    background: linear-gradient(180deg,#17181c,#101114);
+    border: 1px solid rgba(217,221,227,.16); border-radius: 18px;
+    padding: 14px 16px; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px;
+  }
+  .viagem-pendente-item .vp-info strong { display: block; color: #f4f6f8; font-size: 14px; margin-bottom: 4px; }
+  .viagem-pendente-item .vp-info span   { display: block; color: var(--silver-2); font-size: 12px; line-height: 1.4; }
+  .viagem-pendente-item .vp-badge {
+    padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 900;
+    border: 1px solid rgba(255,159,67,.4); background: rgba(255,159,67,.12);
+    color: #fff2e5; white-space: nowrap; flex: 0 0 auto;
+  }
+
+  /* ── OVERLAY DO MOTORISTA ───────────────────────────────────── */
+  .motorista-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .motorista-overlay.show { display: flex; }
+  .motorista-overlay-bg {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,.82); backdrop-filter: blur(18px) saturate(.7);
+  }
+  .motorista-card {
+    position: relative; z-index: 1; width: min(400px, 100%);
+    background: linear-gradient(180deg,#111316,#0a0b0d);
+    border: 1px solid rgba(217,221,227,.22); border-radius: 28px;
+    overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.04);
+  }
+  .motorista-card-header {
+    padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.06);
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0));
+  }
+  .motorista-card-header h3 { font-size: 11px; font-weight: 900; letter-spacing: .18em; color: var(--silver-2); }
+  .motorista-card-header .rm-badge {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid rgba(217,221,227,.3);
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 900; color: var(--silver);
+  }
+  .motorista-card-body { padding: 20px; }
+  .motorista-info-row { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .motorista-dados { flex: 1; min-width: 0; }
+  .motorista-matricula { font-size: 26px; font-weight: 900; letter-spacing: .12em; color: #fff; line-height: 1; margin-bottom: 8px; }
+  .motorista-modelo    { font-size: 13px; color: var(--silver-2); margin-bottom: 10px; line-height: 1.35; }
+  .motorista-nome      { font-size: 15px; font-weight: 800; color: #eef2f7; margin-bottom: 6px; }
+  .motorista-rating    { display: flex; align-items: center; gap: 6px; }
+  .motorista-rating .stars      { color: #f4c56b; font-size: 13px; letter-spacing: 1px; }
+  .motorista-rating .rating-val { color: var(--silver-2); font-size: 12px; font-weight: 800; }
+  .motorista-foto-wrap { flex: 0 0 auto; width: 88px; }
+  .motorista-foto {
+    width: 88px; height: 88px; border-radius: 50%; object-fit: cover;
+    border: 2px solid rgba(217,221,227,.22); display: block;
+  }
+  .motorista-foto-placeholder {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: linear-gradient(180deg,#21252c,#141720);
+    border: 2px solid rgba(217,221,227,.16);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; color: var(--silver-2);
+  }
+  .motorista-mapa {
+    width: 100%; height: 180px; border-radius: 18px; overflow: hidden;
+    border: 1px solid rgba(217,221,227,.12); margin-bottom: 16px;
+    background: #0d0f12; position: relative;
+  }
+  .motorista-mapa-label {
+    position: absolute; top: 10px; left: 10px; z-index: 10;
+    padding: 5px 10px; border-radius: 999px;
+    background: rgba(0,0,0,.72); backdrop-filter: blur(8px);
+    font-size: 11px; font-weight: 800; color: #fff;
+    letter-spacing: .06em; border: 1px solid rgba(255,255,255,.1);
+  }
+  .motorista-eta {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-radius: 14px;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+    margin-bottom: 16px;
+  }
+  .motorista-eta-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 8px rgba(25,214,139,.6);
+    animation: etaPulse 1.4s ease-in-out infinite; flex: 0 0 auto;
+  }
+  @keyframes etaPulse { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.7); } }
+  .motorista-eta span   { font-size: 13px; color: var(--silver-2); }
+  .motorista-eta strong { font-size: 13px; color: #fff; font-weight: 900; }
+  .btn-cancelar-viagem {
+    width: 100%; min-height: 50px; border-radius: 18px;
+    border: 1px solid rgba(255,80,80,.35);
+    background: linear-gradient(180deg,rgba(180,30,30,.18),rgba(120,20,20,.12));
+    color: #ff7070; font-size: 13px; font-weight: 900;
+    letter-spacing: .1em; cursor: pointer; transition: .2s ease;
+  }
+  .btn-cancelar-viagem:hover {
+    background: linear-gradient(180deg,rgba(200,40,40,.28),rgba(140,25,25,.2));
+    border-color: rgba(255,80,80,.55); color: #ff9090; transform: translateY(-1px);
+  }
+
+  /* ── RESPONSIVO ─────────────────────────────────────────────── */
+  @media (max-width: 1180px) {
+    .driver-grid    { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .category-row   { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .form-row       { grid-template-columns: 1fr 1fr; }
+    .form-row > *:nth-child(n+3) { grid-column: 1/-1; }
+    .share-fields-row { grid-template-columns: 1fr 1fr; }
+    .share-fields-row > *:nth-child(n+3) { grid-column: 1/-1; }
+  }
+
+  @media (max-width: 760px) {
+    .topbar { flex-direction: column; align-items: flex-start; padding: 12px; }
+    .top-actions { width: 100%; justify-content: flex-end; }
+    .trip-type-wrap { top: 112px; }
+    #shareBanner { top: 172px; }
+    #toast       { top: 244px; }
+    #inviteBar   { top: 316px; }
+    .driver-grid  { grid-template-columns: 1fr; max-height: 220px; overflow: auto; }
+    .category-row { grid-template-columns: 1fr 1fr; }
+    .last-trips-row { grid-template-columns: 1fr; }
+    .popup-options  { grid-template-columns: 1fr; }
+    .manager-grid   { grid-template-columns: 1fr; }
+    .activity-actions { grid-template-columns: 1fr; }
+    .share-sheet  { width: calc(100% - 14px); gap: 10px; }
+    .share-stack  { min-height: 210px; }
+    .stack-wrap   { min-height: 204px; }
+    .share-fields-row { grid-template-columns: 1fr; }
+    .share-row    { grid-template-columns: 1fr; }
+    .add-contacto-row { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 520px) {
+    .form-row      { grid-template-columns: 1fr; }
+    .trip-type-wrap { width: calc(100% - 16px); }
+    .floating-shell { width: calc(100% - 12px); }
+    .panel-body    { padding: 14px; }
+    .brand-copy p  { max-width: 70vw; }
+    .share-cat-pill { flex: none; min-width: calc(50% - 4px); }
+  }
+
+  </style>
+</head>
+<body>
+
+  <!-- MAPA DE FUNDO -->
+  <div id="map"></div>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">RM</div>
+      <div class="brand-copy">
+        <h1 id="nomeUtilizador">A CARREGAR...</h1>
+        <p id="userName">Área do Cliente Premium</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="soft-btn" id="btnSecurityPanel">SEGURANÇA</button>
+      <button class="soft-btn" id="btnPolitica">POLÍTICA</button>
+      <button class="soft-btn viagens-btn" id="btnViagensPendentes">VIAGENS PENDENTES</button>
+      <button class="soft-btn reserva-ativa-btn hidden" id="btnReservaAtiva">RESERVA ATIVA</button>
+      <button class="hamburger-btn" id="btnMenu" aria-label="Menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- DROPDOWN HAMBÚRGUER (canto direito, abaixo do botão) -->
+  <nav class="hamburger-dropdown" id="hamburgerMenu">
+    <button class="drop-btn" id="menuBtnActivity">ATIVIDADE</button>
+    <button class="drop-btn" id="menuBtnTripManager">GESTÃO</button>
+    <button class="drop-btn" id="menuBtnContactos">MEUS CONTACTOS</button>
+  </nav>
+
+  <!-- SELETOR DE MODO -->
+  <div class="trip-type-wrap" id="tripTypeWrap">
+    <button class="trip-type-btn" id="btnSemPartilha">SEM PARTILHA</button>
+    <button class="trip-type-btn" id="btnPartilharAmigos">PARTILHAR COM AMIGOS</button>
+    <button class="trip-type-btn" id="btnCriarTicket" style="display:none">🎫 CRIAR TICKET</button>
+  </div>
+
+  <!-- NOTIFICAÇÕES -->
+  <div class="notif" id="shareBanner"></div>
+  <div class="notif" id="toast"></div>
+  <div class="notif" id="inviteBar"></div>
+
+  <!-- PAINEL DE RESERVA PRIVADA -->
+  <div class="floating-shell">
+    <section class="panel hidden" id="tripPanel">
+      <div class="panel-head">
+        <div>
+          <h2>RESERVA PRIVADA</h2>
+          <p>Preencha a viagem, selecione a categoria e, se desejar, aplique preferência aos seus 5 cartões.</p>
+        </div>
+        <button class="close-btn" id="btnCloseTrip">✕</button>
+      </div>
+      <div class="panel-body">
+        <div class="info-note">
+          Os 5 cartões são livres. Pode ocupá-los como quiser. Cartão selecionado para adicionar fica verde. Para substituir, fica laranja.
+        </div>
+        <div class="driver-grid" id="driverGrid">
+          <!-- Cartão 1 -->
+          <article class="driver-card" data-card-index="1">
+            <div class="driver-top">
+              <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+              <div><strong>Slot 1</strong><span>Categoria atual: —</span></div>
+            </div>
+            <div class="driver-meta">
+              <span><b>Veículo:</b> —</span>
+              <span><b>Matrícula:</b> —</span>
+              <span><b>Tipo:</b> —</span>
+            </div>
+            <div class="mini-chip">Livre</div>
+            <button class="card-action pref-action-btn">ADICIONAR</button>
+          </article>
+          <!-- Cartão 2 -->
+          <article class="driver-card" data-card-index="2">
+            <div class="driver-top">
+              <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+              <div><strong>Slot 2</strong><span>Categoria atual: —</span></div>
+            </div>
+            <div class="driver-meta">
+              <span><b>Veículo:</b> —</span><span><b>Matrícula:</b> —</span><span><b>Tipo:</b> —</span>
+            </div>
+            <div class="mini-chip">Livre</div>
+            <button class="card-action pref-action-btn">ADICIONAR</button>
+          </article>
+          <!-- Cartão 3 -->
+          <article class="driver-card" data-card-index="3">
+            <div class="driver-top">
+              <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+              <div><strong>Slot 3</strong><span>Categoria atual: —</span></div>
+            </div>
+            <div class="driver-meta">
+              <span><b>Veículo:</b> —</span><span><b>Matrícula:</b> —</span><span><b>Tipo:</b> —</span>
+            </div>
+            <div class="mini-chip">Livre</div>
+            <button class="card-action pref-action-btn">ADICIONAR</button>
+          </article>
+          <!-- Cartão 4 -->
+          <article class="driver-card" data-card-index="4">
+            <div class="driver-top">
+              <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+              <div><strong>Slot 4</strong><span>Categoria atual: —</span></div>
+            </div>
+            <div class="driver-meta">
+              <span><b>Veículo:</b> —</span><span><b>Matrícula:</b> —</span><span><b>Tipo:</b> —</span>
+            </div>
+            <div class="mini-chip">Livre</div>
+            <button class="card-action pref-action-btn">ADICIONAR</button>
+          </article>
+          <!-- Cartão 5 -->
+          <article class="driver-card" data-card-index="5">
+            <div class="driver-top">
+              <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="motorista">
+              <div><strong>Slot 5</strong><span>Categoria atual: —</span></div>
+            </div>
+            <div class="driver-meta">
+              <span><b>Veículo:</b> —</span><span><b>Matrícula:</b> —</span><span><b>Tipo:</b> —</span>
+            </div>
+            <div class="mini-chip">Livre</div>
+            <button class="card-action pref-action-btn">ADICIONAR</button>
+          </article>
+        </div>
+
+        <div class="category-row">
+          <button class="cat-btn selected" data-category="economica">ECONÓMICA</button>
+          <button class="cat-btn" data-category="confort">CONFORTO</button>
+          <button class="cat-btn" data-category="executive">EXECUTIVA</button>
+          <button class="cat-btn" data-category="luxo">LUXO</button>
+          <button class="cat-btn" data-category="grupo">GRUPO</button>
+        </div>
+
+        <div class="form-row">
+          <div class="nm-wrap"><input class="field" id="inputPartida" type="text" placeholder="Partida" autocomplete="off"><div class="nm-dropdown" id="nmPartida"></div></div>
+          <div class="nm-wrap"><input class="field" id="inputDestino" type="text" placeholder="Destino" autocomplete="off"><div class="nm-dropdown" id="nmDestino"></div></div>
+          <input class="field" id="inputDateTime" type="datetime-local">
+          <button class="action-btn secondary" id="btnPreferencia">ADICIONAR PREFERÊNCIA</button>
+          <button class="action-btn primary" id="btnReservar">RESERVAR VIAGEM</button>
+        </div>
+
+        <div class="preference-panel" id="preferencePanel">
+          <div class="preference-head">ÚLTIMAS 2 VIAGENS PARA PREFERÊNCIA</div>
+          <div class="last-trips-row">
+            <article class="last-trip-card" id="lastTripCard1">
+              <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="última viagem 1">
+              <div><strong>Sem registo</strong><span>Assim que existir histórico, aparecerá aqui.</span></div>
+            </article>
+            <article class="last-trip-card" id="lastTripCard2">
+              <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E" alt="última viagem 2">
+              <div><strong>Sem registo</strong><span>Assim que existir histórico, aparecerá aqui.</span></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- FOLHA DE PARTILHA -->
+  <section class="share-sheet hidden" id="shareSheet">
+    <!-- Pilha de cartões de participante (gerada por buildShareCards) -->
+    <div class="share-stack">
+      <div class="stack-wrap" id="shareStackWrap"></div>
+    </div>
+    <!-- Barra de configuração -->
+    <div class="share-topbar">
+      <div class="share-cat-pills" id="shareCatPills">
+        <button class="share-cat-pill" data-sharecat="economica">ECONÓMICA</button>
+        <button class="share-cat-pill" data-sharecat="confort">CONFORTO</button>
+        <button class="share-cat-pill" data-sharecat="executive">EXECUTIVA</button>
+        <button class="share-cat-pill" data-sharecat="luxo">LUXO</button>
+        <button class="share-cat-pill" data-sharecat="grupo">GRUPO</button>
+      </div>
+      <div class="share-fields-row">
+        <div class="nm-wrap"><input class="field" id="shareRecolha" type="text" placeholder="Local de recolha (auto)" autocomplete="off"><div class="nm-dropdown" id="nmRecolha"></div></div>
+        <div class="nm-wrap"><input class="field" id="shareDestino" type="text" placeholder="Destino final" autocomplete="off"><div class="nm-dropdown" id="nmShareDestino"></div></div>
+        <input class="field" id="shareDateTime" type="datetime-local">
+        <button class="action-btn primary" id="btnEnviarConvites" disabled>PARTILHAR</button>
+      </div>
+      <!-- Painel de preço estimado — aparece após calcular -->
+      <div class="share-preco-panel" id="sharePrecoPanel">
+        <div class="share-preco-linha">
+          <span class="share-preco-km" id="sharePrecoKm">—</span>
+          <span class="share-preco-sep">·</span>
+          <span class="share-preco-tempo" id="sharePrecoTempo">—</span>
+          <div class="share-preco-portagens" id="sharePrecoPortagens"></div>
+        </div>
+        <div class="share-preco-total-valor" id="sharePrecoValor">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAINEL DE TICKET (hotel) ─────────────────────────────── -->
+  <section class="share-sheet hidden" id="ticketSheet">
+    <div class="share-topbar">
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:900;letter-spacing:.12em;color:#fff">CRIAR TICKET PARA HÓSPEDE</div>
+      </div>
+      <button class="action-btn secondary" id="btnCloseTicket" style="min-width:unset;padding:0 14px">✕ FECHAR</button>
+    </div>
+
+    <div class="share-topbar" style="flex-direction:column;gap:10px;padding-top:0">
+
+      <!-- Dados do hóspede -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%">
+        <div class="nm-wrap">
+          <input class="field" id="tkNome" type="text" placeholder="Nome do hóspede *" autocomplete="off">
+        </div>
+        <div class="nm-wrap">
+          <input class="field" id="tkEmail" type="email" placeholder="Email do hóspede *" autocomplete="off">
+        </div>
+        <input class="field" id="tkTelefone" type="tel" placeholder="Telemóvel (MB Way)" autocomplete="off">
+        <input class="field" id="tkDatahora" type="datetime-local">
+      </div>
+
+      <!-- Partida / Destino -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%">
+        <div class="nm-wrap">
+          <input class="field" id="tkPartida" type="text" placeholder="Local de partida *" autocomplete="off">
+          <div class="nm-dropdown" id="nmTkPartida"></div>
+        </div>
+        <div class="nm-wrap">
+          <input class="field" id="tkDestino" type="text" placeholder="Destino final *" autocomplete="off">
+          <div class="nm-dropdown" id="nmTkDestino"></div>
+        </div>
+      </div>
+
+      <!-- Categoria -->
+      <div class="share-cat-pills" style="padding:0">
+        <button class="share-cat-pill" data-tkcat="economica">ECONÓMICA</button>
+        <button class="share-cat-pill" data-tkcat="confort">CONFORTO</button>
+        <button class="share-cat-pill" data-tkcat="executive">EXECUTIVA</button>
+        <button class="share-cat-pill" data-tkcat="luxury">LUXO</button>
+        <button class="share-cat-pill" data-tkcat="GRUPO6">GRUPO 6</button>
+        <button class="share-cat-pill" data-tkcat="GRUPO8">GRUPO 8</button>
+        <button class="share-cat-pill" data-tkcat="GRUPO17">GRUPO 17</button>
+      </div>
+
+      <!-- Painel de preço -->
+      <div class="share-preco-panel" id="tkPrecoPanel">
+        <div class="share-preco-linha">
+          <span class="share-preco-km" id="tkPrecoKm">—</span>
+          <span class="share-preco-sep">·</span>
+          <span class="share-preco-tempo" id="tkPrecoTempo">—</span>
+        </div>
+        <div class="share-preco-total-valor" id="tkPrecoValor">—</div>
+      </div>
+
+      <!-- Botão -->
+      <div style="display:flex;gap:10px;width:100%">
+        <button class="action-btn secondary" id="btnTkCalc" style="flex:1">CALCULAR PREÇO</button>
+        <button class="action-btn primary"   id="btnTkGerar" style="flex:2">🎫 GERAR TICKET</button>
+      </div>
+
+      <div class="msg" id="tkMsg" style="display:none;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:800"></div>
+
+      <!-- Resultado do ticket gerado -->
+      <div id="tkResultado" style="display:none;width:100%;padding:16px;background:rgba(25,214,139,.06);border:1px solid rgba(25,214,139,.25);border-radius:18px">
+        <div style="font-size:12px;font-weight:900;color:var(--green);letter-spacing:.1em;margin-bottom:12px">TICKET GERADO ✓</div>
+        <div id="tkLinkInfo" style="font-size:12px;color:var(--silver-2);line-height:1.8;margin-bottom:14px"></div>
+        <button id="btnTkEmail" style="width:100%;padding:13px;border-radius:16px;border:none;background:linear-gradient(180deg,#19d68b,#12a869);color:#000;font-size:13px;font-weight:900;letter-spacing:.06em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          ✉ ENVIAR TICKET POR EMAIL AO HÓSPEDE
+        </button>
+        <div class="msg" id="tkEmailMsg" style="display:none;margin-top:10px;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:800"></div>
+        <button id="btnTkNovo" style="margin-top:10px;width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--silver-2);font-size:12px;font-weight:900;cursor:pointer">+ CRIAR NOVO TICKET</button>
+      </div>
+
+    </div>
+  </section>
+  <div class="share-aguarda-overlay" id="shareAguardaOverlay">
+    <div class="share-aguarda-card">
+      <div class="aguarda-pulse">📡</div>
+      <div class="aguarda-titulo">AGUARDANDO RESPOSTA DOS UTILIZADORES</div>
+      <div class="aguarda-sub" id="aguardaSub">Convites enviados. A aguardar confirmação dos participantes.</div>
+      <div class="aguarda-participantes" id="aguardaParticipantes"></div>
+      <button class="aguarda-btn-cancelar" id="aguardaBtnCancelar">CANCELAR PARTILHA</button>
+    </div>
+  </div>
+
+  <!-- OVERLAY DE ROTA AO VIVO: aparece quando todos aceitam -->
+  <div class="share-rota-overlay" id="shareRotaOverlay">
+    <div class="share-rota-card">
+      <div class="rota-titulo">PARTILHA EM CURSO — ROTA AO VIVO</div>
+      <div class="rota-participantes" id="rotaParticipantes"></div>
+      <div class="rota-destino">
+        <span class="rota-destino-icon">📍</span>
+        <span class="rota-destino-texto" id="rotaDestinoTexto">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: CONFIGURAR CATEGORIA (Luxo / Grupo) -->
+  <div class="popup-overlay" id="categoryPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3 id="categoryPopupTitle">CONFIGURAR CATEGORIA</h3>
+        <p id="categoryPopupText">Indique a quantidade pretendida.</p>
+      </div>
+      <div class="popup-body">
+        <input id="categoryPopupInput" type="number">
+        <div class="popup-hint" id="categoryPopupHint"></div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnPopupCancel">CANCELAR</button>
+          <button class="action-btn primary"    id="btnPopupConfirm">CONFIRMAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: ACESSO À PARTILHA VIA CONVITE SMS -->
+  <div class="popup-overlay" id="inviteVerifyPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>ACESSO À PARTILHA</h3>
+        <p>Introduza o código recebido por SMS para entrar na partilha.</p>
+      </div>
+      <div class="popup-body">
+        <input id="inviteOtpInput" type="text" placeholder="Código SMS" maxlength="6" inputmode="numeric">
+        <div class="popup-hint">Depois de validar, a sua localização será enviada em tempo real.</div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnInviteClose">FECHAR</button>
+          <button class="action-btn primary"    id="btnInviteVerify">VALIDAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: ATIVIDADE -->
+  <div class="popup-overlay" id="activityPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>ATIVIDADE</h3>
+        <p>Escolha a ação que pretende realizar.</p>
+      </div>
+      <div class="popup-body">
+        <div class="activity-actions">
+          <button class="activity-btn" id="btnLostItem">RECUPERAR ARTIGO PERDIDO</button>
+          <button class="activity-btn" id="btnSecurityProblem">PROBLEMA DE SEGURANÇA</button>
+          <button class="activity-btn" id="btnInvoice">SOLICITAR FATURA</button>
+        </div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnCloseActivity">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: ARTIGO PERDIDO -->
+  <div class="popup-overlay" id="lostItemPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>RECUPERAR ARTIGO PERDIDO</h3>
+        <p>Descreva o item perdido e os detalhes relevantes da viagem.</p>
+      </div>
+      <div class="popup-body">
+        <input id="lostItemTitle" type="text" placeholder="Nome do item">
+        <textarea id="lostItemDescription" placeholder="Descreva o artigo, cor, tamanho, local provável e qualquer detalhe útil."></textarea>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnLostCancel">CANCELAR</button>
+          <button class="action-btn primary"    id="btnLostSend">ENVIAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: PROBLEMA DE SEGURANÇA -->
+  <div class="popup-overlay" id="securityPopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>PROBLEMA DE SEGURANÇA</h3>
+        <p>Selecione o problema principal e descreva o ocorrido.</p>
+      </div>
+      <div class="popup-body">
+        <div class="popup-options" id="securityOptions">
+          <button class="option-pill" data-value="solicitou_meu_contato">SOLICITOU MEU CONTATO</button>
+          <button class="option-pill" data-value="conducao_perigosa">CONDUÇÃO PERIGOSA</button>
+          <button class="option-pill" data-value="veiculo_diferente">VEÍCULO DIFERENTE</button>
+          <button class="option-pill" data-value="motorista_diferente">O MOTORISTA NÃO É O MESMO</button>
+        </div>
+        <textarea id="securityDescription" placeholder="Informações adicionais sobre o problema."></textarea>
+        <div class="security-panel">
+          O painel de segurança rastreia a viagem em tempo real pela localização do utilizador e do motorista.
+        </div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnSecurityCancel">CANCELAR</button>
+          <button class="action-btn primary"    id="btnSecuritySend">ENVIAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: SOLICITAR FATURA -->
+  <div class="popup-overlay" id="invoicePopup">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h3>SOLICITAR FATURA</h3>
+        <p>Selecione a viagem pretendida. O sistema usa o nome completo do utilizador registado.</p>
+      </div>
+      <div class="popup-body">
+        <div class="invoice-list" id="invoiceList"></div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnInvoiceCancel">CANCELAR</button>
+          <button class="action-btn primary"    id="btnInvoiceSend">SOLICITAR FATURA</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: GESTÃO DE VIAGENS -->
+  <div class="popup-overlay" id="tripManagerPopup">
+    <div class="popup-card" style="width:min(980px,100%)">
+      <div class="popup-head">
+        <h3>GESTÃO DE VIAGENS</h3>
+        <p>Controlo da reserva atual, preferência, início e conclusão de viagem.</p>
+      </div>
+      <div class="popup-body">
+        <div class="manager-grid">
+          <div class="manager-card">
+            <h4>RESERVA EM CURSO</h4>
+            <p id="managerCurrentTrip">Sem viagem ativa.</p>
+          </div>
+          <div class="manager-card">
+            <h4>PREFERÊNCIA APLICADA</h4>
+            <p id="managerPreferenceInfo">Nenhuma preferência aplicada.</p>
+          </div>
+          <div class="trip-flow-card">
+            <strong>INÍCIO DE VIAGEM</strong>
+            <span>Confirme quando o motorista iniciar a recolha.</span>
+            <div class="status-pill live">PRONTO PARA INICIAR</div>
+            <button class="action-btn primary" id="btnStartTripFlow">INICIAR VIAGEM</button>
+          </div>
+          <div class="trip-flow-card">
+            <strong>FIM DE VIAGEM</strong>
+            <span>Confirme quando o trajeto terminar com sucesso.</span>
+            <div class="status-pill warn">AGUARDA ENCERRAMENTO</div>
+            <button class="action-btn secondary" id="btnEndTripFlow">FINALIZAR VIAGEM</button>
+          </div>
+        </div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnCloseTripManager">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: PAINEL DE SEGURANÇA AO VIVO -->
+  <div class="popup-overlay" id="securityLivePopup">
+    <div class="popup-card" style="width:min(980px,100%)">
+      <div class="popup-head">
+        <h3>PAINEL DE SEGURANÇA</h3>
+        <p>Monitorização em tempo real da viagem.</p>
+      </div>
+      <div class="popup-body">
+        <div class="security-panel">
+          Este painel recebe do backend a posição em tempo real, rota prevista, estado da viagem e alertas de divergência.
+        </div>
+        <div class="manager-grid">
+          <div class="manager-card">
+            <h4>LOCALIZAÇÃO DO UTILIZADOR</h4>
+            <p id="securityUserLocation">A aguardar geolocalização.</p>
+          </div>
+          <div class="manager-card">
+            <h4>LOCALIZAÇÃO DO MOTORISTA</h4>
+            <p id="securityDriverLocation">A aguardar posição do motorista.</p>
+          </div>
+          <div class="manager-card">
+            <h4>ESTADO DE VIAGEM</h4>
+            <p id="securityTripState">Ainda sem dados em tempo real.</p>
+          </div>
+          <div class="manager-card">
+            <h4>ALERTA DE SEGURANÇA</h4>
+            <p>Desvios, paragens fora de rota ou falha de contacto são destacados automaticamente.</p>
+          </div>
+        </div>
+        <div class="popup-actions">
+          <button class="action-btn secondary" id="btnCloseSecurityLive">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: MEUS CONTACTOS -->
+  <div class="popup-overlay" id="meusContactosPopup">
+    <div class="popup-card" style="width:min(540px,100%)">
+      <div class="popup-head">
+        <h3>MEUS CONTACTOS</h3>
+        <p>Guarde contactos para usar rapidamente na partilha.</p>
+      </div>
+      <div class="popup-body">
+        <div class="meus-contactos-lista" id="meusContactosLista">
+          <p style="color:var(--silver-2);font-size:13px;text-align:center;padding:16px 0">Sem contactos guardados.</p>
+        </div>
+        <div class="add-contacto-row" style="margin-top:12px">
+          <input type="text" id="novoContactoNome" placeholder="Nome">
+          <input type="text" id="novoContactoTel" placeholder="Ex: +351, +44, +1..." inputmode="tel">
+          <button class="action-btn primary" id="btnAdicionarContacto">ADICIONAR</button>
+        </div>
+        <div class="popup-actions" style="margin-top:12px">
+          <button class="action-btn secondary" id="btnFecharMeusContactos">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: POLÍTICA DE UTILIZAÇÃO -->
+  <div class="popup-overlay" id="politicaPopup">
+    <div class="popup-card" style="width:min(640px,100%);max-height:85vh;display:flex;flex-direction:column">
+      <div class="popup-head">
+        <h3>POLÍTICA DE UTILIZAÇÃO</h3>
+        <p>Termos e condições do serviço REALMETROPOLIS.</p>
+      </div>
+      <div class="popup-body" style="overflow-y:auto;flex:1">
+        <div style="color:var(--silver-2);font-size:13px;line-height:1.7">
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">1. SERVIÇO</p>
+          <p style="margin-bottom:14px">A REALMETROPOLIS presta serviços de transporte particular mediante reserva prévia. O serviço está sujeito a disponibilidade e condições climáticas e de tráfego.</p>
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">2. CANCELAMENTO</p>
+          <p style="margin-bottom:14px">Cancelamento gratuito até 30 minutos antes da hora marcada. Cancelamentos tardios podem incorrer em taxa.</p>
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">3. PARTILHA DE VIAGEM</p>
+          <p style="margin-bottom:14px">O sistema de partilha distribui o custo entre os participantes confirmados. O organizador é responsável pela exatidão dos contactos inseridos.</p>
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">4. PRIVACIDADE</p>
+          <p style="margin-bottom:14px">Os dados pessoais são tratados de acordo com o RGPD. A localização é usada apenas durante a viagem ativa.</p>
+          <p style="color:#fff;font-weight:900;margin-bottom:8px">5. RESPONSABILIDADE</p>
+          <p>A REALMETROPOLIS não se responsabiliza por atrasos causados por fatores externos. Em caso de reclamação, contacte o suporte no prazo de 48 horas após a viagem.</p>
+        </div>
+        <div class="popup-actions" style="margin-top:16px">
+          <button class="action-btn primary" id="btnFecharPolitica">ACEITAR E FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY DO MOTORISTA ATRIBUÍDO -->
+  <div class="motorista-overlay" id="motoristaOverlay">
+    <div class="motorista-overlay-bg"></div>
+    <div class="motorista-card">
+      <div class="motorista-card-header">
+        <h3>MOTORISTA ATRIBUÍDO</h3>
+        <div class="rm-badge">RM</div>
+      </div>
+      <div class="motorista-card-body">
+        <div class="motorista-info-row">
+          <div class="motorista-dados">
+            <div class="motorista-matricula" id="ovMatricula">—</div>
+            <div class="motorista-modelo"    id="ovModelo">—</div>
+            <div class="motorista-nome"      id="ovNome">—</div>
+            <div class="motorista-rating">
+              <span class="stars" id="ovStars">★★★★★</span>
+              <span class="rating-val" id="ovRating">5.0</span>
+            </div>
+          </div>
+          <div class="motorista-foto-wrap">
+            <div class="motorista-foto-placeholder" id="ovFotoWrap">👤</div>
+          </div>
+        </div>
+        <div class="motorista-eta">
+          <div class="motorista-eta-dot"></div>
+          <span>A caminho — estimativa:&nbsp;</span>
+          <strong id="ovEta">A calcular...</strong>
+        </div>
+        <div class="motorista-mapa" id="ovMapaWrap">
+          <div class="motorista-mapa-label">LOCALIZAÇÃO DO MOTORISTA</div>
+          <div id="ovMapa" style="width:100%;height:100%"></div>
+        </div>
+        <button class="btn-cancelar-viagem" id="btnCancelarViagemOverlay">CANCELAR VIAGEM</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: VIAGENS PENDENTES -->
+  <div class="popup-overlay" id="viajensPendentesPopup">
+    <div class="popup-card" style="width:min(640px,100%);max-height:82vh;display:flex;flex-direction:column">
+      <div class="popup-head">
+        <h3>VIAGENS PENDENTES</h3>
+        <p>Reservas aguardando confirmação ou atribuição de motorista.</p>
+      </div>
+      <div class="popup-body" style="overflow-y:auto;flex:1">
+        <div class="viagens-pendentes-lista" id="viajensPendentesLista">
+          <p style="color:var(--silver-2);font-size:13px;text-align:center;padding:24px 0">A carregar viagens...</p>
+        </div>
+        <div class="popup-actions" style="margin-top:16px">
+          <button class="action-btn secondary" id="btnFecharViagensPendentes">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS EXTERNOS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+  'use strict';
+
+  /* ── CONFIGURAÇÃO DA API ───────────────────────────────────── */
+  const API_BASE   = location.origin.includes('10000') ? location.origin : 'http://localhost:10000';
+  const API_PREFIX = '/api';
+
+  function url(path) {
+    return API_BASE.replace(/\/+$/, '') + API_PREFIX + (path.startsWith('/') ? path : '/' + path);
+  }
+
+  function escapeHtml(text) {
+    return String(text ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+  }
+
+  /* ── TOKEN DE SESSÃO ──────────────────────────────────────── */
+  // Tokens em httpOnly cookies — geridos pelo servidor
+  // credentials:"include" envia o cookie automaticamente em todos os pedidos
+
+  // Deteta se o utilizador tem sessão de hotel/parceiro via /me endpoint
+  async function isHotel() {
+    try {
+      const data = await fetch('/api/admin/parceiros/me', { credentials: 'include' });
+      return data.ok;
+    } catch { return false; }
+  }
+
+  // fetchJson para parceiro — usa cookie httpOnly rm_parceiro_token
+  async function fetchJsonParceiro(u, opts = {}) {
+    const res  = await fetch(u, { credentials: 'include', ...opts });
+    const ct   = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+    return data;
+  }
+
+  async function fetchJson(u, opts = {}) {
+    // Cookie httpOnly enviado automaticamente via credentials:"include"
+    const res = await fetch(u, { credentials: 'include', ...opts });
+    const ct  = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Resposta não JSON (HTTP ${res.status}): ${txt.slice(0, 160)}`);
+    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+    return data;
+  }
+
+  /* ── DADOS DO UTILIZADOR — carregados do backend no init() ── */
+  const currentUser = { nomeCompleto: '', email: '', contacto: '' };
+
+  async function carregarUtilizador() {
+    const nomeEl = el('nomeUtilizador');
+    try {
+      const res  = await fetch(url('/clientes/me'), { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+      const data = await res.json();
+
+      if (res.ok && data?.ok) {
+        const u = data.user || data;
+        currentUser.nomeCompleto = u.nomeCompleto || u.nome || u.name || '';
+        currentUser.email        = u.email    || '';
+        currentUser.contacto     = u.contacto || u.telefone || u.phone || '';
+        if (nomeEl) nomeEl.textContent = (currentUser.nomeCompleto || 'REALMETROPOLIS').toUpperCase();
+        return;
+      }
+    } catch (_) {}
+
+    if (nomeEl) nomeEl.textContent = 'REALMETROPOLIS';
+  }
+
+  /* ── IMAGEM PLACEHOLDER (sem dependência externa) ─────────── */
+  const PLACEHOLDER_IMG = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27120%27 height=%27120%27%3E%3Crect width=%27120%27 height=%27120%27 fill=%27%23181a1f%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 font-size=%2736%27 fill=%27%23444%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E";
+
+  const currentTripContext = {
+    tripId:        'RM-TRIP-001',
+    motoristaNome: 'Carlos Mendes',
+    veiculo:       'Mercedes Classe E',
+    matricula:     '22-AA-33',
+    partida:       'Lisboa',
+    destino:       'Cascais',
+    datahora:      new Date().toISOString()
+  };
+
+  const invoiceMockData = [
+    { id: 'INV-001', label: 'Viagem RM-001 — 18.50€ — 05/03/2026' },
+    { id: 'INV-002', label: 'Viagem RM-002 — 24.00€ — 07/03/2026' },
+    { id: 'INV-003', label: 'Viagem RM-003 — 41.20€ — 09/03/2026' }
+  ];
+
+  /* ── REFERÊNCIAS DOM ──────────────────────────────────────── */
+  const el = id => document.getElementById(id);
+
+  const els = {
+    tripTypeWrap:         el('tripTypeWrap'),
+    btnSemPartilha:       el('btnSemPartilha'),
+    btnPartilharAmigos:   el('btnPartilharAmigos'),
+    tripPanel:            el('tripPanel'),
+    btnCloseTrip:         el('btnCloseTrip'),
+    inputPartida:         el('inputPartida'),
+    inputDestino:         el('inputDestino'),
+    inputDateTime:        el('inputDateTime'),
+    btnPreferencia:       el('btnPreferencia'),
+    btnReservar:          el('btnReservar'),
+    preferencePanel:      el('preferencePanel'),
+    lastTripCard1:        el('lastTripCard1'),
+    lastTripCard2:        el('lastTripCard2'),
+    shareBanner:          el('shareBanner'),
+    toast:                el('toast'),
+    inviteBar:            el('inviteBar'),
+    shareSheet:           el('shareSheet'),
+    shareDestino:         el('shareDestino'),
+    shareDateTime:        el('shareDateTime'),
+    btnEnviarConvites:    el('btnEnviarConvites'),
+    shareStackWrap:       el('shareStackWrap'),
+    categoryPopup:        el('categoryPopup'),
+    categoryPopupTitle:   el('categoryPopupTitle'),
+    categoryPopupText:    el('categoryPopupText'),
+    categoryPopupInput:   el('categoryPopupInput'),
+    categoryPopupHint:    el('categoryPopupHint'),
+    btnPopupCancel:       el('btnPopupCancel'),
+    btnPopupConfirm:      el('btnPopupConfirm'),
+    inviteVerifyPopup:    el('inviteVerifyPopup'),
+    inviteOtpInput:       el('inviteOtpInput'),
+    btnInviteClose:       el('btnInviteClose'),
+    btnInviteVerify:      el('btnInviteVerify'),
+    btnMenu:              el('btnMenu'),
+    btnActivity:          el('menuBtnActivity'),
+    btnTripManager:       el('menuBtnTripManager'),
+    btnContactos:         el('menuBtnContactos'),
+    activityPopup:        el('activityPopup'),
+    btnCloseActivity:     el('btnCloseActivity'),
+    btnLostItem:          el('btnLostItem'),
+    btnSecurityProblem:   el('btnSecurityProblem'),
+    btnInvoice:           el('btnInvoice'),
+    lostItemPopup:        el('lostItemPopup'),
+    lostItemTitle:        el('lostItemTitle'),
+    lostItemDescription:  el('lostItemDescription'),
+    btnLostCancel:        el('btnLostCancel'),
+    btnLostSend:          el('btnLostSend'),
+    securityPopup:        el('securityPopup'),
+    securityOptions:      el('securityOptions'),
+    securityDescription:  el('securityDescription'),
+    btnSecurityCancel:    el('btnSecurityCancel'),
+    btnSecuritySend:      el('btnSecuritySend'),
+    invoicePopup:         el('invoicePopup'),
+    invoiceList:          el('invoiceList'),
+    btnInvoiceCancel:     el('btnInvoiceCancel'),
+    btnInvoiceSend:       el('btnInvoiceSend'),
+    tripManagerPopup:     el('tripManagerPopup'),
+    btnCloseTripManager:  el('btnCloseTripManager'),
+    btnStartTripFlow:     el('btnStartTripFlow'),
+    btnEndTripFlow:       el('btnEndTripFlow'),
+    managerCurrentTrip:   el('managerCurrentTrip'),
+    managerPreferenceInfo:el('managerPreferenceInfo'),
+    securityLivePopup:    el('securityLivePopup'),
+    btnCloseSecurityLive: el('btnCloseSecurityLive'),
+    securityUserLocation: el('securityUserLocation'),
+    securityDriverLocation:el('securityDriverLocation'),
+    securityTripState:    el('securityTripState'),
+    btnSecurityPanel:     el('btnSecurityPanel')
+  };
+
+  /* ── ESTADO GLOBAL ─────────────────────────────────────────── */
+  let map, ovMap = null, ovMarker = null;
+  let selectedCategory    = 'economica';
+  let luxoSeats           = 4;
+  let grupoSeats          = 6;
+  let preferenceMode      = false;
+  let selectedPreferenceTrip   = null;
+  let selectedTargetCardIndex  = null;
+  let currentAssignedExists    = false;
+  let shareMode           = false;
+  let shareDestinoPlace   = null;
+  let shareId             = null;
+  let sharePartilhada     = false;
+  let selectedShareCategory    = '';
+  let pollingTimer        = null;
+  let participantes       = [];
+  let lastTripsData       = [];
+  let pendingCategorySelection = null;
+  let previousCategory    = 'economica';
+  let selectedSecurityType     = '';
+  let selectedInvoiceId        = '';
+  let inviteToken         = '';
+  let inviteShareId       = '';
+  let shareSessionToken   = '';
+  let locationTimer       = null;
+  let currentShareCardIndex    = 1;
+  let viagensPendentes    = [];
+
+  /* ── NOTIFICAÇÕES ──────────────────────────────────────────── */
+  function showToast(msg, ms = 2800) {
+    els.toast.textContent = msg;
+    els.toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => els.toast.classList.remove('show'), ms);
+  }
+  function showShareBanner(msg, ms = 5000) {
+    els.shareBanner.textContent = msg;
+    els.shareBanner.classList.add('show');
+    clearTimeout(showShareBanner._t);
+    showShareBanner._t = setTimeout(() => els.shareBanner.classList.remove('show'), ms);
+  }
+  function showInviteBar(msg, ms = 5200) {
+    els.inviteBar.textContent = msg;
+    els.inviteBar.classList.add('show');
+    clearTimeout(showInviteBar._t);
+    showInviteBar._t = setTimeout(() => els.inviteBar.classList.remove('show'), ms);
+  }
+
+  /* ── POPUPS ────────────────────────────────────────────────── */
+  function openPopup(el)  { el.classList.add('show'); }
+  function closePopup(el) { el.classList.remove('show'); }
+
+  /* ── MODO DE VIAGEM ────────────────────────────────────────── */
+  function hideTripTypeButtons() { els.tripTypeWrap.classList.add('hidden'); }
+  function showTripTypeButtons() { els.tripTypeWrap.classList.remove('hidden'); }
+
+  function setActiveTripType(mode) {
+    els.btnSemPartilha.classList.toggle('active', mode === 'sem_partilha');
+    els.btnPartilharAmigos.classList.toggle('active', mode === 'partilhar');
+    el('btnCriarTicket')?.classList.toggle('active', mode === 'ticket');
+  }
+
+  function openTripPanel() {
+    hideTripTypeButtons();
+    setActiveTripType('sem_partilha');
+    els.tripPanel.classList.remove('hidden');
+    els.shareSheet.classList.add('hidden');
+    el('ticketSheet')?.classList.add('hidden');
+    shareMode = false;
+  }
+
+  function closeTripPanel() {
+    els.tripPanel.classList.add('hidden');
+    showTripTypeButtons();
+    resetPreferenceSelection();
+  }
+
+  function openShareMode() {
+    hideTripTypeButtons();
+    setActiveTripType('partilhar');
+    els.tripPanel.classList.add('hidden');
+    els.shareSheet.classList.remove('hidden');
+    el('ticketSheet')?.classList.add('hidden');
+    shareMode = true;
+    sharePartilhada = false;
+    selectedShareCategory = '';
+    document.querySelectorAll('.share-cat-pill[data-sharecat]').forEach(b => b.classList.remove('selected'));
+    if (!els.shareDateTime.value) {
+      const future = new Date(Date.now() + 90 * 60 * 1000);
+      els.shareDateTime.value = future.toISOString().slice(0, 16);
+    }
+  }
+
+  function closeShareMode() {
+    els.shareSheet.classList.add('hidden');
+    el('ticketSheet')?.classList.add('hidden');
+    showTripTypeButtons();
+    shareMode = false;
+    sharePartilhada = false;
+    selectedShareCategory = '';
+    stopPolling();
+    shareId = null;
+    shareDestinoPlace = null;
+    participantes = [];
+    currentShareCardIndex = 1;
+    els.shareStackWrap.innerHTML = '';
+    els.shareDestino.value = '';
+    els.shareDateTime.value = '';
+    document.querySelectorAll('.share-cat-pill[data-sharecat]').forEach(b => b.classList.remove('selected'));
+    fecharAguardaOverlay();
+    fecharRotaOverlay();
+    const painel = el('sharePrecoPanel');
+    if (painel) painel.classList.remove('show', 'a-calcular');
+    if (els.btnEnviarConvites) {
+      els.btnEnviarConvites.textContent = 'PARTILHAR';
+      els.btnEnviarConvites.style.cssText = '';
+      els.btnEnviarConvites.disabled = true;
+    }
+  }
+
+  /* ── CATEGORIAS ────────────────────────────────────────────── */
+  function getCategoryValue() {
+    // Grupo: formato GRUPO6 / GRUPO8 / GRUPO17
+    if (selectedCategory === 'grupo') {
+      return grupoSeats >= 17 ? 'GRUPO17' : grupoSeats >= 8 ? 'GRUPO8' : 'GRUPO6';
+    }
+    // luxo → luxury (pricing.service.js usa "luxury")
+    if (selectedCategory === 'luxo') return 'luxury';
+    // economica, confort, executive → já corretos
+    return selectedCategory;
+  }
+
+  function getCategoryLabel(cat) {
+    if (String(cat).startsWith('GRUPO')) return `GRUPO ${String(cat).replace('GRUPO', '')} PASSAGEIROS`;
+    const labels = { economica: 'ECONÓMICA', confort: 'CONFORTO', executive: 'EXECUTIVA', luxo: `LUXO ${luxoSeats} LUGARES` };
+    return labels[cat] || String(cat || '').toUpperCase();
+  }
+
+  function setSelectedCategory(cat) {
+    selectedCategory = cat;
+    document.querySelectorAll('.cat-btn').forEach(btn =>
+      btn.classList.toggle('selected', btn.dataset.category === cat)
+    );
+    const label = getCategoryLabel(getCategoryValue());
+    document.querySelectorAll('.driver-card .driver-top span').forEach(s => s.textContent = `Categoria atual: ${label}`);
+  }
+
+  function openCategoryPopup(type) {
+    pendingCategorySelection = type;
+    els.categoryPopupInput.value = '';
+    const cfg = {
+      luxo:         { title: 'CATEGORIA LUXO',   text: 'Indique o número de lugares pretendido.',    hint: 'LIMITE DE 1 A 4 LUGARES' },
+      grupo:        { title: 'CATEGORIA GRUPO',  text: 'Indique o número de passageiros pretendido.',hint: 'LIMITE DE 6 A 17 LUGARES' },
+      share_people: { title: 'PARTILHAR',         text: 'Indique o número de pessoas da partilha.',   hint: 'LIMITE DE 1 A 17 PESSOAS' }
+    };
+    const c = cfg[type] || {};
+    els.categoryPopupTitle.textContent = c.title || '';
+    els.categoryPopupText.textContent  = c.text  || '';
+    els.categoryPopupHint.textContent  = c.hint  || '';
+    els.categoryPopupInput.type        = 'number';
+    els.categoryPopupInput.placeholder = c.hint || '';
+    openPopup(els.categoryPopup);
+    setTimeout(() => els.categoryPopupInput.focus(), 30);
+  }
+
+  function closeCategoryPopup() {
+    closePopup(els.categoryPopup);
+    pendingCategorySelection = null;
+  }
+
+  function confirmCategoryPopup() {
+    const v = Number(els.categoryPopupInput.value || 0);
+    if (pendingCategorySelection === 'luxo') {
+      if (!Number.isInteger(v) || v < 1 || v > 4) { showToast('Luxo permite entre 1 e 4 lugares.'); return; }
+      luxoSeats = v; setSelectedCategory('luxo'); closeCategoryPopup(); showToast('Categoria configurada.');
+    } else if (pendingCategorySelection === 'grupo') {
+      if (!Number.isInteger(v) || v < 6 || v > 17) { showToast('Grupo permite entre 6 e 17 lugares.'); return; }
+      grupoSeats = v; setSelectedCategory('grupo'); closeCategoryPopup(); showToast('Categoria configurada.');
+    }
+  }
+
+  /* ── PREFERÊNCIA ───────────────────────────────────────────── */
+  function resetPreferenceSelection() {
+    preferenceMode = false; selectedPreferenceTrip = null; selectedTargetCardIndex = null;
+    els.preferencePanel.classList.remove('show');
+    els.btnPreferencia.classList.remove('active');
+    els.btnPreferencia.textContent = 'ADICIONAR PREFERÊNCIA';
+    document.querySelectorAll('.driver-card').forEach(c => c.classList.remove('oscilar', 'selected-target'));
+    document.querySelectorAll('.pref-action-btn').forEach(b => b.classList.remove('selected-add', 'selected-replace'));
+  }
+
+  function togglePreferenceMode(force = null) {
+    preferenceMode = typeof force === 'boolean' ? force : !preferenceMode;
+    els.preferencePanel.classList.toggle('show', preferenceMode);
+    els.btnPreferencia.classList.toggle('active', preferenceMode);
+    if (preferenceMode) {
+      els.btnPreferencia.textContent = 'APLICAR PREFERÊNCIA';
+      document.querySelectorAll('.driver-card').forEach(c => c.classList.add('oscilar'));
+      loadLastTripsPreference();
+    } else {
+      els.btnPreferencia.textContent = 'ADICIONAR PREFERÊNCIA';
+      document.querySelectorAll('.driver-card').forEach(c => c.classList.remove('oscilar'));
+    }
+  }
+
+  function updateCardActionStates() {
+    document.querySelectorAll('.driver-card').forEach(card => {
+      const btn = card.querySelector('.pref-action-btn');
+      if (!btn) return;
+      btn.textContent = currentAssignedExists ? 'SUBSTITUIR' : 'ADICIONAR';
+      btn.classList.toggle('replace', currentAssignedExists);
+    });
+  }
+
+  function clearTargetStyles() {
+    document.querySelectorAll('.driver-card').forEach(c => c.classList.remove('selected-target'));
+    document.querySelectorAll('.pref-action-btn').forEach(b => b.classList.remove('selected-add', 'selected-replace'));
+  }
+
+  function bindTargetSelection() {
+    document.querySelectorAll('.driver-card').forEach(card => {
+      const btn = card.querySelector('.pref-action-btn');
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        clearTargetStyles();
+        card.classList.add('selected-target');
+        selectedTargetCardIndex = Number(card.dataset.cardIndex || 0);
+        currentAssignedExists = btn.textContent.trim() === 'SUBSTITUIR';
+        updateCardActionStates();
+        btn.classList.add(currentAssignedExists ? 'selected-replace' : 'selected-add');
+        showToast(currentAssignedExists ? 'Cartão selecionado para substituição.' : 'Cartão selecionado para nova atribuição.');
+      });
+    });
+  }
+
+  function renderLastTrips(list) {
+    lastTripsData = Array.isArray(list) ? list.slice(0, 2) : [];
+    [els.lastTripCard1, els.lastTripCard2].forEach((card, idx) => {
+      const item = lastTripsData[idx];
+      card.classList.remove('selected');
+      if (!item) {
+        card.innerHTML = `<img src="${PLACEHOLDER_IMG}" alt="sem registo"><div><strong>Sem registo</strong><span>Assim que existir histórico, aparecerá aqui.</span></div>`;
+        card.onclick = null;
+        return;
+      }
+      card.innerHTML = `<img src="${item.foto || PLACEHOLDER_IMG}" alt="${item.motorista||'Motorista'}"><div><strong>${item.motorista||'Motorista'}</strong><span>${item.veiculo||'—'}</span><span>Matrícula: ${item.matricula||'—'}</span><span>Categoria: ${getCategoryLabel(item.categoria||'')}</span></div>`;
+      card.onclick = () => {
+        selectedPreferenceTrip = item;
+        els.lastTripCard1.classList.remove('selected');
+        els.lastTripCard2.classList.remove('selected');
+        card.classList.add('selected');
+        showToast('Preferência selecionada.');
+      };
+    });
+  }
+
+  async function loadLastTripsPreference() {
+    try {
+      const data = await fetchJson(url('/user/preferences/last-trips?limit=2'));
+      const items = Array.isArray(data?.items) ? data.items : [];
+      if (items.length) { renderLastTrips(items); return; }
+    } catch (_) {}
+    renderLastTrips([
+      { id: 'mock-1', motorista: 'Carlos Mendes', foto: PLACEHOLDER_IMG, matricula: '22-AA-33', veiculo: 'Mercedes Classe E', categoria: 'executive', tipoVeiculo: 'Sedan Premium' },
+      { id: 'mock-2', motorista: 'Ricardo Lopes',  foto: PLACEHOLDER_IMG, matricula: '44-BB-55', veiculo: 'BMW Série 5',        categoria: 'confort',   tipoVeiculo: 'Sedan' }
+    ]);
+  }
+
+  function applyPreferenceToSelectedCard(pref) {
+    if (!pref || !selectedTargetCardIndex) { showToast('Selecione primeiro o cartão alvo.'); return false; }
+    const card = document.querySelector(`.driver-card[data-card-index="${selectedTargetCardIndex}"]`);
+    if (!card) return false;
+    const img    = card.querySelector('img');
+    const strong = card.querySelector('.driver-top strong');
+    const sub    = card.querySelector('.driver-top span');
+    const meta   = card.querySelectorAll('.driver-meta span');
+    const chip   = card.querySelector('.mini-chip');
+    const action = card.querySelector('.pref-action-btn');
+    if (img)    img.src = pref.foto || PLACEHOLDER_IMG;
+    if (strong) strong.textContent = pref.motorista || `Slot ${selectedTargetCardIndex}`;
+    if (sub)    sub.textContent = `Categoria atual: ${getCategoryLabel(getCategoryValue())}`;
+    if (meta[0]) meta[0].innerHTML = `<b>Veículo:</b> ${pref.veiculo||'—'}`;
+    if (meta[1]) meta[1].innerHTML = `<b>Matrícula:</b> ${pref.matricula||'—'}`;
+    if (meta[2]) meta[2].innerHTML = `<b>Tipo:</b> ${pref.tipoVeiculo||'Premium'}`;
+    if (chip)   chip.textContent = 'Preferência ativa';
+    card.classList.add('selected-target');
+    currentAssignedExists = true;
+    updateCardActionStates();
+    if (action) action.classList.remove('selected-add', 'selected-replace');
+    return true;
+  }
+
+  /* ── RESERVA PRIVADA ───────────────────────────────────────── */
+  async function reservarViagem() {
+    const partida  = els.inputPartida.value.trim();
+    const destino  = els.inputDestino.value.trim();
+    const datahora = els.inputDateTime.value.trim();
+    if (!partida || !destino || !datahora) { showToast('Preencha partida, destino e data/hora.'); return; }
+    try {
+      await fetchJson(url('/reserva'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: currentUser.nomeCompleto, email: currentUser.email,
+          categoria: getCategoryValue(),
+          lugaresLuxo: selectedCategory === 'luxo' ? luxoSeats : null,
+          passageirosGrupo: selectedCategory === 'grupo' ? grupoSeats : null,
+          partida, destino, datahora: new Date(datahora).toISOString(),
+          valor: 0, codigo: 'RM-' + Date.now(),
+          observacoes: preferenceMode && selectedPreferenceTrip ? 'Reserva com preferência de motorista' : '',
+          extras: {
+            semPartilha: true,
+            preferenciaAtiva: Boolean(preferenceMode && selectedPreferenceTrip),
+            preferenciaTripId: selectedPreferenceTrip?.id || null,
+            targetCardIndex: selectedTargetCardIndex || null
+          }
+        })
+      });
+      showToast('Viagem reservada com sucesso. O motorista será atribuído em breve.', 4200);
+      closeTripPanel();
+    } catch (err) { showToast(err.message || 'Erro ao reservar viagem.'); }
+  }
+
+  /* ── CARTÕES DE PARTICIPANTE (PARTILHA) ────────────────────── */
+  function setActiveShareCard(idx) {
+    currentShareCardIndex = idx;
+    document.querySelectorAll('.share-card').forEach(c =>
+      c.classList.toggle('active', Number(c.dataset.idx) === idx)
+    );
+    const input = el(`contact_${idx}`);
+    if (input) setTimeout(() => input.focus(), 120);
+  }
+
+  function goToNextShareCard(idx) {
+    if (idx + 1 > 17) { showToast('Máximo de 17 participantes.'); return; }
+    setActiveShareCard(idx + 1);
+  }
+  function goToPrevShareCard(idx) {
+    if (idx - 1 < 1) { showToast('Já está no primeiro participante.'); return; }
+    setActiveShareCard(idx - 1);
+  }
+
+  function buildShareCards(n) {
+    participantes = Array.from({ length: n }, (_, i) => ({
+      idx: i + 1, contacto: '', nome: '', ok: false, status: 'vazio', valor: 0, paymentUrl: ''
+    }));
+    currentShareCardIndex = 1;
+    els.shareStackWrap.innerHTML = '';
+
+    participantes.forEach(p => {
+      const card = document.createElement('article');
+      card.className = 'share-card';
+      card.id = `shareCard_${p.idx}`;
+      card.dataset.idx = p.idx;
+      card.innerHTML = `
+        <div class="share-count" id="shareCount_${p.idx}">${p.idx}/17</div>
+        <label>Participante ${p.idx} — Contacto</label>
+        <div class="share-row">
+          <input type="text" id="contact_${p.idx}" placeholder="+351..." inputmode="tel" autocomplete="off">
+          <button type="button" id="confirm_${p.idx}">INSERIR</button>
+          <button type="button" class="share-next-btn" id="next_${p.idx}">PRÓXIMO</button>
+          <div style="position:relative">
+            <button type="button" class="share-contacts-btn" id="ctcBtn_${p.idx}" title="Contactos guardados">👥</button>
+            <div class="share-contacts-drop" id="ctcDrop_${p.idx}"></div>
+          </div>
+        </div>
+        <div class="share-result" id="result_${p.idx}"><span class="share-warn">Aguardando contacto…</span></div>
+        <div class="share-card-actions">
+          ${p.idx > 1 ? `<button type="button" class="share-card-btn" id="prev_${p.idx}">← ANTERIOR</button>` : ''}
+          <button type="button" class="share-card-btn cancelar-partilha" id="cancelCard_${p.idx}">CANCELAR PARTILHA</button>
+        </div>`;
+      els.shareStackWrap.appendChild(card);
+      card.querySelector(`#confirm_${p.idx}`).addEventListener('click', () => confirmarContacto(p.idx));
+      card.querySelector(`#next_${p.idx}`).addEventListener('click', () => goToNextShareCard(p.idx));
+      card.querySelector(`#prev_${p.idx}`)?.addEventListener('click', () => goToPrevShareCard(p.idx));
+      card.querySelector(`#cancelCard_${p.idx}`).addEventListener('click', () => cancelarPartilhaAtual());
+
+      // Botão CONTACTOS — abre dropdown com contactos guardados
+      const ctcBtn  = card.querySelector(`#ctcBtn_${p.idx}`);
+      const ctcDrop = card.querySelector(`#ctcDrop_${p.idx}`);
+      const input   = card.querySelector(`#contact_${p.idx}`);
+
+      ctcBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Fecha todos os outros dropdowns
+        document.querySelectorAll('.share-contacts-drop').forEach(d => {
+          if (d !== ctcDrop) d.classList.remove('open');
+        });
+        const contactos = getMeusContactos();
+        if (!contactos.length) {
+          ctcDrop.innerHTML = '<div class="scd-item"><span>Sem contactos guardados.<br>Adicione em MEUS CONTACTOS.</span></div>';
+        } else {
+          ctcDrop.innerHTML = contactos.map((c, i) =>
+            `<div class="scd-item" data-ci="${i}">
+              <strong>${escapeHtml(c.nome)}</strong>
+              <span>${escapeHtml(c.tel)}</span>
+            </div>`
+          ).join('');
+          ctcDrop.querySelectorAll('.scd-item[data-ci]').forEach(item => {
+            item.addEventListener('click', () => {
+              const c = getMeusContactos()[Number(item.dataset.ci)];
+              if (c) {
+                input.value = c.tel;
+                ctcDrop.classList.remove('open');
+                // Confirma automaticamente o contacto
+                confirmarContacto(p.idx);
+              }
+            });
+          });
+        }
+        ctcDrop.classList.toggle('open');
+      });
+    });
+
+    // Clicar fora fecha todos os dropdowns
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.share-contacts-drop').forEach(d => d.classList.remove('open'));
+    });
+
+    setActiveShareCard(1);
+    updateShareButtonsState();
+  }
+
+  function updateShareButtonsState() {
+    const confirmed    = participantes.filter(p => p.ok).length;
+    const destinoReady = !!(shareDestinoPlace?.lat) || !!(els.shareDestino?.value?.trim());
+    const dateReady    = !!els.shareDateTime?.value?.trim();
+    const catReady     = !!selectedShareCategory;
+    const recolhaReady = !!(el('shareRecolha')?.value?.trim());
+    const allReady     = confirmed >= 1 && destinoReady && dateReady && catReady && recolhaReady;
+    document.querySelectorAll('[id^="shareCount_"]').forEach(e => {
+      e.textContent = e.id.replace('shareCount_', '') + '/17';
+    });
+    if (els.btnEnviarConvites) els.btnEnviarConvites.disabled = !allReady || sharePartilhada;
+  }
+
+  function applyStatusFromBackend(list) {
+    for (const item of list) {
+      const p = participantes.find(x => x.contacto === item.contacto);
+      if (!p) continue;
+      p.status = item.status || p.status;
+      p.valor  = Number(item.valor || p.valor || 0);
+      p.nome   = item.nome || p.nome;
+      p.paymentUrl = item.paymentUrl || p.paymentUrl || '';
+    }
+    renderStatusText();
+  }
+
+  function renderStatusText() {
+    participantes.forEach(p => {
+      const result = el(`result_${p.idx}`);
+      const card   = el(`shareCard_${p.idx}`);
+      if (!result || !card) return;
+      card.classList.remove('paid', 'refused');
+      const base = p.ok
+        ? `<span class="share-ok">Confirmado:</span> ${p.nome} — ${p.contacto}`
+        : `<span class="share-warn">Aguardando contacto…</span>`;
+      const map = {
+        vazio:      `<span class="share-warn">Aguardando contacto…</span>`,
+        confirmado: `${base}<br><span class="share-warn">Pronto para convite.</span>`,
+        pendente:   `${base}<br><span class="share-warn">Convite enviado. Aguardando resposta.</span>`,
+        localizado: `${base}<br><span class="share-warn">Participante localizado.</span>`,
+        aceitou:    `${base}<br><span class="share-warn">Aceitou. Valor: €${(p.valor||0).toFixed(2)}</span>`,
+        pagou:      (card.classList.add('paid'), `${base}<br><span class="share-ok">PAGO ✅</span> (€${(p.valor||0).toFixed(2)})`),
+        recusou:    (card.classList.add('refused'), `${base}<br><span class="share-err">RECUSOU ❌</span>`),
+        cancelado:  `${base}<br><span class="share-err">CANCELADO</span>`
+      };
+      result.innerHTML = map[p.status] ?? `${base}<br><span class="share-warn">Estado: ${p.status}</span>`;
+    });
+  }
+
+  async function confirmarContacto(i) {
+    const input   = el(`contact_${i}`);
+    const result  = el(`result_${i}`);
+    const card    = el(`shareCard_${i}`);
+    const contacto = (input?.value || '').trim();
+    if (!contacto) { result.innerHTML = '<span class="share-err">Digite um contacto.</span>'; return; }
+    const dup = participantes.find((p, idx) => idx !== i - 1 && p.ok && p.contacto === contacto);
+    if (dup) { result.innerHTML = `<span class="share-err">Contacto já adicionado (Participante ${dup.idx}).</span>`; return; }
+    result.textContent = 'A confirmar...';
+    try {
+      const data = await fetchJson(url('/partilha/confirmar-contacto'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contacto }) });
+      const p = participantes[i - 1];
+      p.contacto = data?.contacto || contacto;
+      p.nome     = data?.nome || 'Convidado';
+      p.ok       = true; p.status = 'confirmado';
+      const isReg = !!(data?.nome && data.nome !== 'Convidado');
+      card.classList.remove('paid', 'refused');
+      result.innerHTML = `<span class="${isReg ? 'share-ok' : 'share-warn'}">${isReg ? '✅ Registado:' : '👤 Convidado:'}</span><strong style="color:#fff;margin-left:6px">${escapeHtml(p.nome)}</strong> — ${escapeHtml(p.contacto)}`;
+      updateShareButtonsState();
+    } catch (err) {
+      result.innerHTML = `<span class="share-err">${err.message || 'Contacto inválido.'}</span>`;
+      participantes[i - 1].ok = false; participantes[i - 1].status = 'vazio';
+      updateShareButtonsState();
+    }
+  }
+
+  /* ── ENVIAR / CANCELAR PARTILHA ────────────────────────────── */
+  async function enviarConvitesPartilha() {
+    if (sharePartilhada) { showToast('Partilha já ativa.'); return; }
+    const dateTime = els.shareDateTime.value.trim();
+    if (!dateTime) { showToast('Defina data e hora.'); return; }
+    const recolha = el('shareRecolha')?.value?.trim() || '';
+    if (!recolha) { showToast('Defina o local de recolha.'); return; }
+    els.btnEnviarConvites.disabled = true;
+    els.btnEnviarConvites.textContent = 'A ENVIAR...';
+    try {
+      const payload = {
+        recolha,
+        recolhaLat: el('shareRecolha')?.dataset?.lat || null,
+        recolhaLng: el('shareRecolha')?.dataset?.lng || null,
+        destino:    shareDestinoPlace || { address: els.shareDestino?.value?.trim() },
+        participantes: participantes.filter(p => p.ok).map(p => ({ contacto: p.contacto, nome: p.nome })),
+        totalPessoas:  participantes.filter(p => p.ok).length,
+        categoria:     selectedShareCategory || getCategoryValue(),
+        dateTime:      new Date(dateTime).toISOString()
+      };
+      const resp = await fetchJson(url('/partilha/criar'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!resp?.ok || !resp?.shareId) throw new Error(resp?.message || 'Falha ao criar partilha.');
+
+      shareId = resp.shareId;
+      sharePartilhada = true;
+
+      // Esconder toda a UI de partilha — mostrar mapa limpo + overlay de espera
+      els.shareSheet.classList.add('hidden');
+      els.tripTypeWrap.classList.add('hidden');
+      mostrarAguardaOverlay();
+
+      if (Array.isArray(resp.participantes)) applyStatusFromBackend(resp.participantes);
+      startPolling();
+      showToast(`Convites enviados. A aguardar resposta.`, 3600);
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar partilha.');
+      els.btnEnviarConvites.disabled = false;
+      els.btnEnviarConvites.textContent = 'PARTILHAR';
+    } finally { updateShareButtonsState(); }
+  }
+
+  async function cancelarPartilhaAtual() {
+    if (!shareId) { fecharAguardaOverlay(); fecharRotaOverlay(); closeShareMode(); return; }
+    try {
+      await fetchJson(url('/partilha/cancelar'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shareId }) });
+      stopPolling();
+      participantes.forEach(p => { if (p.ok) p.status = 'cancelado'; });
+      renderStatusText();
+      shareId = null; sharePartilhada = false;
+      fecharAguardaOverlay();
+      fecharRotaOverlay();
+      showToast('Partilha cancelada.');
+      closeShareMode();
+    } catch (err) { showToast(err.message || 'Erro ao cancelar partilha.'); }
+  }
+
+  /* ── POLLING ───────────────────────────────────────────────── */
+  function startPolling() {
+    stopPolling();
+    pollingTimer = setInterval(async () => {
+      if (!shareId) return;
+      try {
+        const st = await fetchJson(url(`/partilha/status?shareId=${encodeURIComponent(shareId)}`));
+        if (st?.ok && Array.isArray(st.participantes)) {
+          applyStatusFromBackend(st.participantes);
+          atualizarAguardaOverlay();
+          // Atualizar marcadores no mapa se tiver localização
+          atualizarMarcadoresParticipantes(st.participantes);
+          // Verificar se todos aceitaram → mostrar rota completa
+          const todos = participantes.filter(p => p.ok);
+          const aceitaram = todos.filter(p => ['aceitou','pagou'].includes(p.status));
+          if (todos.length > 0 && aceitaram.length === todos.length) {
+            mostrarRotaCompleta();
+          }
+        }
+      } catch (_) {}
+    }, 3000);
+  }
+  function stopPolling() {
+    if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+  }
+
+  /* ── OVERLAY DE ESPERA ──────────────────────────────────────── */
+  function mostrarAguardaOverlay() {
+    const overlay = el('shareAguardaOverlay');
+    if (!overlay) return;
+    atualizarAguardaOverlay();
+    overlay.classList.add('show');
+    el('aguardaBtnCancelar').onclick = () => cancelarPartilhaAtual();
+  }
+
+  function fecharAguardaOverlay() {
+    el('shareAguardaOverlay')?.classList.remove('show');
+  }
+
+  function atualizarAguardaOverlay() {
+    const lista = el('aguardaParticipantes');
+    if (!lista) return;
+    const ativos = participantes.filter(p => p.ok);
+    if (!ativos.length) return;
+
+    const labelStatus = {
+      confirmado: { txt: 'AGUARDANDO', cls: 'pendente' },
+      pendente:   { txt: 'CONVITE ENVIADO', cls: 'pendente' },
+      localizado: { txt: 'LOCALIZADO', cls: 'pendente' },
+      aceitou:    { txt: 'ACEITOU ✓', cls: 'aceitou' },
+      pagou:      { txt: 'PAGO ✅', cls: 'pagou' },
+      recusou:    { txt: 'RECUSOU ✗', cls: 'recusou' },
+      cancelado:  { txt: 'CANCELADO', cls: 'recusou' },
+    };
+
+    lista.innerHTML = ativos.map(p => {
+      const s = labelStatus[p.status] || { txt: p.status.toUpperCase(), cls: 'pendente' };
+      return `<div class="aguarda-part-item">
+        <span class="aguarda-part-nome">${escapeHtml(p.nome || p.contacto)}</span>
+        <span class="aguarda-part-status ${s.cls}">${s.txt}</span>
+      </div>`;
+    }).join('');
+
+    const aceites  = ativos.filter(p => ['aceitou','pagou'].includes(p.status)).length;
+    const sub = el('aguardaSub');
+    if (sub) sub.textContent = `${aceites} de ${ativos.length} participante(s) confirmado(s).`;
+  }
+
+  /* ── MARCADORES DOS PARTICIPANTES NO MAPA ───────────────────── */
+  const marcadoresPartilha = {}; // contacto → marker Leaflet
+  const CORES_PART = ['#19d68b','#ff9f43','#5cc8ff','#d68bff','#ff6b6b','#ffe066'];
+
+  function atualizarMarcadoresParticipantes(lista) {
+    lista.forEach((item, idx) => {
+      if (!item.lat || !item.lng) return;
+      const cor = CORES_PART[idx % CORES_PART.length];
+      const nome = item.nome || item.contacto || `P${idx+1}`;
+
+      if (marcadoresPartilha[item.contacto]) {
+        marcadoresPartilha[item.contacto].setLatLng([item.lat, item.lng]);
+      } else {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 0 8px ${cor}"></div>`,
+          iconSize: [14, 14], iconAnchor: [7, 7]
+        });
+        const m = L.marker([item.lat, item.lng], { icon })
+          .addTo(map)
+          .bindPopup(`<b>${escapeHtml(nome)}</b>`);
+        marcadoresPartilha[item.contacto] = m;
+      }
+    });
+  }
+
+  function limparMarcadoresPartilha() {
+    Object.values(marcadoresPartilha).forEach(m => map.removeLayer(m));
+    Object.keys(marcadoresPartilha).forEach(k => delete marcadoresPartilha[k]);
+  }
+
+  /* ── ROTA COMPLETA AO VIVO ──────────────────────────────────── */
+  let rotaPolyline = null;
+
+  function mostrarRotaCompleta() {
+    fecharAguardaOverlay();
+    const rotaOverlay  = el('shareRotaOverlay');
+    const destinoTexto = shareDestinoPlace?.address || els.shareDestino?.value || '—';
+
+    const rotaDest = el('rotaDestinoTexto');
+    if (rotaDest) rotaDest.textContent = destinoTexto;
+
+    const rotaParts = el('rotaParticipantes');
+    if (rotaParts) {
+      const ativos = participantes.filter(p => p.ok && ['aceitou','pagou'].includes(p.status));
+      rotaParts.innerHTML = ativos.map((p, idx) => {
+        const cor = CORES_PART[idx % CORES_PART.length];
+        return `<div class="rota-part-item">
+          <div class="rota-part-dot" style="background:${cor};color:${cor}"></div>
+          <span class="rota-part-nome">${escapeHtml(p.nome || p.contacto)}</span>
+          <span class="rota-part-dist" id="rotaDist_${p.idx}">A localizar...</span>
+        </div>`;
+      }).join('');
+    }
+
+    rotaOverlay?.classList.add('show');
+
+    // Desenhar rota no Leaflet usando geometria OSRM (GeoJSON)
+    if (shareRotaData?.geometry) {
+      if (rotaPolyline) map.removeLayer(rotaPolyline);
+
+      // GeoJSON OSRM: coordenadas em [lng, lat] — Leaflet quer [lat, lng]
+      const pontos = shareRotaData.geometry.coordinates.map(c => [c[1], c[0]]);
+
+      rotaPolyline = L.polyline(pontos, {
+        color: '#19d68b', weight: 5, opacity: .9,
+        lineCap: 'round', lineJoin: 'round'
+      }).addTo(map);
+
+      // Marcador de origem
+      const oIcon = L.divIcon({
+        className: '',
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #19d68b;box-shadow:0 0 10px rgba(25,214,139,.7)"></div>`,
+        iconSize: [16,16], iconAnchor: [8,8]
+      });
+      L.marker([shareRotaData.origemLatLng.lat, shareRotaData.origemLatLng.lng], { icon: oIcon })
+        .addTo(map).bindPopup('📍 Recolha');
+
+      // Marcador de destino
+      const dIcon = L.divIcon({
+        className: '',
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:#19d68b;border:3px solid #fff;box-shadow:0 0 10px rgba(25,214,139,.7)"></div>`,
+        iconSize: [16,16], iconAnchor: [8,8]
+      });
+      L.marker([shareRotaData.destinoLatLng.lat, shareRotaData.destinoLatLng.lng], { icon: dIcon })
+        .addTo(map).bindPopup(`🏁 ${destinoTexto}`);
+
+      map.fitBounds(rotaPolyline.getBounds(), { padding: [50, 50] });
+    }
+  }
+
+  function fecharRotaOverlay() {
+    el('shareRotaOverlay')?.classList.remove('show');
+    if (rotaPolyline) { map.removeLayer(rotaPolyline); rotaPolyline = null; }
+    limparMarcadoresPartilha();
+  }
+
+  /* ── CATEGORIAS DA PARTILHA ────────────────────────────────── */
+  function bindShareCats() {
+    document.querySelectorAll('.share-cat-pill[data-sharecat]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.share-cat-pill[data-sharecat]').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedShareCategory = btn.dataset.sharecat;
+        if (selectedShareCategory === 'luxo')  openCategoryPopup('luxo');
+        else if (selectedShareCategory === 'grupo') openCategoryPopup('grupo');
+        updateShareButtonsState();
+        calcularPrecoPartilha();
+      });
+    });
+  }
+
+  /* ── CÁLCULO DE PREÇO DA PARTILHA ──────────────────────────── */
+
+  // Mapa de categoria frontend → backend (pricing.service.js)
+  function categoriaParaBackend(cat, grupoN) {
+    const mapa = {
+      economica: 'economica',
+      confort:   'confort',
+      executive: 'executive',
+      luxo:      'luxury',           // frontend "luxo" → backend "luxury"
+      grupo:     grupoN >= 17 ? 'GRUPO17' : grupoN >= 8 ? 'GRUPO8' : 'GRUPO6'
+    };
+    return mapa[cat] || 'confort';
+  }
+
+  let precoTimer = null; // debounce
+  let shareRotaData = null; // guarda dados da rota para desenhar no mapa
+
+  async function calcularPrecoPartilha() {
+    const painel    = el('sharePrecoPanel');
+    const kmEl      = el('sharePrecoKm');
+    const tempoEl   = el('sharePrecoTempo');
+    const valorEl   = el('sharePrecoValor');
+    const portEl    = el('sharePrecoPortagens');
+    const recolha   = el('shareRecolha');
+    const destino   = els.shareDestino;
+
+    const temRecolha = !!(recolha?.value?.trim());
+    const temDestino = !!(destino?.value?.trim());
+    const temCat     = !!selectedShareCategory;
+
+    if (!temRecolha || !temDestino || !temCat) {
+      painel?.classList.remove('show'); return;
+    }
+
+    painel.classList.add('show', 'a-calcular');
+    kmEl.textContent    = 'A calcular...';
+    tempoEl.textContent = '';
+    valorEl.textContent = '—';
+    valorEl.className   = 'share-preco-total-valor';
+    portEl.classList.remove('show');
+
+    clearTimeout(precoTimer);
+    precoTimer = setTimeout(async () => {
+      try {
+        // 1) Distância + duração via Google Distance Matrix
+        const rotaInfo = await obterInfoRota(
+          recolha.value.trim(), destino.value.trim(),
+          recolha.dataset.lat ? { lat: Number(recolha.dataset.lat), lng: Number(recolha.dataset.lng) } : null,
+          shareDestinoPlace   ? { lat: shareDestinoPlace.lat, lng: shareDestinoPlace.lng } : null
+        );
+        shareRotaData = rotaInfo;
+
+        // 2) Preço via /api/quote
+        const catBackend = categoriaParaBackend(selectedShareCategory, grupoSeats);
+        const resp = await fetchJson(url('/quote'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            distanciaKm:  rotaInfo.km,
+            categoria:    catBackend,
+            contexto: {
+              origemTexto:  recolha.value.trim(),
+              destinoTexto: destino.value.trim()
+            }
+          })
+        });
+
+        if (!resp?.ok) throw new Error(resp?.message || 'Erro no cálculo.');
+
+        const km        = rotaInfo.km.toFixed(1);
+        const duracao   = rotaInfo.duracaoTexto;
+        const base      = Number(resp.base      || resp.baseTotal || 0).toFixed(2);
+        const portagens = Number(resp.portagens  || 0);
+        const total     = Number(resp.total      || 0).toFixed(2);
+
+        kmEl.textContent    = `${km} km`;
+        tempoEl.textContent = duracao || '';
+        valorEl.textContent = `${total} €`;
+        valorEl.className   = 'share-preco-total-valor';
+
+        if (portagens > 0) {
+          portEl.textContent = `⚠️ Portagens: ${portagens.toFixed(2)}€`;
+          portEl.classList.add('show');
+        } else {
+          portEl.classList.remove('show');
+        }
+
+        painel.classList.remove('a-calcular');
+
+      } catch (err) {
+        kmEl.textContent    = err.message || 'Erro ao calcular.';
+        tempoEl.textContent = '';
+        valorEl.textContent = 'Erro';
+        valorEl.className   = 'share-preco-total-valor erro';
+        portEl.classList.remove('show');
+        painel.classList.remove('a-calcular');
+      }
+    }, 600);
+  }
+
+  /* ================================================================
+     OSRM — Open Source Routing Machine (OpenStreetMap)
+     Calcula distância, duração e geometria da rota. Gratuito.
+  ================================================================ */
+
+  async function obterInfoRota(origemStr, destinoStr, origemLatLng, destinoLatLng) {
+    // Garante coordenadas — usa as já disponíveis ou geocodifica
+    let oLat, oLng, dLat, dLng;
+
+    if (origemLatLng) {
+      oLat = origemLatLng.lat; oLng = origemLatLng.lng;
+    } else {
+      const r = await nominatimSearch(origemStr);
+      if (!r.length) throw new Error(`Local de recolha não encontrado: "${origemStr}"`);
+      oLat = Number(r[0].lat); oLng = Number(r[0].lon);
+    }
+
+    if (destinoLatLng) {
+      dLat = destinoLatLng.lat; dLng = destinoLatLng.lng;
+    } else {
+      const r = await nominatimSearch(destinoStr);
+      if (!r.length) throw new Error(`Destino não encontrado: "${destinoStr}"`);
+      dLat = Number(r[0].lat); dLng = Number(r[0].lon);
+    }
+
+    const apiUrl = `https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson&steps=false`;
+    const res  = await fetch(apiUrl);
+    const data = await res.json();
+
+    if (data.code !== 'Ok' || !data.routes?.length) {
+      throw new Error('OSRM: rota não encontrada entre os dois pontos.');
+    }
+
+    const rota     = data.routes[0];
+    const km       = rota.distance / 1000;
+    const durSeg   = rota.duration;
+    const horas    = Math.floor(durSeg / 3600);
+    const minutos  = Math.round((durSeg % 3600) / 60);
+    const durTexto = horas > 0 ? `${horas}h ${minutos}min` : `${minutos} min`;
+
+    console.log('[OSRM] Rota calculada:', km.toFixed(1), 'km ·', durTexto);
+
+    return {
+      km,
+      duracaoSeg:   durSeg,
+      duracaoTexto: durTexto,
+      geometry:     rota.geometry,       // GeoJSON para desenhar no Leaflet
+      origemLatLng: { lat: oLat, lng: oLng },
+      destinoLatLng:{ lat: dLat, lng: dLng },
+      origemStr, destinoStr
+    };
+  }
+
+  /* ── GEOLOCALIZAÇÃO RECOLHA ────────────────────────────────── */
+  function preencherRecolhaAuto() {
+    const inp = el('shareRecolha');
+    if (!inp || inp.value.trim() || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
+        .then(r => r.json())
+        .then(data => {
+          inp.value = data?.display_name || `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+          inp.dataset.lat = pos.coords.latitude; inp.dataset.lng = pos.coords.longitude;
+          updateShareButtonsState();
+        })
+        .catch(() => {
+          inp.value = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+          inp.dataset.lat = pos.coords.latitude; inp.dataset.lng = pos.coords.longitude;
+          updateShareButtonsState();
+        });
+    }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
+  }
+
+  /* ── CONVITE SMS ───────────────────────────────────────────── */
+  function parseInviteParams() {
+    const params = new URLSearchParams(location.search);
+    inviteToken   = (params.get('invite') || '').trim();
+    inviteShareId = (params.get('shareId') || '').trim();
+    if (inviteToken && inviteShareId) {
+      showInviteBar(`Convite de partilha: ${inviteShareId}. Introduza o código SMS para entrar.`);
+      openPopup(els.inviteVerifyPopup);
+    }
+  }
+
+  async function verifyInviteAccess() {
+    const otp = (els.inviteOtpInput.value || '').trim();
+    if (!inviteToken || !inviteShareId) { showToast('Convite inválido.'); return; }
+    if (!otp) { showToast('Introduza o código SMS.'); return; }
+    try {
+      const data = await fetchJson(url('/partilha/invite/verify'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invite: inviteToken, otp })
+      });
+      shareSessionToken = (data?.sessionToken || '').trim();
+      shareId = (data?.shareId || inviteShareId).trim();
+      closePopup(els.inviteVerifyPopup);
+
+      // Fechar o overlay de convite e mostrar mapa com rota se existir
+      el('inviteBar')?.classList.remove('show');
+      startInviteLocationUpdates();
+      startPolling();
+      showToast('Acesso validado. Rota a carregar...', 3000);
+    } catch (err) { showToast(err.message || 'Falha ao validar convite.'); }
+  }
+
+  async function sendInviteLocationOnce() {
+    if (!shareSessionToken || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        await fetchJson(url('/partilha/location/update'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${shareSessionToken}` },
+          body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy })
+        });
+      } catch (_) {}
+    });
+  }
+  function startInviteLocationUpdates() { stopInviteLocationUpdates(); sendInviteLocationOnce(); locationTimer = setInterval(sendInviteLocationOnce, 5000); }
+  function stopInviteLocationUpdates()  { if (locationTimer) { clearInterval(locationTimer); locationTimer = null; } }
+
+  /* ── ATIVIDADES ────────────────────────────────────────────── */
+  async function sendLostItem() {
+    const titulo  = (els.lostItemTitle.value || '').trim();
+    const descricao = (els.lostItemDescription.value || '').trim();
+    if (!titulo || !descricao) { showToast('Preencha o item e a descrição.'); return; }
+    try { await fetchJson(url('/atividade/artigo-perdido'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'artigo_perdido', utilizador: currentUser, viagem: currentTripContext, item: { titulo, descricao } }) }); } catch (_) {}
+    closePopup(els.lostItemPopup); showToast('Pedido de artigo perdido enviado.');
+    els.lostItemTitle.value = ''; els.lostItemDescription.value = '';
+  }
+
+  async function sendSecurityProblem() {
+    const descricao = (els.securityDescription.value || '').trim();
+    if (!selectedSecurityType) { showToast('Selecione o tipo de problema.'); return; }
+    if (!descricao) { showToast('Descreva o problema.'); return; }
+    try { await fetchJson(url('/seguranca/reportar'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'problema_seguranca', problema: selectedSecurityType, descricao, utilizador: currentUser, viagem: { ...currentTripContext, contactoUtilizador: currentUser.contacto } }) }); } catch (_) {}
+    closePopup(els.securityPopup); showToast('Mensagem enviada ao painel de segurança.');
+    els.securityDescription.value = ''; selectedSecurityType = '';
+    els.securityOptions.querySelectorAll('.option-pill').forEach(x => x.classList.remove('selected'));
+  }
+
+  async function sendInvoiceRequest() {
+    if (!selectedInvoiceId) { showToast('Selecione uma fatura.'); return; }
+    try { await fetchJson(url('/faturas/solicitar'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invoiceId: selectedInvoiceId, nomeCompleto: currentUser.nomeCompleto, email: currentUser.email, contacto: currentUser.contacto }) }); } catch (_) {}
+    closePopup(els.invoicePopup); showToast('Pedido de fatura enviado.');
+  }
+
+  function renderInvoiceList() {
+    els.invoiceList.innerHTML = ''; selectedInvoiceId = '';
+    invoiceMockData.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'invoice-item'; div.textContent = item.label; div.dataset.id = item.id;
+      div.addEventListener('click', () => { document.querySelectorAll('.invoice-item').forEach(x => x.classList.remove('selected')); div.classList.add('selected'); selectedInvoiceId = item.id; });
+      els.invoiceList.appendChild(div);
+    });
+  }
+
+  /* ── GESTÃO DE VIAGENS ─────────────────────────────────────── */
+  function fillTripManager() {
+    const partida  = (els.inputPartida.value || currentTripContext.partida || '').trim();
+    const destino  = (els.inputDestino.value || currentTripContext.destino || '').trim();
+    const datahora = (els.inputDateTime.value || '').trim();
+    els.managerCurrentTrip.textContent = partida && destino
+      ? `Partida: ${partida} | Destino: ${destino} | Data/Hora: ${datahora || 'por definir'} | Categoria: ${getCategoryLabel(getCategoryValue())}`
+      : 'Sem viagem ativa.';
+    els.managerPreferenceInfo.textContent = selectedPreferenceTrip
+      ? `Motorista: ${selectedPreferenceTrip.motorista||'—'} | Veículo: ${selectedPreferenceTrip.veiculo||'—'} | Matrícula: ${selectedPreferenceTrip.matricula||'—'} | Cartão: ${selectedTargetCardIndex||'—'}`
+      : 'Nenhuma preferência aplicada.';
+  }
+
+  function fillSecurityPanel() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => { els.securityUserLocation.textContent = `Lat: ${pos.coords.latitude.toFixed(6)} | Lng: ${pos.coords.longitude.toFixed(6)} | Precisão: ${Math.round(pos.coords.accuracy)}m`; },
+        ()  => { els.securityUserLocation.textContent = 'Geolocalização não autorizada.'; }
+      );
+    } else { els.securityUserLocation.textContent = 'Geolocalização não suportada.'; }
+    els.securityDriverLocation.textContent = 'A posição do motorista é enviada pelo backend em tempo real.';
+    els.securityTripState.textContent = `Motorista: ${currentTripContext.motoristaNome} | Veículo: ${currentTripContext.veiculo} | Matrícula: ${currentTripContext.matricula} | Estado: monitorização pronta.`;
+  }
+
+  /* ── MEUS CONTACTOS ────────────────────────────────────────── */
+  const CONTACTS_KEY = 'rm_meus_contactos';
+  function getMeusContactos()         { try { return JSON.parse(localStorage.getItem(CONTACTS_KEY) || '[]'); } catch { return []; } }
+  function saveMeusContactos(list)    { localStorage.setItem(CONTACTS_KEY, JSON.stringify(list)); }
+
+  function renderMeusContactos() {
+    const lista = el('meusContactosLista');
+    const contactos = getMeusContactos();
+    if (!contactos.length) { lista.innerHTML = '<p style="color:var(--silver-2);font-size:13px;text-align:center;padding:16px 0">Sem contactos guardados.</p>'; return; }
+    lista.innerHTML = contactos.map((c, i) =>
+      `<div class="contacto-item"><div class="ci-info"><strong>${escapeHtml(c.nome)}</strong><span>${escapeHtml(c.tel)}</span></div><button class="ci-del" data-idx="${i}">✕</button></div>`
+    ).join('');
+    lista.querySelectorAll('.ci-del').forEach(btn => {
+      btn.addEventListener('click', () => { const list = getMeusContactos(); list.splice(Number(btn.dataset.idx), 1); saveMeusContactos(list); renderMeusContactos(); });
+    });
+  }
+
+  /* ── VIAGENS PENDENTES ─────────────────────────────────────── */
+  async function carregarViagensPendentes() {
+    try {
+      const data = await fetchJson(url('/reservas/pendentes'));
+      viagensPendentes = Array.isArray(data?.reservas) ? data.reservas : (Array.isArray(data) ? data : []);
+    } catch (err) {
+      viagensPendentes = [];
+      // Não actualiza badge se endpoint não existe ainda
+      if (err?.message?.includes('404') || err?.message?.includes('não encontrado')) {
+        console.info('[RM] /reservas/pendentes não encontrado — endpoint em falta no backend.');
+        return;
+      }
+    }
+    const btn = el('btnViagensPendentes');
+    const n = viagensPendentes.length;
+    if (n > 0) { btn.classList.add('tem-pendentes'); btn.dataset.count = n > 9 ? '9+' : String(n); }
+    else { btn.classList.remove('tem-pendentes'); btn.removeAttribute('data-count'); }
+  }
+
+  function renderViagensPendentes() {
+    const lista = el('viajensPendentesLista');
+    if (!viagensPendentes.length) { lista.innerHTML = '<p style="color:var(--silver-2);font-size:13px;text-align:center;padding:24px 0">Sem viagens pendentes.</p>'; return; }
+    lista.innerHTML = viagensPendentes
+      .sort((a, b) => new Date(a.datahora || 0) - new Date(b.datahora || 0))
+      .map(v => {
+        const dt = v.datahora ? new Date(v.datahora).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        return `<div class="viagem-pendente-item"><div class="vp-info"><strong>${escapeHtml(v.partida||'—')} → ${escapeHtml(v.destino||'—')}</strong><span>${dt} · ${escapeHtml(v.categoria||'—')}</span><span>Código: ${escapeHtml(v.codigo||v._id||'—')}</span></div><div class="vp-badge">PENDENTE</div></div>`;
+      }).join('');
+  }
+
+  /* ── OVERLAY DO MOTORISTA ──────────────────────────────────── */
+  function initOverlayMap() {
+    if (ovMap) return;
+    ovMap = L.map('ovMapa', { zoomControl: false, attributionControl: false }).setView([38.72, -9.13], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(ovMap);
+  }
+
+  function showMotoristaOverlay(dados) {
+    el('motoristaOverlay').classList.add('show');
+    el('tripPanel').classList.add('hidden');
+    el('shareSheet')?.classList.add('hidden');
+    document.querySelector('.trip-type-wrap')?.classList.add('hidden');
+    el('ovMatricula').textContent = dados.matricula || '—';
+    el('ovModelo').textContent    = (dados.veiculo || '') + (dados.cor ? ' · ' + dados.cor : '');
+    el('ovNome').textContent      = dados.motoristaNome || dados.nome || '—';
+    const rating = Number(dados.rating || 5).toFixed(1);
+    const stars  = Math.round(Number(rating));
+    el('ovStars').textContent  = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+    el('ovRating').textContent = rating;
+    el('ovEta').textContent    = dados.eta || 'A calcular...';
+    const fw = el('ovFotoWrap');
+    if (dados.foto && fw) fw.outerHTML = `<img class="motorista-foto" id="ovFotoWrap" src="${dados.foto}" alt="Foto" onerror="this.outerHTML='<div class=motorista-foto-placeholder id=ovFotoWrap>👤</div>'">`;
+    setTimeout(() => { initOverlayMap(); if (dados.lat && dados.lng) { ovMap.setView([dados.lat, dados.lng], 15); if (ovMarker) ovMarker.setLatLng([dados.lat, dados.lng]); else ovMarker = L.circleMarker([dados.lat, dados.lng], { radius: 10, fillColor: '#19d68b', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(ovMap).bindPopup('Motorista').openPopup(); } ovMap.invalidateSize(); }, 200);
+    setReservaAtiva(true);
+  }
+
+  function hideMotoristaOverlay() { el('motoristaOverlay').classList.remove('show'); }
+  function setReservaAtiva(ativa) { const btn = el('btnReservaAtiva'); if (!btn) return; btn.classList.toggle('hidden', !ativa); }
+
+  /* ── MAPA PRINCIPAL ────────────────────────────────────────── */
+  function initMap() {
+    map = L.map('map').setView([38.7169, -9.1393], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  }
+
+  /* ================================================================
+     AUTOCOMPLETE — NOMINATIM (OpenStreetMap)
+     Pesquisa moradas usando a localização do utilizador como âncora.
+  ================================================================ */
+
+  // Coordenadas do utilizador — preenchidas ao iniciar
+  let _userLat = 38.7169;  // Lisboa por defeito
+  let _userLng = -9.1393;
+
+  /* ================================================================
+     PAINEL DE TICKET — hotel cria ticket para hóspede
+     Integrado em minha-conta.html, visível apenas para parceiros/hotéis
+  ================================================================ */
+
+  let tkCategoria   = '';
+  let tkDestinoPlace = null;
+  let tkPrecoTimer  = null;
+
+  function openTicketMode() {
+    hideTripTypeButtons();
+    el('btnCriarTicket')?.classList.add('active');
+    els.tripPanel.classList.add('hidden');
+    els.shareSheet.classList.add('hidden');
+    el('ticketSheet')?.classList.remove('hidden');
+    // preencher data/hora com 1h a partir de agora
+    const inp = el('tkDatahora');
+    if (inp && !inp.value) {
+      const d = new Date(Date.now() + 3600000);
+      inp.value = d.toISOString().slice(0, 16);
+    }
+  }
+
+  function closeTicketMode() {
+    el('ticketSheet')?.classList.add('hidden');
+    el('btnCriarTicket')?.classList.remove('active');
+    showTripTypeButtons();
+    resetTicketForm();
+  }
+
+  function resetTicketForm() {
+    ['tkNome','tkEmail','tkTelefone','tkPartida','tkDestino'].forEach(id => {
+      const inp = el(id); if (inp) inp.value = '';
+    });
+    tkCategoria = ''; tkDestinoPlace = null;
+    document.querySelectorAll('[data-tkcat]').forEach(b => b.classList.remove('selected'));
+    el('tkPrecoPanel')?.classList.remove('show');
+    el('tkResultado').style.display = 'none';
+    el('tkMsg').style.display = 'none';
+    el('btnTkGerar').style.display = '';
+    el('btnTkCalc').style.display = '';
+  }
+
+  function showTkMsg(tipo, texto) {
+    const m = el('tkMsg');
+    m.style.display = 'block';
+    m.style.background = tipo === 'ok' ? 'rgba(25,214,139,.1)' : 'rgba(255,80,80,.1)';
+    m.style.border     = tipo === 'ok' ? '1px solid rgba(25,214,139,.3)' : '1px solid rgba(255,80,80,.3)';
+    m.style.color      = tipo === 'ok' ? '#7fffc4' : '#ff9999';
+    m.textContent = texto;
+  }
+
+  // Calcular preço do ticket
+  async function calcularPrecoTicket() {
+    if (!tkCategoria) { showTkMsg('err', 'Selecione uma categoria.'); return; }
+    const partida = el('tkPartida')?.value?.trim();
+    const destino = el('tkDestino')?.value?.trim();
+    if (!partida || !destino) { showTkMsg('err', 'Preencha partida e destino.'); return; }
+
+    const painel  = el('tkPrecoPanel');
+    const kmEl    = el('tkPrecoKm');
+    const tempoEl = el('tkPrecoTempo');
+    const valorEl = el('tkPrecoValor');
+
+    painel.classList.add('show', 'a-calcular');
+    kmEl.textContent = 'A calcular...'; tempoEl.textContent = ''; valorEl.textContent = '—';
+
+    clearTimeout(tkPrecoTimer);
+    tkPrecoTimer = setTimeout(async () => {
+      try {
+        const rota = await obterInfoRota(partida, destino, null, tkDestinoPlace ? { lat: tkDestinoPlace.lat, lng: tkDestinoPlace.lng } : null);
+        const resp = await fetchJson(url('/quote'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ categoria: tkCategoria, distanciaKm: rota.km, contexto: { origemTexto: partida, destinoTexto: destino } })
+        });
+        if (!resp?.ok) throw new Error(resp?.message || 'Erro.');
+        kmEl.textContent    = `${rota.km.toFixed(1)} km`;
+        tempoEl.textContent = rota.duracaoTexto || '';
+        valorEl.textContent = `${Number(resp.total || 0).toFixed(2)} €`;
+        painel.classList.remove('a-calcular');
+        el('tkMsg').style.display = 'none';
+      } catch (err) {
+        kmEl.textContent = err.message || 'Erro';
+        painel.classList.remove('a-calcular');
+      }
+    }, 400);
+  }
+
+  // Gerar ticket
+  async function gerarTicket() {
+    const nome     = el('tkNome')?.value?.trim();
+    const email    = el('tkEmail')?.value?.trim();
+    const telefone = el('tkTelefone')?.value?.trim();
+    const partida  = el('tkPartida')?.value?.trim();
+    const destino  = el('tkDestino')?.value?.trim();
+    const datahora = el('tkDatahora')?.value;
+    const valorTxt = el('tkPrecoValor')?.textContent?.replace('€','').trim();
+
+    if (!nome)     { showTkMsg('err', 'Nome do hóspede obrigatório.'); return; }
+    if (!email)    { showTkMsg('err', 'Email do hóspede obrigatório.'); return; }
+    if (!tkCategoria){ showTkMsg('err', 'Selecione uma categoria.'); return; }
+    if (!partida)  { showTkMsg('err', 'Local de partida obrigatório.'); return; }
+    if (!destino)  { showTkMsg('err', 'Destino obrigatório.'); return; }
+    if (!datahora) { showTkMsg('err', 'Data e hora obrigatórias.'); return; }
+
+    const btn = el('btnTkGerar');
+    btn.disabled = true; btn.textContent = 'A gerar...';
+    el('tkMsg').style.display = 'none';
+
+    try {
+      const data = await fetchJsonParceiro(url('/ticket/criar'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nomeHospede:    nome,
+          emailHospede:   email,
+          telefoneHospede:telefone,
+          categoria:      tkCategoria,
+          partida, destino, datahora,
+          valor: Number(valorTxt) || null
+        })
+      });
+
+      // Mostrar resultado
+      el('tkLinkInfo').innerHTML = `
+        <strong style="color:#fff">Hóspede:</strong> ${escapeHtml(nome)} — ${escapeHtml(email)}<br>
+        <strong style="color:#fff">Viagem:</strong> ${escapeHtml(partida)} → ${escapeHtml(destino)}<br>
+        <strong style="color:#fff">Data:</strong> ${new Date(datahora).toLocaleString('pt-PT')}<br>
+        <strong style="color:#fff">Valor:</strong> ${Number(data.valor || 0).toFixed(2)} €
+      `;
+      // Guarda token para envio de email
+      el('btnTkEmail').dataset.token = data.tokenTicket || '';
+      el('btnTkEmail').dataset.email = email;
+      el('tkEmailMsg').style.display = 'none';
+      el('tkResultado').style.display = 'block';
+      el('btnTkGerar').style.display = 'none';
+      el('btnTkCalc').style.display  = 'none';
+
+    } catch (err) {
+      showTkMsg('err', err.message || 'Erro ao gerar ticket.');
+      btn.disabled = false; btn.textContent = '🎫 GERAR TICKET';
+    }
+  }
+
+  function initTicketPanel() {
+    // Fechar painel
+    el('btnCloseTicket')?.addEventListener('click', closeTicketMode);
+
+    // Categorias
+    document.querySelectorAll('[data-tkcat]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-tkcat]').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        tkCategoria = btn.dataset.tkcat;
+      });
+    });
+
+    // Autocomplete partida ticket
+    const tkPartidaEl = el('tkPartida');
+    if (tkPartidaEl) {
+      bindNmAutocomplete(tkPartidaEl, el('nmTkPartida'), place => {
+        tkPartidaEl.dataset.lat = place.lat;
+        tkPartidaEl.dataset.lng = place.lng;
+        map.setView([place.lat, place.lng], 14);
+      });
+    }
+
+    // Autocomplete destino ticket
+    const tkDestinoEl = el('tkDestino');
+    if (tkDestinoEl) {
+      bindNmAutocomplete(tkDestinoEl, el('nmTkDestino'), place => {
+        tkDestinoPlace = { lat: place.lat, lng: place.lng, address: tkDestinoEl.value };
+        map.setView([place.lat, place.lng], 14);
+      });
+    }
+
+    // Calcular preço
+    el('btnTkCalc')?.addEventListener('click', calcularPrecoTicket);
+
+    // Gerar ticket
+    el('btnTkGerar')?.addEventListener('click', gerarTicket);
+
+    // Enviar ticket por email
+    el('btnTkEmail')?.addEventListener('click', async () => {
+      const btn   = el('btnTkEmail');
+      const msg   = el('tkEmailMsg');
+      const token = btn.dataset.token;
+      const email = btn.dataset.email;
+      if (!token) { return; }
+
+      btn.disabled = true;
+      btn.textContent = 'A enviar...';
+      msg.style.display = 'none';
+
+      try {
+        await fetchJsonParceiro(url(`/ticket/${token}/enviar-email`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        msg.style.display  = 'block';
+        msg.style.background = 'rgba(25,214,139,.1)';
+        msg.style.border   = '1px solid rgba(25,214,139,.3)';
+        msg.style.color    = '#7fffc4';
+        msg.textContent    = `✅ Ticket enviado para ${email}`;
+        btn.textContent    = '✅ EMAIL ENVIADO';
+        btn.style.background = 'rgba(25,214,139,.15)';
+        btn.style.color    = '#7fffc4';
+        btn.style.border   = '1px solid rgba(25,214,139,.3)';
+        btn.style.boxShadow= 'none';
+      } catch (err) {
+        msg.style.display  = 'block';
+        msg.style.background = 'rgba(255,80,80,.1)';
+        msg.style.border   = '1px solid rgba(255,80,80,.3)';
+        msg.style.color    = '#ff9999';
+        msg.textContent    = '❌ ' + (err.message || 'Erro ao enviar email.');
+        btn.disabled = false;
+        btn.textContent = '✉ ENVIAR TICKET POR EMAIL AO HÓSPEDE';
+      }
+    });
+
+    // Novo ticket
+    el('btnTkNovo')?.addEventListener('click', resetTicketForm);
+  }
+
+  function detectarLocalizacaoUtilizador() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+      _userLat = pos.coords.latitude;
+      _userLng = pos.coords.longitude;
+      map.setView([_userLat, _userLng], 14);
+      showToast('Geolocalização ativa.');
+    }, () => {}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  }
+
+  // Cache para evitar pedidos duplicados
+  const _nmCache = {};
+
+  async function nominatimSearch(query) {
+    const q = query.trim();
+    const key = `${q}|${_userLat.toFixed(2)}|${_userLng.toFixed(2)}`;
+    if (_nmCache[key]) return _nmCache[key];
+    try {
+      // viewbox centrado na posição do utilizador (±0.5 graus ≈ 50km)
+      const d = 0.5;
+      const viewbox = `${_userLng-d},${_userLat+d},${_userLng+d},${_userLat-d}`;
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&viewbox=${viewbox}&bounded=0&q=${encodeURIComponent(q)}`,
+        { headers: { 'Accept-Language': 'pt' } }
+      );
+      const data = await r.json();
+      _nmCache[key] = data;
+      return data;
+    } catch (_) { return []; }
+  }
+
+  function formatNmLabel(item) {
+    const a = item.address || {};
+    const principal = a.road || a.pedestrian || a.suburb || item.display_name.split(',')[0];
+    const secundario = [a.city || a.town || a.village || a.municipality, a.postcode].filter(Boolean).join(' · ');
+    return { principal, secundario };
+  }
+
+  function renderNmDropdown(dropdown, results, onSelect) {
+    dropdown.innerHTML = '';
+    if (!results.length) { dropdown.classList.remove('open'); return; }
+    results.forEach((item, i) => {
+      const { principal, secundario } = formatNmLabel(item);
+      const div = document.createElement('div');
+      div.className = 'nm-item';
+      div.innerHTML = `${escapeHtml(principal)}<small>${escapeHtml(secundario)}</small>`;
+      div.addEventListener('mousedown', e => {
+        e.preventDefault();
+        onSelect(item);
+        dropdown.classList.remove('open');
+      });
+      dropdown.appendChild(div);
+    });
+    dropdown.classList.add('open');
+  }
+
+  function bindNmAutocomplete(input, dropdown, onSelect) {
+    let _timer = null;
+    input.addEventListener('input', () => {
+      clearTimeout(_timer);
+      const q = input.value.trim();
+      if (q.length < 3) { dropdown.classList.remove('open'); return; }
+      _timer = setTimeout(async () => {
+        const results = await nominatimSearch(q);
+        renderNmDropdown(dropdown, results, item => {
+          input.value = item.display_name.split(',').slice(0, 2).join(',').trim();
+          input.dataset.lat = item.lat;
+          input.dataset.lng = item.lon;
+          onSelect({ lat: Number(item.lat), lng: Number(item.lon), address: input.value });
+        });
+      }, 350);
+    });
+    input.addEventListener('blur', () => setTimeout(() => dropdown.classList.remove('open'), 200));
+    input.addEventListener('keydown', e => {
+      const items = dropdown.querySelectorAll('.nm-item');
+      const active = dropdown.querySelector('.nm-item.active');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = active ? (active.nextElementSibling || items[0]) : items[0];
+        active?.classList.remove('active'); next.classList.add('active');
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = active ? (active.previousElementSibling || items[items.length-1]) : items[items.length-1];
+        active?.classList.remove('active'); prev.classList.add('active');
+      } else if (e.key === 'Enter' && active) {
+        e.preventDefault(); active.dispatchEvent(new MouseEvent('mousedown'));
+      } else if (e.key === 'Escape') {
+        dropdown.classList.remove('open');
+      }
+    });
+  }
+
+  function initAutocomplete() {
+    // Partida (painel de reserva privada)
+    bindNmAutocomplete(els.inputPartida, el('nmPartida'), place => {
+      map.setView([place.lat, place.lng], 15);
+    });
+
+    // Destino (painel de reserva privada)
+    bindNmAutocomplete(els.inputDestino, el('nmDestino'), place => {
+      map.setView([place.lat, place.lng], 15);
+    });
+
+    // Recolha (partilha)
+    const shareRecolhaEl = el('shareRecolha');
+    if (shareRecolhaEl) {
+      bindNmAutocomplete(shareRecolhaEl, el('nmRecolha'), place => {
+        shareRecolhaEl.dataset.lat = place.lat;
+        shareRecolhaEl.dataset.lng = place.lng;
+        map.setView([place.lat, place.lng], 14);
+        updateShareButtonsState();
+        calcularPrecoPartilha();
+      });
+    }
+
+    // Destino (partilha)
+    bindNmAutocomplete(els.shareDestino, el('nmShareDestino'), place => {
+      shareDestinoPlace = { address: els.shareDestino.value, lat: place.lat, lng: place.lng };
+      map.setView([place.lat, place.lng], 14);
+      updateShareButtonsState();
+      calcularPrecoPartilha();
+    });
+  }
+
+  function requestUserLocation() {
+    detectarLocalizacaoUtilizador();
+  }
+
+  /* ── BIND DE EVENTOS ───────────────────────────────────────── */
+  function bindEvents() {
+    /* Hambúrguer */
+    const hMenu = el('hamburgerMenu');
+    els.btnMenu.addEventListener('click', e => { e.stopPropagation(); hMenu.classList.toggle('open'); });
+    document.addEventListener('click', () => hMenu.classList.remove('open'));
+
+    /* Dropdown do hambúrguer */
+    els.btnActivity.addEventListener('click', () => { hMenu.classList.remove('open'); openPopup(els.activityPopup); });
+    els.btnTripManager.addEventListener('click', () => { hMenu.classList.remove('open'); fillTripManager(); openPopup(els.tripManagerPopup); });
+    els.btnContactos.addEventListener('click', () => { hMenu.classList.remove('open'); renderMeusContactos(); openPopup(el('meusContactosPopup')); });
+
+    /* Modos de viagem */
+    els.btnSemPartilha.addEventListener('click', openTripPanel);
+    els.btnPartilharAmigos.addEventListener('click', () => { openShareMode(); buildShareCards(17); });
+
+    // Botão CRIAR TICKET — só visível para hotéis
+    const btnCriarTicket = el('btnCriarTicket');
+    if (btnCriarTicket) {
+      if (isHotel()) btnCriarTicket.style.display = '';
+      btnCriarTicket.addEventListener('click', openTicketMode);
+    }
+
+    /* Painel de reserva */
+    els.btnCloseTrip.addEventListener('click', closeTripPanel);
+    document.querySelectorAll('.cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cat = btn.dataset.category;
+        previousCategory = selectedCategory;
+        if (cat === 'luxo' || cat === 'grupo') openCategoryPopup(cat);
+        else setSelectedCategory(cat);
+      });
+    });
+    els.btnPopupCancel.addEventListener('click', () => { closeCategoryPopup(); setSelectedCategory(previousCategory); });
+    els.btnPopupConfirm.addEventListener('click', confirmCategoryPopup);
+    els.categoryPopup.addEventListener('click', e => { if (e.target === els.categoryPopup) { closeCategoryPopup(); setSelectedCategory(previousCategory); } });
+    els.btnPreferencia.addEventListener('click', () => {
+      if (!preferenceMode) { togglePreferenceMode(true); return; }
+      if (!selectedPreferenceTrip) { showToast('Selecione uma das últimas viagens.'); return; }
+      if (!selectedTargetCardIndex) { showToast('Selecione o cartão alvo.'); return; }
+      if (!applyPreferenceToSelectedCard(selectedPreferenceTrip)) return;
+      togglePreferenceMode(false); clearTargetStyles();
+      showToast(currentAssignedExists ? 'Substituição de preferência preparada.' : 'Preferência aplicada à reserva.');
+    });
+    els.btnReservar.addEventListener('click', reservarViagem);
+
+    /* Partilha */
+    els.btnEnviarConvites.addEventListener('click', enviarConvitesPartilha);
+    els.shareDateTime.addEventListener('input', updateShareButtonsState);
+
+    /* Autocomplete recolha */
+    const shareRecolhaEl = el('shareRecolha');
+    if (shareRecolhaEl) {
+      shareRecolhaEl.addEventListener('focus', preencherRecolhaAuto);
+      shareRecolhaEl.addEventListener('input', () => { updateShareButtonsState(); calcularPrecoPartilha(); });
+    }
+    els.shareDestino.addEventListener('input', () => { updateShareButtonsState(); calcularPrecoPartilha(); });
+    bindShareCats();
+    bindTargetSelection();
+
+    /* Atividade */
+    els.btnCloseActivity.addEventListener('click', () => closePopup(els.activityPopup));
+    els.btnLostItem.addEventListener('click', () => { closePopup(els.activityPopup); openPopup(els.lostItemPopup); });
+    els.btnSecurityProblem.addEventListener('click', () => { closePopup(els.activityPopup); openPopup(els.securityPopup); });
+    els.btnInvoice.addEventListener('click', () => { closePopup(els.activityPopup); renderInvoiceList(); openPopup(els.invoicePopup); });
+    els.btnLostCancel.addEventListener('click', () => closePopup(els.lostItemPopup));
+    els.btnLostSend.addEventListener('click', sendLostItem);
+    els.btnSecurityCancel.addEventListener('click', () => closePopup(els.securityPopup));
+    els.btnSecuritySend.addEventListener('click', sendSecurityProblem);
+    els.btnInvoiceCancel.addEventListener('click', () => closePopup(els.invoicePopup));
+    els.btnInvoiceSend.addEventListener('click', sendInvoiceRequest);
+    els.securityOptions.querySelectorAll('.option-pill').forEach(btn => {
+      btn.addEventListener('click', () => { els.securityOptions.querySelectorAll('.option-pill').forEach(x => x.classList.remove('selected')); btn.classList.add('selected'); selectedSecurityType = btn.dataset.value || ''; });
+    });
+
+    /* Gestão + segurança */
+    els.btnCloseTripManager.addEventListener('click', () => closePopup(els.tripManagerPopup));
+    els.btnStartTripFlow.addEventListener('click', () => showToast('Viagem iniciada com sucesso.'));
+    els.btnEndTripFlow.addEventListener('click',   () => showToast('Viagem finalizada com sucesso.'));
+    els.btnSecurityPanel.addEventListener('click', () => { fillSecurityPanel(); openPopup(els.securityLivePopup); });
+    els.btnCloseSecurityLive.addEventListener('click', () => closePopup(els.securityLivePopup));
+
+    /* Política */
+    el('btnPolitica').addEventListener('click', () => openPopup(el('politicaPopup')));
+    el('btnFecharPolitica').addEventListener('click', () => closePopup(el('politicaPopup')));
+
+    /* Meus contactos */
+    el('btnFecharMeusContactos').addEventListener('click', () => closePopup(el('meusContactosPopup')));
+    el('btnAdicionarContacto').addEventListener('click', () => {
+      const nome = el('novoContactoNome').value.trim();
+      const tel  = el('novoContactoTel').value.trim();
+      if (!nome || !tel) { showToast('Preencha nome e contacto.'); return; }
+      const list = getMeusContactos();
+      if (list.find(c => c.tel === tel)) { showToast('Este contacto já existe.'); return; }
+      list.push({ nome, tel }); saveMeusContactos(list);
+      el('novoContactoNome').value = ''; el('novoContactoTel').value = '';
+      renderMeusContactos(); showToast('Contacto guardado.');
+    });
+
+    /* Reserva ativa + cancelar viagem */
+    el('btnReservaAtiva').addEventListener('click', () => showMotoristaOverlay(currentTripContext));
+    el('btnCancelarViagemOverlay').addEventListener('click', async () => {
+      if (!confirm('Tem a certeza que pretende cancelar esta viagem?')) return;
+      try { await fetchJson(url('/reserva/cancelar'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tripId: currentTripContext.tripId }) }); } catch (_) {}
+      hideMotoristaOverlay(); setReservaAtiva(false); showToast('Viagem cancelada.'); carregarViagensPendentes();
+    });
+
+    /* Viagens pendentes */
+    el('btnViagensPendentes').addEventListener('click', () => { renderViagensPendentes(); openPopup(el('viajensPendentesPopup')); });
+    el('btnFecharViagensPendentes').addEventListener('click', () => closePopup(el('viajensPendentesPopup')));
+
+    /* Convite SMS */
+    els.btnInviteClose.addEventListener('click', () => closePopup(els.inviteVerifyPopup));
+    els.btnInviteVerify.addEventListener('click', verifyInviteAccess);
+
+    /* Fechar popups ao clicar fora */
+    [
+      els.categoryPopup, els.activityPopup, els.lostItemPopup,
+      els.securityPopup, els.invoicePopup,  els.tripManagerPopup,
+      els.securityLivePopup, els.inviteVerifyPopup,
+      el('meusContactosPopup'), el('politicaPopup'), el('viajensPendentesPopup')
+    ].forEach(pop => pop?.addEventListener('click', e => { if (e.target === pop) closePopup(pop); }));
+
+    /* ESC fecha tudo */
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      if (els.categoryPopup.classList.contains('show')) { closeCategoryPopup(); setSelectedCategory(previousCategory); return; }
+      [els.activityPopup, els.lostItemPopup, els.securityPopup, els.invoicePopup, els.tripManagerPopup, els.securityLivePopup, els.inviteVerifyPopup, el('meusContactosPopup'), el('politicaPopup'), el('viajensPendentesPopup')]
+        .forEach(pop => { if (pop?.classList.contains('show')) closePopup(pop); });
+      if (!els.tripPanel.classList.contains('hidden')) closeTripPanel();
+      if (shareMode) closeShareMode();
+    });
+  }
+
+  /* ── INICIALIZAÇÃO ─────────────────────────────────────────── */
+  async function init() {
+    initMap();
+    initAutocomplete();
+    initTicketPanel();
+    bindEvents();
+    /* Carrega nome real do titular a partir do backend */
+    await carregarUtilizador();
+    /* Defaults */
+    setSelectedCategory('economica');
+    updateCardActionStates();
+    requestUserLocation();
+    parseInviteParams();
+    carregarViagensPendentes();
+    /* Polling motorista a cada 6s — para se endpoint não existir */
+    let _motoristaPollingAtivo = true;
+    setInterval(async () => {
+      if (!_motoristaPollingAtivo) return;
+      try {
+        const data = await fetchJson(url('/reservas/motorista-atribuido'));
+        if (data?.atribuido && data.motorista) {
+          if (!el('motoristaOverlay').classList.contains('show')) showMotoristaOverlay(data.motorista);
+          else if (data.motorista.lat && data.motorista.lng && ovMap && ovMarker) {
+            ovMarker.setLatLng([data.motorista.lat, data.motorista.lng]);
+            ovMap.panTo([data.motorista.lat, data.motorista.lng]);
+            el('ovEta').textContent = data.motorista.eta || 'A calcular...';
+          }
+        }
+      } catch (err) {
+        // Para o polling se o endpoint não existir (404)
+        if (err?.message?.includes('404') || err?.message?.includes('não encontrado')) {
+          _motoristaPollingAtivo = false;
+          console.info('[RM] /reservas/motorista-atribuido não encontrado — polling pausado até o endpoint existir.');
+        }
+      }
+    }, 6000);
+
+    /* Viagens pendentes a cada 30s — para se endpoint não existir */
+    let _pendentesPollingAtivo = true;
+    setInterval(async () => {
+      if (!_pendentesPollingAtivo) return;
+      try {
+        await carregarViagensPendentes();
+      } catch (_) {}
+    }, 30000);
+  }
+
+  window.addEventListener('load', init);
+  window.addEventListener('beforeunload', stopInviteLocationUpdates);
+  </script>
+</body>
+</html>

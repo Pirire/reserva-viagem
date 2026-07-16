@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REALMETROPOLIS — Admin Login</title>
+
+<style>
+:root{
+  --bg:#050505;
+  --bg2:#0b0d11;
+  --panel:#11151c;
+  --panel2:#0c1016;
+  --line:#2a2f38;
+  --line2:#596270;
+  --silver:#e3e8ef;
+  --silver2:#aeb7c4;
+  --silver3:#cfd6df;
+  --text:#f7f9fc;
+  --shadow:0 20px 60px rgba(0,0,0,.60);
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  font-family:Arial,Helvetica,sans-serif;
+}
+
+html,body{
+  width:100%;
+  height:100%;
+}
+
+body{
+  background:
+    radial-gradient(circle at top, rgba(255,255,255,.05), transparent 35%),
+    linear-gradient(180deg,#0d1014,#050505 60%);
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  overflow:hidden;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.035), transparent 22%),
+    radial-gradient(circle at 80% 80%, rgba(255,255,255,.02), transparent 18%);
+  pointer-events:none;
+}
+
+.wrapper{
+  width:min(420px, calc(100vw - 32px));
+  position:relative;
+  z-index:2;
+}
+
+.brand{
+  text-align:center;
+  margin-bottom:28px;
+}
+
+.logo-wrap{
+  width:110px;
+  height:110px;
+  margin:0 auto 14px auto;
+  position:relative;
+  display:grid;
+  place-items:center;
+}
+
+.logo-wrap::before{
+  content:"";
+  position:absolute;
+  inset:-8px;
+  border-radius:50%;
+  background:
+    conic-gradient(
+      from 0deg,
+      rgba(255,255,255,0) 0deg,
+      rgba(255,255,255,.10) 36deg,
+      rgba(240,244,248,.72) 54deg,
+      rgba(255,255,255,.14) 72deg,
+      rgba(255,255,255,0) 104deg,
+      rgba(255,255,255,0) 360deg
+    );
+  filter:blur(1px);
+  animation:spinReflection 3.4s linear infinite;
+  opacity:.95;
+}
+
+.logo-wrap::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:
+    0 0 18px rgba(214,221,230,.12),
+    0 0 30px rgba(255,255,255,.05);
+}
+
+.logo{
+  width:74px;
+  height:74px;
+  margin:auto;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  z-index:2;
+
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,.12), transparent 32%),
+    linear-gradient(180deg,#1b1f25,#0e1014);
+  border:2px solid var(--silver3);
+
+  color:var(--silver);
+  font-weight:900;
+  font-size:24px;
+  letter-spacing:.16em;
+  text-indent:.16em;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 -10px 18px rgba(0,0,0,.35),
+    0 10px 30px rgba(0,0,0,.55),
+    0 0 16px rgba(255,255,255,.06);
+}
+
+.brand h1{
+  font-size:16px;
+  letter-spacing:.18em;
+  color:var(--silver);
+  margin-bottom:6px;
+}
+
+.brand p{
+  font-size:12px;
+  color:var(--silver2);
+  letter-spacing:.04em;
+}
+
+.box{
+  background:linear-gradient(180deg,rgba(20,24,31,.96),rgba(11,14,19,.96));
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:34px 28px 24px;
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(10px);
+}
+
+.box-head{
+  text-align:center;
+  margin-bottom:22px;
+}
+
+.box-head h2{
+  font-size:20px;
+  color:var(--text);
+  margin-bottom:6px;
+}
+
+.box-head span{
+  font-size:12px;
+  color:var(--silver2);
+}
+
+.field{
+  margin-bottom:16px;
+}
+
+.field label{
+  display:block;
+  font-size:12px;
+  color:var(--silver2);
+  margin-bottom:7px;
+}
+
+input{
+  width:100%;
+  padding:13px 14px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:linear-gradient(180deg,#0f1318,#0a0d12);
+  color:var(--text);
+  outline:none;
+  transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+input::placeholder{
+  color:#7f8997;
+}
+
+input:focus{
+  border-color:#cfd6df;
+  box-shadow:0 0 0 3px rgba(223,229,236,.08);
+}
+
+button{
+  width:100%;
+  min-height:48px;
+  padding:12px 16px;
+  border-radius:14px;
+  border:1px solid #d9dfe7;
+  background:linear-gradient(180deg,#e5eaf0,#c7cfd9);
+  color:#000;
+  font-weight:900;
+  letter-spacing:.04em;
+  cursor:pointer;
+  box-shadow:
+    0 12px 26px rgba(0,0,0,.32),
+    inset 0 1px 0 rgba(255,255,255,.7);
+  transition:transform .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+
+button:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.02);
+}
+
+button:active{
+  transform:scale(.96);
+  filter:brightness(.93);
+  box-shadow:
+    0 4px 12px rgba(0,0,0,.30),
+    inset 0 3px 10px rgba(0,0,0,.18);
+}
+
+.msg{
+  min-height:18px;
+  margin-top:14px;
+  text-align:center;
+  font-size:13px;
+  color:var(--silver2);
+}
+
+.footer{
+  margin-top:18px;
+  text-align:center;
+  font-size:11px;
+  color:#78818d;
+  letter-spacing:.04em;
+}
+
+@keyframes spinReflection{
+  from{ transform:rotate(0deg); }
+  to{ transform:rotate(360deg); }
+}
+
+@media (max-width:480px){
+  .box{
+    padding:28px 20px 20px;
+  }
+  .logo-wrap{
+    width:98px;
+    height:98px;
+  }
+  .logo{
+    width:68px;
+    height:68px;
+    font-size:22px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+
+  <div class="brand">
+    <div class="logo-wrap">
+      <div class="logo">RM</div>
+    </div>
+    <h1>REALMETROPOLIS</h1>
+    <p>Painel Administrativo Premium</p>
+  </div>
+
+  <div class="box">
+    <div class="box-head">
+      <h2>Admin Login</h2>
+      <span>Acesso reservado ao AdminMaster</span>
+    </div>
+
+    <div class="field">
+      <label>Utilizador</label>
+      <input id="user" placeholder="Administrador" onkeydown="if(event.key==='Enter')login()">
+    </div>
+
+    <div class="field">
+      <label>Senha</label>
+      <input id="pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    </div>
+
+    <button onclick="login()">Entrar</button>
+
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <div class="footer">
+    REALMETROPOLIS © Sistema Administrativo
+  </div>
+</div>
+
+<script>
+async function login(){
+  const usuario = document.getElementById("user").value;
+  const senha = document.getElementById("pass").value;
+  const msg = document.getElementById("msg");
+
+  msg.innerText = "A autenticar...";
+
+  try{
+    const res = await fetch("/api/admin/login",{
+      method:"POST",
+      credentials:"include",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        usuario,
+        senha
+      })
+    });
+
+    const data = await res.json();
+
+    if(!res.ok){
+      msg.innerText = data?.message || "Credenciais inválidas";
+      return;
+    }
+
+    msg.innerText = "Login OK";
+
+    // Passar token via URL para o admin-gestao/master o capturar
+    const tok = data?.token || "";
+    const params = new URLSearchParams(location.search);
+    const next = params.get("next") || "/admin-master.html";
+    setTimeout(()=>{
+      location.href = next + (next.includes("?") ? "&" : "?") + "_atok=" + encodeURIComponent(tok);
+    },300);
+
+  }catch(e){
+    msg.innerText="Erro ligação servidor";
+  }
+}
+</script>
+
+</body>
+</html>

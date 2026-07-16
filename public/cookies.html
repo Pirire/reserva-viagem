@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>REALMETROPOLIS — Política de Cookies</title>
+<style>
+  :root{
+    --bg:#050505;--panel:#0d0f12;--silver:#d9dde3;--silver-2:#b8c0ca;--silver-3:#8b95a2;
+    --line:#2c323a;--line-2:#5f6874;--ok:#1cd68e;--warn:#efab51;
+    --shadow:0 22px 50px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,Arial,system-ui,sans-serif}
+  html,body{background:radial-gradient(circle at top,#111319 0%,#070708 38%,#040404 100%);color:var(--silver);min-height:100%}
+  body{padding:28px}
+  .shell{max-width:820px;margin:0 auto}
+  .card{background:linear-gradient(180deg,rgba(20,23,28,.98),rgba(10,11,14,.98));border:1px solid var(--line-2);border-radius:22px;box-shadow:var(--shadow);padding:32px 36px 44px}
+  h1{font-size:24px;font-weight:900;color:#eef2f7;margin-bottom:6px}
+  .sub{color:var(--silver-3);font-size:13px;margin-bottom:28px}
+  h2{font-size:16px;font-weight:800;color:#fff;margin:28px 0 10px;border-top:1px solid var(--line);padding-top:20px}
+  h2:first-of-type{border-top:none;padding-top:0;margin-top:8px}
+  p,li{font-size:13.5px;line-height:1.7;color:var(--silver-2)}
+  ul{padding-left:20px;margin:8px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th,td{padding:9px 10px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:#fff;background:rgba(255,255,255,.04);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  td{color:var(--silver-2)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.03em}
+  .b-essencial{background:rgba(28,214,142,.12);color:var(--ok)}
+  .b-funcional{background:rgba(91,155,247,.12);color:#9ec5fe}
+  .b-analitico{background:rgba(239,171,81,.12);color:var(--warn)}
+  .placeholder{color:#ffb4b4}
+  footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--silver-3)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="card">
+    <h1>Política de Cookies</h1>
+    <div class="sub">REALMETROPOLIS LDA · Última atualização: <span class="placeholder">[DATA]</span></div>
+
+    <h2>1. O que são cookies e tecnologias semelhantes</h2>
+    <p>Um cookie é um pequeno ficheiro de texto guardado pelo seu navegador quando visita o nosso site ou usa a nossa aplicação. Para além de cookies, usamos também armazenamento local do navegador (<i>localStorage</i>) e tokens de sessão, com finalidades equivalentes — referimo-nos a todos em conjunto como "cookies" nesta política.</p>
+
+    <h2>2. Que cookies usamos e para quê</h2>
+    <p>O REALMETROPOLIS é uma plataforma de reservas e transporte com várias áreas — cliente, motorista, gestor de frota, validador e operador de segurança. Cada uma usa cookies de sessão essenciais ao funcionamento, sem os quais não é possível iniciar sessão nem fazer reservas.</p>
+    <table>
+      <tr><th>Cookie / Tecnologia</th><th>Tipo</th><th>Finalidade</th><th>Duração</th></tr>
+      <tr>
+        <td><code>rm_cliente_token</code></td>
+        <td><span class="badge b-essencial">Essencial</span></td>
+        <td>Mantém a sua sessão de cliente para aceder às suas reservas e perfil.</td>
+        <td>Sessão / até logout</td>
+      </tr>
+      <tr>
+        <td><code>rm_motorista_token</code></td>
+        <td><span class="badge b-essencial">Essencial</span></td>
+        <td>Mantém a sessão do motorista, necessária para receber e gerir viagens.</td>
+        <td>Sessão / até logout</td>
+      </tr>
+      <tr>
+        <td><code>rm_colaborador_token</code> / <code>rm_parceiro_token</code></td>
+        <td><span class="badge b-essencial">Essencial</span></td>
+        <td>Sessão de gestores de frota e empresas parceiras no registo de veículos/motoristas.</td>
+        <td>Sessão / até logout</td>
+      </tr>
+      <tr>
+        <td><code>admin_token</code></td>
+        <td><span class="badge b-essencial">Essencial</span></td>
+        <td>Sessão da equipa administrativa e de validação de documentos.</td>
+        <td>Sessão / até logout</td>
+      </tr>
+      <tr>
+        <td>Preferências de mapa/idioma (armazenamento local)</td>
+        <td><span class="badge b-funcional">Funcional</span></td>
+        <td>Recorda escolhas como a app de navegação preferida ou veículo recente.</td>
+        <td>Até ser limpo manualmente</td>
+      </tr>
+      <tr>
+        <td>Métricas de utilização <span class="placeholder">[se aplicável — confirmar]</span></td>
+        <td><span class="badge b-analitico">Analítico</span></td>
+        <td>Compreender como o site é utilizado, para melhorar a experiência.</td>
+        <td><span class="placeholder">[a definir]</span></td>
+      </tr>
+    </table>
+    <p><b>Não utilizamos cookies de publicidade ou de redes sociais de terceiros</b> (ex: Facebook, Instagram) para criar perfis ou exibir anúncios. Se isto vier a mudar, esta política será atualizada antes de qualquer cookie desse tipo ser ativado.</p>
+
+    <h2>3. Cookies essenciais não pedem consentimento</h2>
+    <p>Os cookies de sessão (<code>rm_*_token</code>, <code>admin_token</code>) são estritamente necessários para que o serviço funcione — sem eles não é possível autenticar-se nem fazer uma reserva — por isso são colocados sem necessitar do seu consentimento prévio, nos termos da Diretiva ePrivacy e do RGPD. Cookies funcionais ou analíticos (se vierem a ser usados) pedirão o seu consentimento explícito antes de serem ativados.</p>
+
+    <h2>4. Como gerir os cookies</h2>
+    <p>Pode gerir ou eliminar cookies através das definições do seu navegador. Note que, ao desativar os cookies essenciais, não conseguirá iniciar sessão nem efetuar reservas na plataforma.</p>
+
+    <h2>5. Contacto</h2>
+    <p>Para questões sobre esta Política de Cookies, contacte-nos através de <span class="placeholder">[email de contacto]</span>.</p>
+
+    <footer>
+      REALMETROPOLIS LDA · NIF <span class="placeholder">[NIF]</span> · <span class="placeholder">[endereço da sede]</span><br>
+      Esta política deve ser lida em conjunto com a nossa <a href="/privacidade.html" style="color:#9ec5fe">Política de Privacidade e Proteção de Dados</a>.
+    </footer>
+  </div>
+</div>
+</body>
+</html>

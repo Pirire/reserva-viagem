@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>REALMETROPOLIS — Renovar Documento</title>
+  <style>
+    :root{
+      --cobre:#b87333;--cobre2:#d39a57;--fundo:#070707;
+      --painel:rgba(184,115,51,0.10);--borda:rgba(184,115,51,0.22);
+      --texto:#f2f2f2;--muted:rgba(255,255,255,0.72);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial}
+    body{background:var(--fundo);color:var(--texto);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;}
+    .card{width:min(720px,96vw);background:var(--painel);border:1px solid var(--borda);border-radius:18px;padding:16px;}
+    h1{color:var(--cobre2);font-size:18px;margin-bottom:8px;}
+    .muted{color:var(--muted);font-size:13px;margin-bottom:12px;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;}
+    label{display:block;margin-top:10px;color:var(--muted);font-size:13px;}
+    input,select{width:100%;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,0.55);border:1px solid rgba(184,115,51,0.28);color:var(--texto);outline:none;}
+    .btn{margin-top:14px;padding:10px 14px;border-radius:14px;border:1px solid var(--borda);background:transparent;color:var(--cobre2);font-weight:900;cursor:pointer;}
+    .btn.primary{background:var(--cobre);color:#000;border-color:var(--cobre);}
+    .msg{margin-top:12px;padding:10px;border-radius:12px;border:1px solid rgba(184,115,51,0.14);background:rgba(255,255,255,0.06);white-space:pre-wrap;}
+    .kv{margin-top:6px;color:var(--muted);font-size:13px;word-break:break-all;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Renovar Documento</h1>
+    <div class="muted">Envie o ficheiro atualizado e indique a nova validade.</div>
+
+    <div class="kv" id="info"></div>
+
+    <form id="f">
+      <label>Tipo</label>
+      <select id="tipo" required>
+        <option value="motorista">Motorista</option>
+        <option value="veiculo">Veículo</option>
+      </select>
+
+      <label>ID</label>
+      <input id="id" required placeholder="ID do registo" />
+
+      <label>Documento (chave)</label>
+      <input id="doc" required placeholder="Ex: cc, cartaConducao, tvde, seguro..." />
+
+      <label>Nova validade</label>
+      <input id="validade" type="date" required />
+
+      <label>Ficheiro</label>
+      <input id="file" type="file" required />
+
+      <button class="btn primary" id="btn">ENVIAR</button>
+    </form>
+
+    <div class="msg" id="msg"></div>
+  </div>
+
+<script>
+  const msg = (t)=>document.getElementById("msg").textContent=t;
+
+  const qs = new URLSearchParams(location.search);
+  const tipo = qs.get("tipo") || "motorista";
+  const id = qs.get("id") || "";
+  const doc = qs.get("doc") || "";
+
+  document.getElementById("tipo").value = tipo;
+  document.getElementById("id").value = id;
+  document.getElementById("doc").value = doc;
+
+  document.getElementById("info").textContent =
+    `tipo=${tipo} | id=${id} | doc=${doc}`;
+
+  document.getElementById("f").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    msg("A enviar...");
+
+    const fd = new FormData();
+    fd.append("tipo", document.getElementById("tipo").value);
+    fd.append("id", document.getElementById("id").value.trim());
+    fd.append("docKey", document.getElementById("doc").value.trim());
+    fd.append("validade", document.getElementById("validade").value);
+    fd.append("file", document.getElementById("file").files[0]);
+
+    const r = await fetch("/admin/documentos/renovar", {
+      method:"POST",
+      credentials:"include",
+      body: fd
+    }).catch(()=>null);
+
+    if(!r){ msg("❌ Sem ligação ao servidor."); return; }
+    const t = await r.text().catch(()=> "");
+    msg(t);
+
+    if(r.ok){
+      alert("✅ Documento renovado!");
+    }
+  });
+</script>
+</body>
+</html>

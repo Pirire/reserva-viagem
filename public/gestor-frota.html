@@ -1,0 +1,2547 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestor de Frota | REALMETROPOLIS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root{
+      --bg:#050505;
+      --panel:#0b0b0d;
+      --panel2:#101114;
+      --line:rgba(217,221,227,.16);
+      --line2:rgba(217,221,227,.34);
+      --silver:#d9dde3;
+      --silver2:#b7bec7;
+      --text:#f3f4f6;
+      --muted:rgba(217,221,227,.72);
+      --danger:#ff6b6b;
+      --success:#19d68b;
+      --warn:#ff9f43;
+      --info:#7aa2ff;
+      --shadow:0 14px 36px rgba(0,0,0,.48);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,system-ui,-apple-system,Segoe UI,Roboto}
+    body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex}
+
+    #menu{
+      width:260px;
+      background:rgba(8,8,10,.98);
+      padding:12px;
+      border-right:1px solid var(--line2);
+      box-shadow:var(--shadow);
+      z-index:10;
+      overflow:auto;
+    }
+
+    .menu-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:10px;
+      gap:8px;
+    }
+
+    .menu-title{
+      color:#fff;
+      font-size:14px;
+      font-weight:900;
+      letter-spacing:.04em;
+    }
+
+    .btn-registos,
+    .btn-convite,
+    .menu-grid button,
+    .registos-box button,
+    .btn,
+    .select-chip{
+      transition:.18s ease;
+    }
+
+    .btn-registos{
+      background:linear-gradient(180deg,#181a1f,#0d0e12);
+      border:1px solid var(--line2);
+      color:var(--silver);
+      font-size:11px;
+      padding:8px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:900;
+    }
+
+    .btn-convite{
+      width:100%;
+      margin:8px 0 10px;
+      padding:11px 10px;
+      border:none;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:12px;
+      font-weight:900;
+      color:#000;
+      background:linear-gradient(180deg,#e1e6ec,#b3bcc6);
+      border:1px solid #fff;
+      box-shadow:0 0 18px rgba(255,255,255,0.12);
+    }
+
+    .btn-convite:hover,
+    .btn-registos:hover,
+    .menu-grid button:hover,
+    .registos-box button:hover,
+    .btn:hover,
+    .select-chip:hover{
+      transform:translateY(-1px);
+      filter:brightness(1.05);
+    }
+
+    .registos-box{
+      display:none;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-bottom:10px;
+    }
+
+    .registos-box button,
+    .menu-grid button{
+      padding:10px 8px;
+      font-size:11px;
+      border:none;
+      border-radius:10px;
+      background:linear-gradient(180deg,#17181c,#0f1013);
+      border:1px solid rgba(255,255,255,.10);
+      color:#fff;
+      cursor:pointer;
+      font-weight:900;
+    }
+
+    .menu-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:8px;
+    }
+
+    .menu-grid button.active{
+      background:linear-gradient(180deg,#dfe4ea,#b6bec8);
+      color:#000;
+      border-color:#fff;
+    }
+
+    #content{flex:1;position:relative;overflow:hidden}
+    .section{display:none;height:100%}
+    .section.active{display:block}
+    .box{padding:15px;height:100%;overflow:auto;background:linear-gradient(180deg,#0c0d10,#111318)}
+
+    #mapaMotoristas{height:100%;width:100%}
+
+    input,select,textarea{
+      width:100%;
+      margin-bottom:8px;
+      padding:10px 12px;
+      border:none;
+      border-radius:10px;
+      background:#181b21;
+      color:#fff;
+      border:1px solid rgba(255,255,255,.10);
+      font-size:12px;
+      outline:none;
+    }
+
+    textarea{min-height:100px;resize:vertical}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #444;padding:8px;font-size:13px}
+    th{background:#22272f}
+
+    .status{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.04em;
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .status.pending{background:rgba(255,159,67,.12);color:#ffd1a1}
+    .status.approved{background:rgba(25,214,139,.12);color:#b9ffd8}
+    .status.rejected{background:rgba(255,107,107,.12);color:#ffc0c0}
+    .status.resend{background:rgba(122,162,255,.12);color:#d7e4ff}
+
+    .modal-overlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.72);
+      backdrop-filter: blur(8px);
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      padding:16px;
+      overflow:auto;
+    }
+    .modal-overlay.active{ display:flex; }
+
+    .modal-box{
+      width:min(1120px, 96vw);
+      background:rgba(10,10,12,.98);
+      border:1px solid var(--line2);
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    .modal-title{
+      color:#fff;
+      font-weight:900;
+      margin-bottom:10px;
+      font-size:18px;
+    }
+
+    .modal-sub{
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:10px;
+      line-height:1.45;
+    }
+
+    .modal-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .modal-row input{flex:1;margin:0}
+
+    .modal-actions{
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+
+    .modal-actions button{
+      border:none;
+      padding:11px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:900;
+    }
+
+    .btn-dark{ background:#21242b; color:#fff; border:1px solid rgba(255,255,255,.1);}
+    .btn-gold{ background:linear-gradient(180deg,#e1e6ec,#b3bcc6); color:#000; border:1px solid #fff; }
+    .btn-blue{ background:linear-gradient(180deg,#9ab6ff,#6d8fe7); color:#000; border:1px solid #d9e4ff; }
+
+    .invite-fields{
+      margin-top:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height:42vh;
+      overflow:auto;
+      padding-right:4px;
+    }
+
+    .invite-links{
+      margin-top:10px;
+      padding:12px;
+      border-radius:12px;
+      background:#111318;
+      border:1px solid rgba(255,255,255,.08);
+      font-size:12px;
+      line-height:1.45;
+      color:#ddd;
+      display:none;
+    }
+
+    .small-hint{
+      color:#bbb;
+      font-size:12px;
+      margin-top:8px;
+      line-height:1.45;
+    }
+
+    .hr{
+      margin:10px 0;
+      border:none;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+
+    .form-grid-3{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:8px;
+      margin-top:8px;
+    }
+
+    .inline-field{display:flex;flex-direction:column}
+
+    .selection-row{
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0,1fr));
+      gap:8px;
+      margin-top:6px;
+    }
+
+    .select-chip{
+      min-height:38px;
+      border-radius:12px;
+      border:1px solid rgba(217,221,227,.14);
+      background:linear-gradient(180deg,#121318,#0b0c10);
+      color:var(--silver);
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.04em;
+      cursor:pointer;
+      padding:0 8px;
+    }
+
+    .select-chip.active{
+      background:linear-gradient(180deg,#dfe4ea,#b6bec8);
+      color:#000;
+      border-color:#eef2f7;
+    }
+
+    .select-chip.obrigatorio {
+      cursor: not-allowed;
+      opacity: 0.95;
+      position: relative;
+      border-color: rgba(196,201,212,.5) !important;
+      background: linear-gradient(180deg,#c4c9d4,#8b95a2) !important;
+      color: #050507 !important;
+    }
+    .select-chip.obrigatorio::after {
+      content: "✓";
+      position: absolute;
+      top: -6px;
+      right: -4px;
+      background: #050507;
+      color: #c4c9d4;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #c4c9d4;
+    }
+
+    .doc-table{
+      margin-top:8px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .doc-line{
+      display:grid;
+      grid-template-columns:160px 1.1fr 1fr 150px 1.2fr;
+      gap:8px;
+      align-items:end;
+    }
+
+    .doc-box{display:flex;flex-direction:column}
+
+    .req{
+      color:#ff6b6b;
+      font-weight:900;
+      margin-left:4px;
+    }
+
+    .helper-note{
+      margin-top:8px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.45;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:16px;
+      transform:translateX(-50%);
+      background:rgba(12,12,14,.97);
+      border:1px solid var(--line2);
+      padding:10px 12px;
+      border-radius:12px;
+      z-index:999;
+      display:none;
+      max-width:92vw;
+      white-space:pre-wrap;
+      box-shadow:var(--shadow);
+    }
+
+    .records-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+
+    .records-title{
+      font-size:18px;
+      font-weight:900;
+      color:#fff;
+    }
+
+    .records-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .records-search{
+      min-width:260px;
+      margin:0;
+    }
+
+    .records-toolbar{
+      display:flex;
+      gap:8px;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+    }
+
+    .toolbar-chip{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg,#17181c,#0f1013);
+      color:#fff;
+      font-size:11px;
+      font-weight:900;
+      cursor:pointer;
+    }
+
+    .toolbar-chip.active{
+      background:linear-gradient(180deg,#dfe4ea,#b6bec8);
+      color:#000;
+      border-color:#fff;
+    }
+
+    .records-grid{
+      display:grid;
+      gap:10px;
+    }
+
+    /* ═══ ABAS Motoristas / Veículos ═══ */
+    .docs-tabs{
+      display:flex;
+      gap:6px;
+      margin-bottom:14px;
+      padding:4px;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:12px;
+    }
+    .docs-tab{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:11px 14px;
+      background:transparent;
+      color:var(--muted);
+      border:1px solid transparent;
+      border-radius:9px;
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:.08em;
+      cursor:pointer;
+      transition:all .15s ease;
+      font-family:inherit;
+    }
+    .docs-tab:hover{
+      color:#fff;
+      background:rgba(255,255,255,.04);
+    }
+    .docs-tab.active{
+      background:linear-gradient(180deg,#dfe4ea,#b6bec8);
+      color:#000;
+      border-color:rgba(255,255,255,.15);
+      box-shadow:0 4px 12px rgba(0,0,0,.35);
+    }
+    .docs-tab-icon{
+      font-size:14px;
+      opacity:.85;
+    }
+    .docs-tab-count{
+      display:inline-block;
+      min-width:22px;
+      padding:2px 7px;
+      background:rgba(0,0,0,.35);
+      color:#c4c9d4;
+      border-radius:10px;
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:0;
+    }
+    .docs-tab.active .docs-tab-count{
+      background:rgba(0,0,0,.75);
+      color:#dfe4ea;
+    }
+
+    /* ═══ Cartão colapsável ═══ */
+    .submission-card{
+      border:1px solid rgba(255,255,255,.10);
+      background:linear-gradient(180deg,#14161b,#0d0f13);
+      border-radius:14px;
+      overflow:hidden;
+      box-shadow:var(--shadow);
+      transition:border-color .15s ease, transform .15s ease;
+    }
+    .submission-card.is-open{
+      border-color:rgba(196,201,212,.35);
+    }
+    .submission-card:hover:not(.is-open){
+      border-color:rgba(255,255,255,.18);
+    }
+
+    .submission-head{
+      padding:14px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      cursor:pointer;
+      user-select:none;
+      background:rgba(255,255,255,.02);
+      transition:background .15s ease;
+    }
+    .submission-head:hover{
+      background:rgba(255,255,255,.04);
+    }
+    .submission-head-left{
+      flex:1;
+      min-width:0;
+    }
+    .submission-title{
+      font-size:15px;
+      font-weight:900;
+      color:#fff;
+      margin-bottom:3px;
+      letter-spacing:.01em;
+    }
+    .submission-ref{
+      color:var(--muted);
+      font-size:12px;
+      letter-spacing:.02em;
+    }
+    .submission-head-right{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-shrink:0;
+    }
+    .submission-caret{
+      color:#8b95a2;
+      font-size:11px;
+      transition:transform .18s ease;
+      display:inline-block;
+    }
+    .submission-card.is-open .submission-caret{
+      transform:rotate(180deg);
+    }
+
+    /* Corpo do cartão só aparece quando .is-open */
+    .submission-body{
+      max-height:0;
+      overflow:hidden;
+      transition:max-height .3s ease, padding .2s ease;
+      padding:0 14px;
+    }
+    .submission-card.is-open .submission-body{
+      max-height:2000px;
+      padding:14px;
+      border-top:1px solid rgba(255,255,255,.06);
+    }
+    .submission-details{
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:12px;
+      display:grid;
+      gap:4px;
+    }
+    .submission-details div{ line-height:1.5 }
+
+    .summary-box{
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.02);
+      border-radius:8px;
+      font-size:12.5px;
+      color:var(--muted);
+      margin-bottom:10px;
+    }
+    .docs-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+      gap:8px;
+    }
+    .doc-card{
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.02);
+      border-radius:10px;
+      padding:10px 12px;
+    }
+    .doc-card-title{
+      font-weight:800;
+      color:#fff;
+      font-size:12px;
+      letter-spacing:.02em;
+      margin-bottom:4px;
+    }
+    .doc-card-sub{
+      color:var(--muted);
+      font-size:11.5px;
+      line-height:1.5;
+    }
+    .doc-card-actions{
+      margin-top:8px;
+    }
+    .mini-btn{
+      display:inline-block;
+      padding:6px 12px;
+      background:#050507;
+      color:#c4c9d4;
+      border:1px solid rgba(196,201,212,.4);
+      border-radius:7px;
+      font-weight:800;
+      font-size:10px;
+      letter-spacing:.06em;
+      text-decoration:none;
+      cursor:pointer;
+      text-transform:uppercase;
+    }
+    .mini-btn:hover{ background:#0b0c0f }
+
+    /* Estado por trás do nome, na cabeceira */
+    .status{
+      display:inline-block;
+      padding:5px 11px;
+      border-radius:7px;
+      font-size:10.5px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+    .status.st-validado{
+      background:rgba(42,166,95,.15);
+      color:#7fffc4;
+      border:1px solid rgba(42,166,95,.4);
+    }
+    .status.st-pendente{
+      background:rgba(139,149,162,.15);
+      color:#c4c9d4;
+      border:1px solid rgba(196,201,212,.35);
+    }
+    .status.st-pendente_novo_envio{
+      background:rgba(255,193,7,.12);
+      color:#ffcc42;
+      border:1px solid rgba(255,193,7,.35);
+    }
+    .status.st-recusado{
+      background:rgba(255,80,80,.12);
+      color:#ff8888;
+      border:1px solid rgba(255,80,80,.35);
+    }
+
+    .empty-state{
+      padding:32px 16px;
+      text-align:center;
+      color:var(--muted);
+      background:rgba(255,255,255,.02);
+      border:1px dashed rgba(255,255,255,.12);
+      border-radius:12px;
+    }
+
+    .loading-state{
+      padding:18px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      background:rgba(255,255,255,.03);
+      color:var(--muted);
+    }
+
+    @media(max-width:1100px){
+      .doc-line{grid-template-columns:1fr 1fr}
+      .form-grid-3{grid-template-columns:1fr}
+      .selection-row{grid-template-columns:repeat(3, minmax(0,1fr))}
+      .docs-grid{grid-template-columns:1fr}
+    }
+
+    @media(max-width:780px){
+      body{flex-direction:column}
+      #menu{width:100%;border-right:none;border-bottom:1px solid var(--line2)}
+      .doc-line{grid-template-columns:1fr}
+      .selection-row{grid-template-columns:1fr 1fr}
+      .records-search{min-width:100%}
+    }
+
+    /* ── Faturação ── */
+    .fat-stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;}
+    .fat-stat-val{font-size:20px;font-weight:900;color:#fff;}
+    .fat-stat-lbl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+    .fat-motorista-chip{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;transition:.15s;font-size:12px;}
+    .fat-motorista-chip:hover{border-color:var(--info);}
+    .fat-motorista-chip.selected{border-color:var(--info);background:rgba(122,162,255,.08);}
+    .fat-motorista-chip .chip-avatar{width:28px;height:28px;border-radius:50%;background:rgba(122,162,255,.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--info);flex-shrink:0;}
+    .fat-motorista-chip .chip-nome{font-weight:700;color:#fff;}
+    .fat-motorista-chip .chip-valor{font-size:11px;color:var(--success);font-weight:800;}
+    .fat-dia-row td{padding:9px 10px;border-bottom:1px solid var(--line);}
+    .fat-dia-row:hover td{background:rgba(255,255,255,.025);}
+    .fat-dia-row td:first-child{color:#fff;font-weight:700;}
+    .fat-dia-row td:not(:first-child){text-align:right;color:var(--muted);}
+    .fat-dia-row td:last-child{color:var(--success);font-weight:800;}
+  </style>
+</head>
+
+<body>
+  <div id="menu">
+    <div class="menu-top">
+      <span class="menu-title">Gestor Frota</span>
+      <button class="btn-registos" onclick="toggleRegistos()">REGISTOS</button>
+      <button id="btnInstalarApp" title="Instalar como aplicação" style="background:linear-gradient(180deg,#181a1f,#0d0e12);border:1px solid rgba(31,201,125,.35);color:rgba(31,201,125,.9);font-size:11px;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:4px"><svg width="11" height="13" viewBox="0 0 11 13" fill="none" style="margin-right:5px;vertical-align:middle"><path d="M5.5 0v8.5M2 6l3.5 3.5L9 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M0.5 11.5h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>APP</button>
+    </div>
+
+    <button class="btn-convite" id="btnEnviarConvite" type="button">ENVIAR CONVITE</button>
+
+    <div id="registosBox" class="registos-box">
+      <button onclick="openDriverModal()">Motorista</button>
+      <button onclick="openVehicleModal()">Veículo</button>
+    </div>
+
+    <div class="menu-grid">
+      <button onclick="showSection('mapa', this)" class="active">Mapa</button>
+      <button onclick="showSection('documentos', this)">Docs</button>
+      <button onclick="showSection('faturacao', this)">Faturação</button>
+      <button onclick="showSection('ganhos', this)">Ganhos</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <div id="mapa" class="section active">
+      <div id="mapaMotoristas"></div>
+    </div>
+
+    <div id="documentos" class="section box">
+      <div class="records-header">
+        <div>
+          <div class="records-title">Documentos enviados para validação</div>
+          <div class="small-hint">Acompanhe estados, documentos com novo envio e histórico da sua frota.</div>
+        </div>
+        <div class="records-actions">
+          <input id="docsSearch" class="records-search" type="text" placeholder="Pesquisar por nome, email, matrícula, estado..." />
+          <button class="btn btn-blue" type="button" onclick="loadValidationRecords()">ATUALIZAR</button>
+        </div>
+      </div>
+
+      <!-- ABAS: Motoristas / Veículos ────────────────────────────
+           Separa visualmente motoristas de veículos. O gestor
+           só vê um tipo de cada vez, filtros por estado aplicam
+           apenas ao tipo activo. Padrão B2B profissional. -->
+      <div class="docs-tabs">
+        <button class="docs-tab active" data-doc-tab="driver"  onclick="setDocsTab('driver', this)">
+          <span class="docs-tab-icon">👤</span>
+          <span>MOTORISTAS</span>
+          <span class="docs-tab-count" id="docsTabCountDriver">0</span>
+        </button>
+        <button class="docs-tab"        data-doc-tab="vehicle" onclick="setDocsTab('vehicle', this)">
+          <span class="docs-tab-icon">🚗</span>
+          <span>VEÍCULOS</span>
+          <span class="docs-tab-count" id="docsTabCountVehicle">0</span>
+        </button>
+      </div>
+
+      <div class="records-toolbar">
+        <button class="toolbar-chip active" data-doc-filter="all" onclick="setDocsFilter('all', this)">TODOS</button>
+        <button class="toolbar-chip" data-doc-filter="pendente" onclick="setDocsFilter('pendente', this)">PENDENTES</button>
+        <button class="toolbar-chip" data-doc-filter="validado" onclick="setDocsFilter('validado', this)">VALIDADOS</button>
+        <button class="toolbar-chip" data-doc-filter="pendente_novo_envio" onclick="setDocsFilter('pendente_novo_envio', this)">NOVO ENVIO</button>
+        <button class="toolbar-chip" data-doc-filter="recusado" onclick="setDocsFilter('recusado', this)">RECUSADOS</button>
+      </div>
+
+      <div id="docsStats" class="summary-box" style="margin-bottom:12px;">A carregar estado dos registos...</div>
+      <div id="validationRecords" class="records-grid"></div>
+    </div>
+
+    <div id="faturacao" class="section box">
+
+      <!-- CABEÇALHO -->
+      <div class="records-header">
+        <div>
+          <div class="records-title">Faturação da Frota</div>
+          <div class="small-hint">Seleccione a semana e o motorista para ver o detalhe diário.</div>
+        </div>
+        <div class="records-actions" style="gap:8px;flex-wrap:wrap">
+          <select id="fatSemana" class="records-search" style="width:auto;cursor:pointer"></select>
+          <button class="btn btn-blue" onclick="carregarFaturacao()">ATUALIZAR</button>
+          <button class="btn" style="background:linear-gradient(180deg,#c8a227,#a07c10);color:#fff" onclick="exportarPdfGestor()">⬇ PDF FROTA</button>
+        </div>
+      </div>
+
+      <!-- RESUMO SEMANAL DA FROTA -->
+      <div id="fatResumoFrota" class="summary-box" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px">
+        <div class="fat-stat"><div class="fat-stat-val" id="frs-total">—</div><div class="fat-stat-lbl">Total frota</div></div>
+        <div class="fat-stat"><div class="fat-stat-val" id="frs-viagens">—</div><div class="fat-stat-lbl">Viagens</div></div>
+        <div class="fat-stat"><div class="fat-stat-val" id="frs-horas">—</div><div class="fat-stat-lbl">Horas online</div></div>
+        <div class="fat-stat"><div class="fat-stat-val" id="frs-motoristas">—</div><div class="fat-stat-lbl">Motoristas activos</div></div>
+        <div class="fat-stat"><div class="fat-stat-val" id="frs-comissao">—</div><div class="fat-stat-lbl">Comissão gestor</div></div>
+        <div class="fat-stat"><div class="fat-stat-val" id="frs-pago" style="color:var(--success)">—</div><div class="fat-stat-lbl">Estado pagamento</div></div>
+      </div>
+
+      <!-- LISTA DE MOTORISTAS DA SEMANA -->
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--muted)">MOTORISTAS</span>
+        <span style="font-size:11px;color:var(--muted)" id="fatMotoristasCount"></span>
+      </div>
+      <div id="fatMotoristasLista" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px"></div>
+
+      <!-- DETALHE DIÁRIO DO MOTORISTA SELECCIONADO -->
+      <div id="fatDetalheWrap" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:14px;font-weight:900;color:#fff" id="fatDetalheNome">—</div>
+            <div style="font-size:12px;color:var(--muted)" id="fatDetalheEmail">—</div>
+          </div>
+          <button class="btn" style="background:linear-gradient(180deg,#c8a227,#a07c10);color:#fff;font-size:11px" onclick="exportarPdfMotorista()">⬇ PDF Individual</button>
+        </div>
+
+        <!-- Totais do motorista na semana -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px" id="fatDetalheTotais"></div>
+
+        <!-- Tabela diária -->
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px" id="fatTabelaDiaria">
+            <thead>
+              <tr style="border-bottom:1px solid var(--line2)">
+                <th style="text-align:left;padding:8px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.08em">DIA</th>
+                <th style="text-align:right;padding:8px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.08em">VIAGENS</th>
+                <th style="text-align:right;padding:8px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.08em">HORAS ONLINE</th>
+                <th style="text-align:right;padding:8px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.08em">KM</th>
+                <th style="text-align:right;padding:8px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.08em">FATURADO</th>
+                <th style="text-align:right;padding:8px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.08em">COMISSÃO</th>
+              </tr>
+            </thead>
+            <tbody id="fatTbodyDiario"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="fatMsg" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Seleccione a semana e clique em ATUALIZAR.</div>
+
+    </div>
+
+    <div id="ganhos" class="section box">
+      <div class="records-header">
+        <div>
+          <div class="records-title">Resumo de Ganhos</div>
+          <div class="small-hint">Resultado geral da sua actividade como gestor de frota.</div>
+        </div>
+        <div class="records-actions">
+          <button class="btn btn-blue" onclick="carregarGanhos()">ATUALIZAR</button>
+        </div>
+      </div>
+      <div id="ganhosContent" style="padding-top:8px">
+        <div class="summary-box" style="color:var(--muted);text-align:center">Clique em ATUALIZAR para carregar.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONVITES -->
+  <div class="modal-overlay" id="inviteModal">
+    <div class="modal-box" style="max-width:520px;">
+      <div class="modal-title">Enviar convites</div>
+
+      <div class="modal-row">
+        <input id="inviteQtd" type="number" min="1" max="50" placeholder="Quantidade de convites (ex: 3)">
+        <button class="btn-gold" id="btnGerarCampos" type="button">GERAR</button>
+      </div>
+
+      <div class="invite-fields" id="inviteFields"></div>
+
+      <div class="modal-actions">
+        <button class="btn-dark" id="btnFecharModal" type="button">FECHAR</button>
+        <button class="btn-gold" id="btnEnviarConvites" type="button" disabled>ENVIAR CONVITES</button>
+      </div>
+
+      <div class="small-hint">
+        Nesta versão, os convites são gerados como links para copiares e enviares manualmente.
+      </div>
+
+      <div class="invite-links" id="inviteLinks"></div>
+    </div>
+  </div>
+
+  <!-- MODAL MOTORISTA -->
+  <div id="modalDriver" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-title">Enviar motorista para validação</div>
+      <div class="modal-sub">
+        Este registo segue para validação com identificação do gestor da frota.
+      </div>
+
+      <div class="helper-note">
+        Campos obrigatórios: <b>Nome</b>, <b>Contacto</b>, <b>Email</b>, <b>NIF/CPF</b>, <b>Foto do Rosto</b>, <b>Carta de Condução (frente e verso)</b>, <b>Registo Criminal</b> e <b>Documento de Identificação + respetiva validade</b>. TVDE é opcional (se enviar, frente e verso).
+      </div>
+
+      <div class="form-grid-3">
+        <div class="inline-field">
+          <label>Nome <span class="req">*</span></label>
+          <input type="text" id="drvNome" />
+        </div>
+
+        <div class="inline-field">
+          <label>Contacto <span class="req">*</span></label>
+          <input type="text" id="drvContacto" />
+        </div>
+
+        <div class="inline-field">
+          <label>E-mail <span class="req">*</span></label>
+          <input type="email" id="drvEmail" />
+        </div>
+      </div>
+
+      <div class="form-grid-3" style="margin-top:10px">
+        <div class="inline-field">
+          <label>NIF / CPF <span class="req">*</span></label>
+          <input type="text" id="drvNif" placeholder="Ex.: 123456789 ou 123.456.789-00" />
+        </div>
+
+        <div class="inline-field">
+          <label>Endereço <span style="color:#8b95a2;font-weight:400">(opcional)</span></label>
+          <input type="text" id="drvEndereco" placeholder="Rua, número, cidade" />
+        </div>
+
+        <div class="inline-field">
+          <label>IBAN <span style="color:#8b95a2;font-weight:400">(opcional)</span></label>
+          <input type="text" id="drvIban" placeholder="PT50 0000 0000 0000 0000 0000 0" />
+        </div>
+      </div>
+
+      <label style="margin-top:10px;display:block;">Idiomas <span class="req">*</span></label>
+      <div class="selection-row" id="drvIdiomasButtons">
+        <button type="button" class="select-chip active obrigatorio" data-value="Português" data-required="true" title="Português é obrigatório">PORTUGUÊS</button>
+        <button type="button" class="select-chip" data-value="Inglês">INGLÊS</button>
+        <button type="button" class="select-chip" data-value="Espanhol">ESPANHOL</button>
+        <button type="button" class="select-chip" data-value="Francês">FRANCÊS</button>
+        <button type="button" class="select-chip" data-value="Alemão">ALEMÃO</button>
+      </div>
+      <div style="font-size:11px;color:#8b95a2;margin-top:4px;letter-spacing:.02em">
+        Português é obrigatório. Adicione outros idiomas que o motorista fale fluentemente.
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="doc-table">
+        <div class="doc-line">
+          <div class="doc-box">
+            <label>Documento</label>
+            <select id="drvIdDocType">
+              <option value="CC">Cartão do Cidadão</option>
+              <option value="TR">Título de Residência</option>
+            </select>
+          </div>
+          <div class="doc-box">
+            <label>Nome no documento <span class="req">*</span></label>
+            <input type="text" id="idDocNome" />
+          </div>
+          <div class="doc-box">
+            <label>Nº documento <span class="req">*</span></label>
+            <input type="text" id="idDocNumero" />
+          </div>
+          <div class="doc-box">
+            <label>Validade <span class="req">*</span></label>
+            <input type="date" id="v_idDoc" />
+          </div>
+          <div class="doc-box">
+            <label>Upload <span class="req">*</span></label>
+            <input type="file" id="f_idDoc" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box">
+            <label>Foto do Rosto <span class="req">*</span></label>
+            <input type="text" value="Sem número/sem validade" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Nome no documento</label>
+            <input type="text" value="N/A" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Nº documento</label>
+            <input type="text" value="N/A" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Validade</label>
+            <input type="text" value="N/A" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Upload</label>
+            <input type="file" id="f_fotoRosto" accept="image/*" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box">
+            <label>Carta de Condução <span class="req">*</span></label>
+            <input type="text" value="Documento" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Nome no documento <span class="req">*</span></label>
+            <input type="text" id="cartaNome" />
+          </div>
+          <div class="doc-box">
+            <label>Nº documento <span class="req">*</span></label>
+            <input type="text" id="cartaNumero" />
+          </div>
+          <div class="doc-box">
+            <label>Validade <span class="req">*</span></label>
+            <input type="date" id="v_cartaConducao" />
+          </div>
+          <div class="doc-box">
+            <label>Upload FRENTE <span class="req">*</span></label>
+            <input type="file" id="f_cartaConducao" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box">
+            <label>Carta de Condução (Verso) <span class="req">*</span></label>
+            <input type="text" value="Documento" readonly />
+          </div>
+          <div class="doc-box">
+            <label style="color:#8b95a2;font-weight:400">—</label>
+            <input type="text" value="Mesmo titular" readonly style="color:#8b95a2" />
+          </div>
+          <div class="doc-box">
+            <label style="color:#8b95a2;font-weight:400">—</label>
+            <input type="text" value="Mesmo número" readonly style="color:#8b95a2" />
+          </div>
+          <div class="doc-box">
+            <label style="color:#8b95a2;font-weight:400">—</label>
+            <input type="text" value="Mesma validade" readonly style="color:#8b95a2" />
+          </div>
+          <div class="doc-box">
+            <label>Upload VERSO <span class="req">*</span></label>
+            <input type="file" id="f_cartaConducaoVerso" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box">
+            <label>TVDE / IMTT <span style="color:#8b95a2;font-weight:400">(opcional)</span></label>
+            <input type="text" value="Documento" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Nome no documento</label>
+            <input type="text" id="tvdeNome" />
+          </div>
+          <div class="doc-box">
+            <label>Nº documento</label>
+            <input type="text" id="tvdeNumero" />
+          </div>
+          <div class="doc-box">
+            <label>Validade</label>
+            <input type="date" id="v_tvde" />
+          </div>
+          <div class="doc-box">
+            <label>Upload FRENTE</label>
+            <input type="file" id="f_tvde" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box">
+            <label>TVDE / IMTT (Verso) <span style="color:#8b95a2;font-weight:400">(se enviar frente)</span></label>
+            <input type="text" value="Documento" readonly />
+          </div>
+          <div class="doc-box">
+            <label style="color:#8b95a2;font-weight:400">—</label>
+            <input type="text" value="Mesmo titular" readonly style="color:#8b95a2" />
+          </div>
+          <div class="doc-box">
+            <label style="color:#8b95a2;font-weight:400">—</label>
+            <input type="text" value="Mesmo número" readonly style="color:#8b95a2" />
+          </div>
+          <div class="doc-box">
+            <label style="color:#8b95a2;font-weight:400">—</label>
+            <input type="text" value="Mesma validade" readonly style="color:#8b95a2" />
+          </div>
+          <div class="doc-box">
+            <label>Upload VERSO</label>
+            <input type="file" id="f_tvdeVerso" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box">
+            <label>Registo Criminal <span class="req">*</span></label>
+            <input type="text" value="Documento" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Nome no documento <span class="req">*</span></label>
+            <input type="text" id="rcNome" />
+          </div>
+          <div class="doc-box">
+            <label>Nº documento <span class="req">*</span></label>
+            <input type="text" id="rcNumero" />
+          </div>
+          <div class="doc-box">
+            <label>Validade <span class="req">*</span></label>
+            <input type="date" id="v_registoCriminal" />
+          </div>
+          <div class="doc-box">
+            <label>Upload <span class="req">*</span></label>
+            <input type="file" id="f_registoCriminal" accept="image/*,application/pdf" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-dark" type="button" onclick="closeDriverModal()">Cancelar</button>
+        <button id="btnSubmitDriver" class="btn-gold" type="button" onclick="submitDriverForValidation()">ENVIAR PARA VALIDAÇÃO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL VEICULO -->
+  <div id="modalVehicle" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-title">Enviar veículo para validação</div>
+      <div class="modal-sub">
+        Este registo segue para validação com identificação do gestor da frota.
+      </div>
+
+      <div class="form-grid-3">
+        <div class="inline-field">
+          <label>Marca <span class="req">*</span></label>
+          <input type="text" id="vehMarca" placeholder="Ex.: Mercedes" />
+        </div>
+        <div class="inline-field">
+          <label>Modelo <span class="req">*</span></label>
+          <input type="text" id="vehModelo" placeholder="Ex.: Classe E" />
+        </div>
+        <div class="inline-field">
+          <label>Ano <span class="req">*</span></label>
+          <input type="number" id="vehAno" min="1990" max="2030" placeholder="Ex.: 2023" />
+        </div>
+        <div class="inline-field">
+          <label>Matrícula <span class="req">*</span></label>
+          <input type="text" id="vehMatricula" placeholder="Ex.: AA-11-BB" />
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="doc-table">
+        <div class="doc-line">
+          <div class="doc-box" style="grid-column: span 2">
+            <label>Tipo de documento <span class="req">*</span></label>
+            <select id="duaTipo" style="width:100%;padding:9px 10px;background:#0f1013;border:1px solid rgba(255,255,255,.10);border-radius:8px;color:#fff;font-family:inherit;font-size:13px">
+              <option value="DUA">DUA (Documento Único Automóvel)</option>
+              <option value="DECLARACAO">Declaração de Utilização</option>
+            </select>
+          </div>
+          <div class="doc-box">
+            <label>Validade <span class="req">*</span></label>
+            <input type="date" id="v_dua" />
+          </div>
+          <div class="doc-box">
+            <label>Frente <span class="req">*</span></label>
+            <input type="file" id="f_dua" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box" style="grid-column: span 2">
+            <label style="color:#8b95a2;font-weight:600;letter-spacing:.02em">↳ Verso do documento <span class="req">*</span></label>
+            <input type="text" value="Anexar verso" readonly style="opacity:.5" />
+          </div>
+          <div class="doc-box">&nbsp;</div>
+          <div class="doc-box">
+            <label>Verso <span class="req">*</span></label>
+            <input type="file" id="f_duaVerso" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box" style="grid-column: span 2">
+            <label>Seguro / Carta Verde <span class="req">*</span></label>
+            <input type="text" value="Documento" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Validade <span class="req">*</span></label>
+            <input type="date" id="v_seguro" />
+          </div>
+          <div class="doc-box">
+            <label>Upload <span class="req">*</span></label>
+            <input type="file" id="f_seguro" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box" style="grid-column: span 2">
+            <label>Inspeção <span class="req">*</span></label>
+            <input type="text" value="Documento" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Validade <span class="req">*</span></label>
+            <input type="date" id="v_inspecao" />
+          </div>
+          <div class="doc-box">
+            <label>Upload <span class="req">*</span></label>
+            <input type="file" id="f_inspecao" accept="image/*,application/pdf" />
+          </div>
+        </div>
+
+        <div class="doc-line">
+          <div class="doc-box">
+            <label>Fotos do veículo</label>
+            <input type="text" value="Sem número/sem validade" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Nome no documento</label>
+            <input type="text" value="N/A" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Nº documento</label>
+            <input type="text" value="N/A" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Validade</label>
+            <input type="text" value="N/A" readonly />
+          </div>
+          <div class="doc-box">
+            <label>Upload</label>
+            <input type="file" id="f_fotos" accept="image/*" multiple />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-dark" type="button" onclick="closeVehicleModal()">Cancelar</button>
+        <button id="btnSubmitVehicle" class="btn-gold" type="button" onclick="submitVehicleForValidation()">ENVIAR PARA VALIDAÇÃO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API_BASE = "";
+
+    let CURRENT_GESTOR = {
+      id: "",
+      nome: "",
+      email: ""
+    };
+
+    const ROUTES = {
+      gestorMe: ["/api/gestor/me", "/gestor/me", "/api/me"],
+      motoristaValidationCreate: "/api/validation/submissions/driver",
+      vehicleValidationCreate: "/api/validation/submissions/vehicle",
+      validationSubmissions: "/api/validation/submissions"
+    };
+
+    let selectedDriverCategories = [];
+    let selectedDriverLanguages = [];
+    let docsFilter = "all";
+    let docsTab    = "driver";   // "driver" | "vehicle" — aba activa
+    const _openCardIds = new Set(); // IDs de cartões actualmente expandidos
+    let allValidationRecords = [];
+
+    function toast(msg){
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.style.display = "block";
+      setTimeout(()=>{ el.style.display = "none"; }, 3200);
+    }
+
+    function toggleRegistos(){
+      const box = document.getElementById("registosBox");
+      box.style.display = box.style.display === "grid" ? "none" : "grid";
+    }
+
+    function showSection(id, btn){
+      document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      document.querySelectorAll(".menu-grid button").forEach(b=>b.classList.remove("active"));
+      if(btn) btn.classList.add("active");
+
+      if(id === "mapa"){
+        setTimeout(() => mapa.invalidateSize(), 250);
+      }
+
+      if(id === "documentos"){
+        loadValidationRecords();
+      }
+    }
+
+    async function api(path, opts = {}){
+      const res = await fetch(API_BASE + path, { credentials:"include", ...opts }).catch(()=>null);
+      if(!res) throw new Error("Sem ligação ao servidor.");
+      const txt = await res.text().catch(()=> "");
+      let data = {};
+      try{ data = txt ? JSON.parse(txt) : {}; }catch{ data = { message: txt }; }
+      if(!res.ok) throw new Error(data?.message || ("HTTP " + res.status));
+      return data;
+    }
+
+    async function apiTry(paths, opts = {}){
+      let lastErr = null;
+      for(const p of paths){
+        try{
+          return await api(p, opts);
+        }catch(err){
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error("Falha na API");
+    }
+
+    const mapa = L.map("mapaMotoristas").setView([38.72,-9.13],12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(mapa);
+
+    function normalizeStr(v){
+      return String(v || "").trim().toLowerCase();
+    }
+
+    function statusLabel(status){
+      const s = normalizeStr(status);
+      if (s === "pendente") return "PENDENTE";
+      if (s === "validado") return "VALIDADO";
+      if (s === "pendente_novo_envio") return "NOVO ENVIO";
+      if (s === "recusado") return "RECUSADO";
+      return String(status || "—").toUpperCase();
+    }
+
+    function statusClass(status){
+      const s = normalizeStr(status);
+      if (s === "validado") return "approved";
+      if (s === "pendente_novo_envio") return "resend";
+      if (s === "recusado") return "rejected";
+      return "pending";
+    }
+
+    function formatDate(v){
+      if(!v) return "—";
+      const d = new Date(v);
+      if(Number.isNaN(d.getTime())) return String(v);
+      return d.toLocaleString("pt-PT");
+    }
+
+    function escapeHtml(str){
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    async function loadCurrentGestor(){
+      // Tentar vários endpoints — a sessão vem do cookie httpOnly
+      const endpoints = [
+        "/api/gestor/me", "/api/colaboradores/me",
+        "/api/auth/me",  "/api/me"
+      ];
+      let gestor = null;
+      for (const url of endpoints) {
+        try {
+          const r = await fetch(url, { credentials: "include" });
+          if (!r.ok) continue;
+          const d = await r.json().catch(() => null);
+          const u = d?.gestor || d?.colaborador || d?.user || d?.parceiro || d;
+          if (u && (u._id || u.id || u.email)) { gestor = u; break; }
+        } catch { continue; }
+      }
+
+      if (!gestor) {
+        // Sem sessão válida — redirecionar para página principal
+        window.location.href = "/index.html";
+        return;
+      }
+
+      CURRENT_GESTOR = {
+        id:    String(gestor._id || gestor.id || "").trim(),
+        nome:  String(gestor.nome || gestor.name || gestor.responsavelNome || "").trim(),
+        email: String(gestor.email || "").trim()
+      };
+
+      // Mostrar nome na interface se existir elemento
+      const nomeEl = document.getElementById("gestorNomeDisplay");
+      if (nomeEl && CURRENT_GESTOR.nome) nomeEl.textContent = CURRENT_GESTOR.nome;
+    }
+
+    // CONVITES
+    const inviteModal = document.getElementById("inviteModal");
+    const btnEnviarConvite = document.getElementById("btnEnviarConvite");
+    const btnFecharModal = document.getElementById("btnFecharModal");
+    const btnGerarCampos = document.getElementById("btnGerarCampos");
+    const btnEnviarConvites = document.getElementById("btnEnviarConvites");
+
+    const inviteQtd = document.getElementById("inviteQtd");
+    const inviteFields = document.getElementById("inviteFields");
+    const inviteLinks = document.getElementById("inviteLinks");
+
+    function openInviteModal(){
+      inviteModal.classList.add("active");
+      inviteQtd.value = "";
+      inviteFields.innerHTML = "";
+      inviteLinks.style.display = "none";
+      inviteLinks.innerHTML = "";
+      btnEnviarConvites.disabled = true;
+    }
+
+    function closeInviteModal(){
+      inviteModal.classList.remove("active");
+    }
+
+    function uid(len=28){
+      const chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let out="";
+      for(let i=0;i<len;i++) out += chars[Math.floor(Math.random()*chars.length)];
+      return out;
+    }
+
+    function buildInviteLink(token){
+      return `${location.origin}/convite-motorista.html?token=${encodeURIComponent(token)}`;
+    }
+
+    function gerarCampos(){
+      const n = Number(inviteQtd.value || 0);
+      inviteFields.innerHTML = "";
+      inviteLinks.style.display = "none";
+      inviteLinks.innerHTML = "";
+
+      if(!n || n < 1 || n > 50){
+        alert("Escolha uma quantidade entre 1 e 50.");
+        btnEnviarConvites.disabled = true;
+        return;
+      }
+
+      for (let i = 0; i < n; i++) {
+        const input = document.createElement("input");
+        input.type = "email";
+        input.required = true;
+        input.className = "inviteEmail";
+        input.placeholder = "E-MAIL DO CONVIDADO";
+        input.id = `invite_email_${i}`;
+        inviteFields.appendChild(input);
+      }
+
+      btnEnviarConvites.disabled = false;
+    }
+
+    function enviarConvites(){
+      const inputs = Array.from(inviteFields.querySelectorAll("input"));
+      if(!inputs.length) return;
+
+      const emails = inputs.map(i => String(i.value||"").trim().toLowerCase());
+
+      if(emails.some(e => !e)){
+        alert("Preencha todos os e-mails.");
+        return;
+      }
+
+      const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+      if(emails.some(e => !emailOk(e))){
+        alert("Existe um e-mail inválido. Corrija antes de enviar.");
+        return;
+      }
+
+      const set = new Set(emails);
+      if(set.size !== emails.length){
+        alert("Há e-mails repetidos. Cada convidado deve ter um e-mail único.");
+        return;
+      }
+
+      const lines = emails.map((email, idx) => {
+        const token = uid(28);
+        const link = buildInviteLink(token);
+        return `<div style="margin-bottom:8px;">
+          <b>Convite #${idx+1}</b> — ${escapeHtml(email)}<br>
+          <span style="color:#bbb;">${escapeHtml(link)}</span>
+        </div>`;
+      });
+
+      inviteLinks.innerHTML = `
+        <div style="margin-bottom:6px;"><b>Links gerados:</b></div>
+        ${lines.join("")}
+        <div style="margin-top:10px;color:#aaa;">
+          Dica: copia e envia por Email.
+        </div>
+      `;
+      inviteLinks.style.display = "block";
+    }
+
+    btnEnviarConvite.addEventListener("click", openInviteModal);
+    btnFecharModal.addEventListener("click", closeInviteModal);
+    btnGerarCampos.addEventListener("click", gerarCampos);
+    btnEnviarConvites.addEventListener("click", enviarConvites);
+
+    inviteModal.addEventListener("click", (e)=>{
+      if(e.target === inviteModal) closeInviteModal();
+    });
+
+    // MULTI SELECT
+    function toggleMultiSelection(containerId, storeName){
+      const container = document.getElementById(containerId);
+      if(!container) return;
+
+      container.querySelectorAll(".select-chip").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const value = btn.dataset.value;
+          let store = storeName === "categories" ? selectedDriverCategories : selectedDriverLanguages;
+
+          if(btn.classList.contains("active")){
+            btn.classList.remove("active");
+            store = store.filter(v => v !== value);
+          }else{
+            btn.classList.add("active");
+            store.push(value);
+          }
+
+          if(storeName === "categories"){
+            selectedDriverCategories = store;
+          }else{
+            selectedDriverLanguages = store;
+          }
+        });
+      });
+    }
+
+    function resetDriverFormSelections(){
+      // Categorias herdadas do veículo (não fazem parte do perfil do motorista).
+      selectedDriverCategories = [];
+      // Português é obrigatório — nunca fica vazio, é o mínimo dos idiomas.
+      selectedDriverLanguages = ["Português"];
+      document.querySelectorAll("#drvIdiomasButtons .select-chip").forEach(btn=>{
+        const isPortugues = String(btn.dataset.value || "").toLowerCase() === "português";
+        if (isPortugues) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+    }
+
+    function initDriverModalSelections(){
+      // Categorias já não existem no formulário de motorista — vêm do veículo.
+      toggleMultiSelection("drvIdiomasButtons", "languages");
+
+      // Português é obrigatório: bloqueia clique para não permitir desmarcar.
+      document.querySelectorAll('#drvIdiomasButtons .select-chip[data-required="true"]').forEach(btn=>{
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }, true);
+      });
+
+      // Garantir Português na lista inicial
+      if (!selectedDriverLanguages.includes("Português")) {
+        selectedDriverLanguages.push("Português");
+      }
+    }
+
+    function openDriverModal(){
+      document.getElementById("modalDriver").classList.add("active");
+    }
+
+    function closeDriverModal(){
+      document.getElementById("modalDriver").classList.remove("active");
+    }
+
+    function openVehicleModal(){
+      document.getElementById("modalVehicle").classList.add("active");
+    }
+
+    function closeVehicleModal(){
+      document.getElementById("modalVehicle").classList.remove("active");
+    }
+
+    function clearDriverForm(){
+      [
+        "drvNome","drvContacto","drvEmail","drvNif","drvEndereco","drvIban",
+        "idDocNome","idDocNumero","v_idDoc",
+        "cartaNome","cartaNumero","v_cartaConducao",
+        "tvdeNome","tvdeNumero","v_tvde",
+        "rcNome","rcNumero","v_registoCriminal"
+      ].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+      });
+
+      [
+        "f_idDoc","f_fotoRosto",
+        "f_cartaConducao","f_cartaConducaoVerso",
+        "f_tvde","f_tvdeVerso",
+        "f_registoCriminal"
+      ].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+      });
+
+      document.getElementById("drvIdDocType").value = "CC";
+      resetDriverFormSelections();
+    }
+
+    function clearVehicleForm(){
+      [
+        "vehMarca","vehModelo","vehAno","vehMatricula",
+        "v_dua","v_seguro","v_inspecao"
+      ].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+      });
+
+      // Reset dropdown do tipo de documento para valor default
+      const tipoEl = document.getElementById("duaTipo");
+      if (tipoEl) tipoEl.value = "DUA";
+
+      ["f_dua","f_duaVerso","f_seguro","f_inspecao","f_fotos"].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+      });
+    }
+
+    // Guarda contra duplo envio (double-click ou impaciência do utilizador)
+    let _isSubmittingDriver = false;
+
+    async function submitDriverForValidation(){
+      // Bloqueio duplo: flag global (mesmo se o botão não existir) +
+      // botão desactivado. Assim, mesmo que o utilizador dispare
+      // via consola ou por race condition, o segundo pedido é ignorado.
+      if (_isSubmittingDriver) {
+        console.warn("[gestor-frota] Envio de motorista já em curso — ignorado.");
+        return;
+      }
+      const btn = document.getElementById("btnSubmitDriver");
+      const btnTextoOriginal = btn?.textContent || "ENVIAR PARA VALIDAÇÃO";
+      _isSubmittingDriver = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "A ENVIAR...";
+        btn.style.opacity = "0.65";
+        btn.style.cursor = "not-allowed";
+      }
+
+      try{
+        const nome = (document.getElementById("drvNome").value || "").trim();
+        const contacto = (document.getElementById("drvContacto").value || "").trim();
+        const email = (document.getElementById("drvEmail").value || "").trim();
+        const nif = (document.getElementById("drvNif").value || "").trim();
+        const endereco = (document.getElementById("drvEndereco").value || "").trim();
+        const iban = (document.getElementById("drvIban").value || "").trim();
+
+        const idDocType = (document.getElementById("drvIdDocType").value || "CC").trim();
+        const idDocNome = (document.getElementById("idDocNome").value || "").trim();
+        const idDocNumero = (document.getElementById("idDocNumero").value || "").trim();
+        const idDocValidade = (document.getElementById("v_idDoc").value || "").trim();
+        const f_idDoc = document.getElementById("f_idDoc").files?.[0] || null;
+
+        const f_fotoRosto = document.getElementById("f_fotoRosto").files?.[0] || null;
+
+        const cartaNome = (document.getElementById("cartaNome").value || "").trim();
+        const cartaNumero = (document.getElementById("cartaNumero").value || "").trim();
+        const cartaValidade = (document.getElementById("v_cartaConducao").value || "").trim();
+        const f_carta = document.getElementById("f_cartaConducao").files?.[0] || null;
+        const f_cartaVerso = document.getElementById("f_cartaConducaoVerso").files?.[0] || null;
+
+        const tvdeNome = (document.getElementById("tvdeNome").value || "").trim();
+        const tvdeNumero = (document.getElementById("tvdeNumero").value || "").trim();
+        const tvdeValidade = (document.getElementById("v_tvde").value || "").trim();
+        const f_tvde = document.getElementById("f_tvde").files?.[0] || null;
+        const f_tvdeVerso = document.getElementById("f_tvdeVerso").files?.[0] || null;
+
+        const rcNome = (document.getElementById("rcNome").value || "").trim();
+        const rcNumero = (document.getElementById("rcNumero").value || "").trim();
+        const rcValidade = (document.getElementById("v_registoCriminal").value || "").trim();
+        const f_rc = document.getElementById("f_registoCriminal").files?.[0] || null;
+
+        if(!CURRENT_GESTOR.id || !CURRENT_GESTOR.nome || !CURRENT_GESTOR.email){
+          throw new Error("Não foi possível identificar o gestor autenticado.");
+        }
+
+        if(!nome) throw new Error("O campo Nome é obrigatório.");
+        if(!contacto) throw new Error("O campo Contacto é obrigatório.");
+        if(!email) throw new Error("O campo E-mail é obrigatório.");
+        if(!nif) throw new Error("O campo NIF / CPF é obrigatório.");
+        // Categoria vem do veículo — não é campo do motorista.
+        // Idiomas — Português é sempre incluído (obrigatório, pré-seleccionado).
+        if (!selectedDriverLanguages.includes("Português")) {
+          selectedDriverLanguages = ["Português", ...selectedDriverLanguages];
+        }
+        if(!f_idDoc) throw new Error("O documento de identificação é obrigatório.");
+        if(!idDocNome) throw new Error("O nome do documento de identificação é obrigatório.");
+        if(!idDocNumero) throw new Error("O número do documento de identificação é obrigatório.");
+        if(!idDocValidade) throw new Error("A validade do documento de identificação é obrigatória.");
+        if(!f_fotoRosto) throw new Error("A Foto do Rosto é obrigatória.");
+        if(!f_carta) throw new Error("A Carta de Condução é obrigatória.");
+        if(!cartaNome) throw new Error("O nome da Carta de Condução é obrigatório.");
+        if(!cartaNumero) throw new Error("O número da Carta de Condução é obrigatório.");
+        if(!cartaValidade) throw new Error("A validade da Carta de Condução é obrigatória.");
+        if(!f_cartaVerso) throw new Error("O verso da Carta de Condução é obrigatório.");
+        if(!f_rc) throw new Error("O Registo Criminal é obrigatório.");
+        if(!rcNome) throw new Error("O nome do Registo Criminal é obrigatório.");
+        if(!rcNumero) throw new Error("O número do Registo Criminal é obrigatório.");
+        if(!rcValidade) throw new Error("A validade do Registo Criminal é obrigatória.");
+
+        // Regra TVDE: se enviar frente OU verso, tem de enviar ambos.
+        // Se enviar frente, também tem de preencher nome/número/validade.
+        const tvdeAlgumaCoisa = f_tvde || f_tvdeVerso || tvdeNome || tvdeNumero || tvdeValidade;
+        if (tvdeAlgumaCoisa) {
+          if (!f_tvde)         throw new Error("Enviou dados de TVDE — a frente do documento é obrigatória.");
+          if (!f_tvdeVerso)    throw new Error("Enviou dados de TVDE — o verso do documento é obrigatório.");
+          if (!tvdeNome)       throw new Error("Enviou dados de TVDE — o nome no documento é obrigatório.");
+          if (!tvdeNumero)     throw new Error("Enviou dados de TVDE — o nº do documento é obrigatório.");
+          if (!tvdeValidade)   throw new Error("Enviou dados de TVDE — a validade é obrigatória.");
+        }
+
+        const fd = new FormData();
+
+        fd.append("gestorId", CURRENT_GESTOR.id);
+        fd.append("gestorNome", CURRENT_GESTOR.nome);
+        fd.append("gestorEmail", CURRENT_GESTOR.email);
+        fd.append("submittedByRole", "gestor_frota");
+        fd.append("submittedAt", new Date().toISOString());
+
+        fd.append("nome", nome);
+        fd.append("contacto", contacto);
+        fd.append("email", email);
+        fd.append("nif", nif);
+        if (endereco) fd.append("endereco", endereco);
+        if (iban)     fd.append("iban", iban);
+        // Categoria não vai no formulário do motorista — é do veículo.
+        fd.append("idiomas", JSON.stringify(selectedDriverLanguages || ["Português"]));
+        fd.append("drvIdDocType", idDocType);
+
+        if (f_fotoRosto) fd.append("fotoRosto", f_fotoRosto, f_fotoRosto.name);
+
+        if (idDocType === "CC") {
+          fd.append("cc", f_idDoc, f_idDoc.name);
+          fd.append("ccNome", idDocNome);
+          fd.append("ccNumero", idDocNumero);
+          fd.append("ccValidade", idDocValidade);
+        } else {
+          fd.append("tResidencia", f_idDoc, f_idDoc.name);
+          fd.append("tResidenciaNome", idDocNome);
+          fd.append("tResidenciaNumero", idDocNumero);
+          fd.append("tResidenciaValidade", idDocValidade);
+        }
+
+        if (f_carta) {
+          fd.append("cartaConducao", f_carta, f_carta.name);
+          fd.append("cartaConducaoNome", cartaNome);
+          fd.append("cartaConducaoNumero", cartaNumero);
+          fd.append("cartaConducaoValidade", cartaValidade);
+        }
+        if (f_cartaVerso) {
+          fd.append("cartaConducaoVerso", f_cartaVerso, f_cartaVerso.name);
+        }
+
+        if (f_tvde) {
+          fd.append("tvde", f_tvde, f_tvde.name);
+          fd.append("tvdeNome", tvdeNome);
+          fd.append("tvdeNumero", tvdeNumero);
+          fd.append("tvdeValidade", tvdeValidade);
+        }
+        if (f_tvdeVerso) {
+          fd.append("tvdeVerso", f_tvdeVerso, f_tvdeVerso.name);
+        }
+
+        if (f_rc) {
+          fd.append("registoCriminal", f_rc, f_rc.name);
+          fd.append("registoCriminalNome", rcNome);
+          fd.append("registoCriminalNumero", rcNumero);
+          fd.append("registoCriminalValidade", rcValidade);
+        }
+
+        const res = await fetch(API_BASE + ROUTES.motoristaValidationCreate, {
+          method: "POST",
+          credentials: "include",
+          body: fd
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || "Erro ao enviar motorista para validação.");
+
+        closeDriverModal();
+        clearDriverForm();
+        toast("✅ Motorista enviado para validação.");
+        loadValidationRecords();
+      }catch(e){
+        alert(e?.message || e);
+      } finally {
+        // Restaurar botão SEMPRE (sucesso ou erro). Sem isto, o
+        // gestor ficaria bloqueado para sempre se algo falhar.
+        _isSubmittingDriver = false;
+        const btnFin = document.getElementById("btnSubmitDriver");
+        if (btnFin) {
+          btnFin.disabled = false;
+          btnFin.textContent = btnTextoOriginal;
+          btnFin.style.opacity = "";
+          btnFin.style.cursor = "";
+        }
+      }
+    }
+
+    // Guarda contra duplo envio (double-click)
+    let _isSubmittingVehicle = false;
+
+    async function submitVehicleForValidation(){
+      if (_isSubmittingVehicle) {
+        console.warn("[gestor-frota] Envio de veículo já em curso — ignorado.");
+        return;
+      }
+      const btn = document.getElementById("btnSubmitVehicle");
+      const btnTextoOriginal = btn?.textContent || "ENVIAR PARA VALIDAÇÃO";
+      _isSubmittingVehicle = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "A ENVIAR...";
+        btn.style.opacity = "0.65";
+        btn.style.cursor = "not-allowed";
+      }
+
+      try{
+        const marca = (document.getElementById("vehMarca").value || "").trim();
+        const modelo = (document.getElementById("vehModelo").value || "").trim();
+        const ano = (document.getElementById("vehAno").value || "").trim();
+        const matricula = (document.getElementById("vehMatricula").value || "").trim().toUpperCase();
+
+        // Tipo do documento principal (DUA ou Declaração de Utilização)
+        const duaTipo = (document.getElementById("duaTipo").value || "DUA").trim();
+
+        const duaValidade = (document.getElementById("v_dua").value || "").trim();
+        const f_dua = document.getElementById("f_dua").files?.[0] || null;
+        const f_duaVerso = document.getElementById("f_duaVerso").files?.[0] || null;
+
+        const seguroValidade = (document.getElementById("v_seguro").value || "").trim();
+        const f_seguro = document.getElementById("f_seguro").files?.[0] || null;
+
+        const inspecaoValidade = (document.getElementById("v_inspecao").value || "").trim();
+        const f_inspecao = document.getElementById("f_inspecao").files?.[0] || null;
+
+        const fotos = Array.from(document.getElementById("f_fotos").files || []);
+
+        if(!CURRENT_GESTOR.id || !CURRENT_GESTOR.nome || !CURRENT_GESTOR.email){
+          throw new Error("Não foi possível identificar o gestor autenticado.");
+        }
+
+        // Validações obrigatórias
+        if(!marca) throw new Error("A marca é obrigatória.");
+        if(!modelo) throw new Error("O modelo é obrigatório.");
+        if(!ano) throw new Error("O ano é obrigatório.");
+        if(!matricula) throw new Error("A matrícula é obrigatória.");
+
+        if(!f_dua)         throw new Error(`A frente do ${duaTipo === "DUA" ? "DUA" : "documento"} é obrigatória.`);
+        if(!f_duaVerso)    throw new Error(`O verso do ${duaTipo === "DUA" ? "DUA" : "documento"} é obrigatório.`);
+        if(!duaValidade)   throw new Error(`A validade do ${duaTipo === "DUA" ? "DUA" : "documento"} é obrigatória.`);
+
+        if(!f_seguro)      throw new Error("O Seguro / Carta Verde é obrigatório.");
+        if(!seguroValidade)throw new Error("A validade do Seguro é obrigatória.");
+
+        if(!f_inspecao)    throw new Error("A Inspeção é obrigatória.");
+        if(!inspecaoValidade) throw new Error("A validade da Inspeção é obrigatória.");
+
+        const fd = new FormData();
+
+        fd.append("gestorId", CURRENT_GESTOR.id);
+        fd.append("gestorNome", CURRENT_GESTOR.nome);
+        fd.append("gestorEmail", CURRENT_GESTOR.email);
+        fd.append("submittedByRole", "gestor_frota");
+        fd.append("submittedAt", new Date().toISOString());
+
+        fd.append("marca", marca);
+        fd.append("modelo", modelo);
+        fd.append("ano", ano);
+        fd.append("matricula", matricula);
+        fd.append("duaTipo", duaTipo);
+
+        fd.append("dua", f_dua, f_dua.name);
+        fd.append("duaVerso", f_duaVerso, f_duaVerso.name);
+        fd.append("duaValidade", duaValidade);
+
+        fd.append("seguro", f_seguro, f_seguro.name);
+        fd.append("seguroValidade", seguroValidade);
+
+        fd.append("inspecao", f_inspecao, f_inspecao.name);
+        fd.append("inspecaoValidade", inspecaoValidade);
+
+        fotos.forEach((f) => fd.append("fotos", f, f.name));
+
+        const res = await fetch(API_BASE + ROUTES.vehicleValidationCreate, {
+          method: "POST",
+          credentials: "include",
+          body: fd
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || "Erro ao enviar veículo para validação.");
+
+        closeVehicleModal();
+        clearVehicleForm();
+        toast("✅ Veículo enviado para validação.");
+        loadValidationRecords();
+      }catch(e){
+        alert(e?.message || e);
+      } finally {
+        _isSubmittingVehicle = false;
+        const btnFin = document.getElementById("btnSubmitVehicle");
+        if (btnFin) {
+          btnFin.disabled = false;
+          btnFin.textContent = btnTextoOriginal;
+          btnFin.style.opacity = "";
+          btnFin.style.cursor = "";
+        }
+      }
+    }
+
+    function getManagedRecords(records){
+      const gid = normalizeStr(CURRENT_GESTOR.id);
+      const gemail = normalizeStr(CURRENT_GESTOR.email);
+      const gname = normalizeStr(CURRENT_GESTOR.nome);
+
+      return records.filter(item => {
+        const itemId = normalizeStr(item?.gestorId);
+        const itemEmail = normalizeStr(item?.gestorEmail);
+        const itemName = normalizeStr(item?.gestorNome);
+        return (gid && itemId === gid) || (gemail && itemEmail === gemail) || (gname && itemName === gname);
+      });
+    }
+
+    function recordMatchesSearch(item, term){
+      if(!term) return true;
+      const blob = JSON.stringify({
+        gestorNome: item?.gestorNome,
+        gestorEmail: item?.gestorEmail,
+        ownerName: item?.ownerName,
+        ownerEmail: item?.ownerEmail,
+        marca: item?.payload?.marca,
+        modelo: item?.payload?.modelo,
+        matricula: item?.payload?.matricula,
+        status: item?.status
+      }).toLowerCase();
+      return blob.includes(term);
+    }
+
+    function getSummaryByStatus(list){
+      return {
+        total: list.length,
+        pendente: list.filter(x => normalizeStr(x.status) === "pendente").length,
+        validado: list.filter(x => normalizeStr(x.status) === "validado").length,
+        novoEnvio: list.filter(x => normalizeStr(x.status) === "pendente_novo_envio").length,
+        recusado: list.filter(x => normalizeStr(x.status) === "recusado").length
+      };
+    }
+
+    function getFinalDocDecisionMap(item){
+      const map = {};
+      const docs = Array.isArray(item?.finalDecision?.documents) ? item.finalDecision.documents : [];
+      docs.forEach(doc => {
+        if(doc?.key) map[doc.key] = doc;
+      });
+      return map;
+    }
+
+    function getDocsEntries(item){
+      const docs = item?.documents || {};
+      const out = [];
+
+      if(item?.type === "driver"){
+        if(docs?.fotoRosto?.file?.url) out.push({ key:"fotoRosto", label:"Foto rosto", url:docs.fotoRosto.file.url });
+        if(docs?.cc?.file?.url) out.push({ key:"cc", label:"CC", url:docs.cc.file.url });
+        if(docs?.tResidencia?.file?.url) out.push({ key:"tResidencia", label:"T. residência", url:docs.tResidencia.file.url });
+        if(docs?.cartaConducao?.file?.url) out.push({ key:"cartaConducao", label:"Carta condução", url:docs.cartaConducao.file.url });
+        if(docs?.tvde?.file?.url) out.push({ key:"tvde", label:"TVDE", url:docs.tvde.file.url });
+        if(docs?.registoCriminal?.file?.url) out.push({ key:"registoCriminal", label:"Registo criminal", url:docs.registoCriminal.file.url });
+      }else{
+        if(docs?.dua?.file?.url) out.push({ key:"dua", label:"DUA", url:docs.dua.file.url });
+        if(docs?.seguro?.file?.url) out.push({ key:"seguro", label:"Seguro / Carta Verde", url:docs.seguro.file.url });
+        if(docs?.inspecao?.file?.url) out.push({ key:"inspecao", label:"Inspeção", url:docs.inspecao.file.url });
+        if(Array.isArray(docs?.fotos)){
+          docs.fotos.forEach((f, i) => {
+            if(f?.url) out.push({ key:`fotos_${i}`, label:`Foto veículo #${i+1}`, url:f.url });
+          });
+        }
+      }
+
+      return out;
+    }
+
+    function renderValidationRecords(){
+      const container = document.getElementById("validationRecords");
+      const statsBox = document.getElementById("docsStats");
+      const term = normalizeStr(document.getElementById("docsSearch").value);
+
+      // ── Passo 1: separar registos por tipo (driver / vehicle)
+      const drivers  = allValidationRecords.filter(x => x?.type === "driver");
+      const vehicles = allValidationRecords.filter(x => x?.type === "vehicle");
+
+      // Actualizar contadores nas abas
+      const driverCountEl  = document.getElementById("docsTabCountDriver");
+      const vehicleCountEl = document.getElementById("docsTabCountVehicle");
+      if (driverCountEl)  driverCountEl.textContent  = drivers.length;
+      if (vehicleCountEl) vehicleCountEl.textContent = vehicles.length;
+
+      // ── Passo 2: filtrar pelo tipo activo na aba
+      let byTab = docsTab === "vehicle" ? vehicles : drivers;
+
+      // ── Passo 3: aplicar filtro de estado
+      let filtered = [...byTab];
+      if (docsFilter !== "all") {
+        filtered = filtered.filter(item => normalizeStr(item.status) === docsFilter);
+      }
+
+      // ── Passo 4: aplicar pesquisa
+      if (term) {
+        filtered = filtered.filter(item => recordMatchesSearch(item, term));
+      }
+
+      // ── Passo 5: estatísticas (SÓ da aba activa)
+      const stats = getSummaryByStatus(byTab);
+      const tipoLabel = docsTab === "vehicle" ? "veículos" : "motoristas";
+      statsBox.innerHTML = `
+        <b>Total ${tipoLabel}:</b> ${stats.total}
+        &nbsp;&nbsp;•&nbsp;&nbsp;<b>Pendentes:</b> ${stats.pendente}
+        &nbsp;&nbsp;•&nbsp;&nbsp;<b>Validados:</b> ${stats.validado}
+        &nbsp;&nbsp;•&nbsp;&nbsp;<b>Novo envio:</b> ${stats.novoEnvio}
+        &nbsp;&nbsp;•&nbsp;&nbsp;<b>Recusados:</b> ${stats.recusado}
+      `;
+
+      // ── Passo 6: estado vazio
+      if (!filtered.length) {
+        const vazioMsg = docsTab === "vehicle"
+          ? "Nenhum veículo submetido para validação."
+          : "Nenhum motorista submetido para validação.";
+        container.innerHTML = `<div class="empty-state">${vazioMsg}</div>`;
+        return;
+      }
+
+      // ── Passo 7: renderizar cartões colapsáveis
+      container.innerHTML = filtered.map(item => {
+        const isDriver = item?.type === "driver";
+        const finalMap = getFinalDocDecisionMap(item);
+        const docs = getDocsEntries(item);
+        const cardId = String(item?._id || item?.submissionId || "");
+        const isOpen = _openCardIds.has(cardId);
+
+        // Título e sub (mudam consoante o tipo)
+        const title = isDriver
+          ? (item?.ownerName || item?.payload?.nome || "Motorista")
+          : `${item?.payload?.marca || ""} ${item?.payload?.modelo || ""}`.trim() || (item?.ownerName || "Veículo");
+
+        const refLabel = isDriver ? "NIF/CPF" : "Matrícula";
+        const refValor = isDriver
+          ? (item?.payload?.nif || item?.nif || "—")
+          : (item?.payload?.matricula || "—");
+
+        // Sumário para cartões com documentos recusados/novo envio
+        const summary = Array.isArray(item?.finalDecision?.documents) && item.finalDecision.documents.length
+          ? item.finalDecision.documents
+              .filter(d => d?.decision === "request_new_document" || d?.decision === "reject")
+              .map(d => `<div>• <b>${escapeHtml(d.label || d.key)}</b>${d.reasons ? ` — ${escapeHtml(d.reasons)}` : ""}</div>`)
+              .join("")
+          : "";
+
+        // Documentos individuais
+        const docsHtml = docs.map(doc => {
+          const decision = finalMap[doc.key];
+          const visualStatus = decision?.decision === "approve"
+            ? "validado"
+            : decision?.decision === "request_new_document"
+            ? "pendente_novo_envio"
+            : decision?.decision === "reject"
+            ? "recusado"
+            : item?.status || "pendente";
+
+          return `
+            <div class="doc-card">
+              <div class="doc-card-title">${escapeHtml(doc.label)}</div>
+              <div class="doc-card-sub">
+                <div><b>Estado:</b> ${escapeHtml(statusLabel(visualStatus))}</div>
+                ${decision?.reasons ? `<div><b>Motivo:</b> ${escapeHtml(decision.reasons)}</div>` : ""}
+              </div>
+              <div class="doc-card-actions">
+                <a class="mini-btn" href="${escapeHtml(doc.url)}" target="_blank" rel="noopener noreferrer">ABRIR</a>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        return `
+          <div class="submission-card ${isOpen ? "is-open" : ""}" data-card-id="${escapeHtml(cardId)}">
+            <div class="submission-head" onclick="toggleCard('${escapeHtml(cardId)}')">
+              <div class="submission-head-left">
+                <div class="submission-title">${escapeHtml(title)}</div>
+                <div class="submission-ref"><b>${refLabel}:</b> ${escapeHtml(refValor)}</div>
+              </div>
+              <div class="submission-head-right">
+                <span class="status ${statusClass(item?.status)}">${escapeHtml(statusLabel(item?.status))}</span>
+                <span class="submission-caret">▼</span>
+              </div>
+            </div>
+
+            <div class="submission-body">
+              <div class="submission-details">
+                <div><b>Gestor:</b> ${escapeHtml(item?.gestorNome || "—")}</div>
+                <div><b>Enviado em:</b> ${escapeHtml(formatDate(item?.submittedAt || item?.createdAt))}</div>
+                ${isDriver
+                  ? `<div><b>Email:</b> ${escapeHtml(item?.ownerEmail || "—")}</div>`
+                  : ""
+                }
+              </div>
+
+              ${summary ? `
+                <div class="summary-box">
+                  <b>Documentos com ação necessária:</b>
+                  <div style="margin-top:8px">${summary}</div>
+                </div>
+              ` : `
+                <div class="summary-box">
+                  ${normalizeStr(item?.status) === "validado"
+                    ? "Todos os documentos desta submissão foram aprovados."
+                    : normalizeStr(item?.status) === "pendente"
+                    ? "Submissão em análise pela equipa de validação."
+                    : normalizeStr(item?.status) === "recusado"
+                    ? "A submissão foi recusada."
+                    : "Submissão com pedido de novo envio em pelo menos um documento."
+                  }
+                </div>
+              `}
+
+              <div class="docs-grid">
+                ${docsHtml || `<div class="summary-box">Sem documentos visíveis.</div>`}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Expandir/colapsar cartão. Só um aberto de cada vez (UX limpa).
+    function toggleCard(cardId) {
+      if (!cardId) return;
+      const alreadyOpen = _openCardIds.has(cardId);
+      _openCardIds.clear();          // fecha os outros
+      if (!alreadyOpen) _openCardIds.add(cardId);
+      renderValidationRecords();
+    }
+    window.toggleCard = toggleCard;
+
+    // Trocar de aba (motoristas ↔ veículos)
+    function setDocsTab(tab, btn) {
+      docsTab = tab;
+      _openCardIds.clear();    // fecha cartões abertos ao mudar de aba
+      document.querySelectorAll("[data-doc-tab]").forEach(el => el.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      renderValidationRecords();
+    }
+    window.setDocsTab = setDocsTab;
+
+    async function loadValidationRecords(){
+      const container = document.getElementById("validationRecords");
+      const statsBox = document.getElementById("docsStats");
+
+      container.innerHTML = `<div class="loading-state">A carregar registos de validação...</div>`;
+      statsBox.textContent = "A carregar estado dos registos...";
+
+      try{
+        await loadCurrentGestor();
+
+        if(!CURRENT_GESTOR.id && !CURRENT_GESTOR.email && !CURRENT_GESTOR.nome){
+          throw new Error("Não foi possível identificar o gestor autenticado.");
+        }
+
+        // Rota DEDICADA ao gestor — filtra automaticamente por gestorId
+        // no backend. Segurança: gestor NUNCA vê submissões de outros.
+        const [drivers, vehicles] = await Promise.all([
+          api(`/api/validation/minhas-submissions?type=driver`).catch(() => ({ items: [] })),
+          api(`/api/validation/minhas-submissions?type=vehicle`).catch(() => ({ items: [] }))
+        ]);
+
+        const merged = [
+          ...(Array.isArray(drivers?.items) ? drivers.items : []),
+          ...(Array.isArray(vehicles?.items) ? vehicles.items : [])
+        ];
+
+        allValidationRecords = getManagedRecords(merged)
+          .sort((a,b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
+
+        renderValidationRecords();
+      }catch(err){
+        container.innerHTML = `
+          <div class="empty-state">
+            ${escapeHtml(err?.message || "Falha ao carregar registos de validação.")}
+          </div>
+        `;
+        statsBox.textContent = "Sem dados disponíveis.";
+      }
+    }
+
+    function setDocsFilter(filter, btn){
+      docsFilter = filter;
+      document.querySelectorAll("[data-doc-filter]").forEach(el => el.classList.remove("active"));
+      if(btn) btn.classList.add("active");
+      renderValidationRecords();
+    }
+
+    document.getElementById("docsSearch").addEventListener("input", renderValidationRecords);
+
+    // NOTA UX: Removido o "clicar fora fecha modal" para os modais de
+    // motorista e veículo. Formulários longos com muitos campos e
+    // uploads não podem fechar por um clique acidental — o utilizador
+    // perde tudo o que preencheu. O modal só fecha por "Cancelar" ou "X".
+    // (Modais leves como convites ficam com esse comportamento se quiser.)
+
+    /* ══════════════════════════════════════════════════════════
+       FATURAÇÃO — Estilo Uber
+       Endpoint: GET /api/gestor/faturacao?semana=2025-W18
+       Resposta: {
+         semana, inicio, fim,
+         totalFrota, totalViagens, totalHoras, motoristasActivos,
+         comissaoGestor, estadoPagamento,
+         motoristas: [{
+           id, nome, email,
+           totalSemana, totalViagens, totalHoras,
+           dias: [{ data, viagens, horas, km, faturado, comissao }]
+         }]
+       }
+    ══════════════════════════════════════════════════════════ */
+
+    let fatDadosActuais  = null;
+    let fatMotoristaActual = null;
+
+    function gerarSemanas(n = 16) {
+      const semanas = [];
+      const agora   = new Date();
+      for (let i = 0; i < n; i++) {
+        const d = new Date(agora);
+        d.setDate(d.getDate() - i * 7);
+        const ano    = d.getFullYear();
+        const inicio = new Date(d);
+        inicio.setDate(d.getDate() - d.getDay() + 1); // segunda
+        const fim    = new Date(inicio);
+        fim.setDate(inicio.getDate() + 6);
+
+        // Número da semana ISO
+        const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+        const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+        const numSemana = Math.ceil((((t - yearStart) / 86400000) + 1) / 7);
+
+        const fmt = dt => dt.toLocaleDateString("pt-PT", { day: "2-digit", month: "short" });
+        semanas.push({
+          value: `${t.getUTCFullYear()}-W${String(numSemana).padStart(2,"0")}`,
+          label: `Semana ${numSemana} · ${fmt(inicio)} – ${fmt(fim)} ${ano}`
+        });
+      }
+      return semanas;
+    }
+
+    function inicializarSeletor() {
+      const sel = document.getElementById("fatSemana");
+      if (!sel) return;
+      sel.innerHTML = "";
+      gerarSemanas(16).forEach((s, i) => {
+        const opt = document.createElement("option");
+        opt.value = s.value;
+        opt.textContent = s.label;
+        if (i === 0) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    function eur(v) {
+      return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(v || 0);
+    }
+    function hrs(minutos) {
+      if (!minutos) return "0h";
+      const h = Math.floor(minutos / 60);
+      const m = minutos % 60;
+      return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    }
+
+    async function carregarFaturacao() {
+      const semana = document.getElementById("fatSemana")?.value;
+      const msg    = document.getElementById("fatMsg");
+      const wrap   = document.getElementById("fatDetalheWrap");
+      if (!semana) return;
+
+      msg.textContent = "A carregar...";
+      msg.style.display = "block";
+      wrap.style.display = "none";
+      document.getElementById("fatMotoristasLista").innerHTML = "";
+
+      try {
+        const data = await api(`/api/gestor/faturacao?semana=${semana}`);
+        fatDadosActuais = data;
+
+        // Resumo frota
+        document.getElementById("frs-total").textContent      = eur(data.totalFrota);
+        document.getElementById("frs-viagens").textContent    = data.totalViagens ?? "—";
+        document.getElementById("frs-horas").textContent      = hrs(data.totalHoras);
+        document.getElementById("frs-motoristas").textContent = data.motoristasActivos ?? "—";
+        document.getElementById("frs-comissao").textContent   = eur(data.comissaoGestor);
+
+        const ep = data.estadoPagamento || "pendente";
+        const epEl = document.getElementById("frs-pago");
+        epEl.textContent  = ep === "pago" ? "✅ Pago" : ep === "processando" ? "🔄 A processar" : "⏳ Pendente";
+        epEl.style.color  = ep === "pago" ? "var(--success)" : ep === "processando" ? "var(--warn)" : "var(--muted)";
+
+        // Lista de motoristas
+        const lista = data.motoristas || [];
+        document.getElementById("fatMotoristasCount").textContent = `(${lista.length})`;
+        const cont = document.getElementById("fatMotoristasLista");
+        cont.innerHTML = "";
+
+        if (!lista.length) {
+          msg.textContent = "Sem dados para esta semana.";
+          return;
+        }
+
+        lista.forEach(m => {
+          const chip = document.createElement("div");
+          chip.className = "fat-motorista-chip";
+          chip.innerHTML = `
+            <div class="chip-avatar">${(m.nome || "M")[0].toUpperCase()}</div>
+            <div>
+              <div class="chip-nome">${escapeHtml(m.nome || "—")}</div>
+              <div class="chip-valor">${eur(m.totalSemana)}</div>
+              <div style="font-size:10px;color:var(--muted)">${m.totalViagens || 0} viagens · ${hrs(m.totalHoras)}</div>
+            </div>`;
+          chip.onclick = () => mostrarDetalheMotorista(m, chip);
+          cont.appendChild(chip);
+        });
+
+        msg.style.display = "none";
+
+        // Abrir o primeiro automaticamente
+        if (lista.length === 1) {
+          const chips = cont.querySelectorAll(".fat-motorista-chip");
+          if (chips[0]) mostrarDetalheMotorista(lista[0], chips[0]);
+        }
+
+      } catch (e) {
+        msg.textContent = "Erro ao carregar: " + (e?.message || e);
+      }
+    }
+
+    function mostrarDetalheMotorista(m, chipEl) {
+      fatMotoristaActual = m;
+
+      // Destacar chip
+      document.querySelectorAll(".fat-motorista-chip").forEach(c => c.classList.remove("selected"));
+      if (chipEl) chipEl.classList.add("selected");
+
+      document.getElementById("fatDetalheNome").textContent  = m.nome || "—";
+      document.getElementById("fatDetalheEmail").textContent = m.email || "—";
+      document.getElementById("fatMsg").style.display = "none";
+
+      // Totais do motorista
+      document.getElementById("fatDetalheTotais").innerHTML = `
+        <div class="fat-stat"><div class="fat-stat-val">${eur(m.totalSemana)}</div><div class="fat-stat-lbl">Faturado semana</div></div>
+        <div class="fat-stat"><div class="fat-stat-val">${m.totalViagens || 0}</div><div class="fat-stat-lbl">Viagens</div></div>
+        <div class="fat-stat"><div class="fat-stat-val">${hrs(m.totalHoras)}</div><div class="fat-stat-lbl">Horas online</div></div>
+        <div class="fat-stat"><div class="fat-stat-val" style="color:var(--warn)">${eur(m.comissaoSemana)}</div><div class="fat-stat-lbl">Comissão gestor</div></div>
+      `;
+
+      // Tabela diária
+      const tbody = document.getElementById("fatTbodyDiario");
+      const dias  = m.dias || [];
+
+      if (!dias.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted)">Sem dados diários.</td></tr>`;
+      } else {
+        tbody.innerHTML = dias.map(d => {
+          const data = new Date(d.data);
+          const diaNome = data.toLocaleDateString("pt-PT", { weekday: "short", day: "2-digit", month: "2-digit" });
+          return `<tr class="fat-dia-row">
+            <td>${diaNome}</td>
+            <td>${d.viagens || 0}</td>
+            <td>${hrs(d.horas)}</td>
+            <td>${(d.km || 0).toFixed(1)} km</td>
+            <td>${eur(d.faturado)}</td>
+            <td>${eur(d.comissao)}</td>
+          </tr>`;
+        }).join("");
+      }
+
+      document.getElementById("fatDetalheWrap").style.display = "block";
+    }
+
+    /* ── Exportar PDF frota ── */
+    async function exportarPdfGestor() {
+      const semana = document.getElementById("fatSemana")?.value || "";
+      try {
+        const r = await fetch(`${API_BASE}/api/gestor/faturacao/pdf?semana=${semana}&tipo=frota`, {
+          credentials: "include"
+        });
+        if (!r.ok) throw new Error("Erro ao gerar PDF");
+        const blob = await r.blob();
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `relatorio_frota_${semana}.pdf`;
+        a.click();
+      } catch (e) {
+        alert("Erro ao exportar PDF: " + e.message);
+      }
+    }
+
+    /* ── Exportar PDF motorista individual ── */
+    async function exportarPdfMotorista() {
+      if (!fatMotoristaActual) { alert("Seleccione um motorista primeiro."); return; }
+      const semana = document.getElementById("fatSemana")?.value || "";
+      try {
+        const r = await fetch(
+          `${API_BASE}/api/gestor/faturacao/pdf?semana=${semana}&tipo=motorista&motoristaId=${fatMotoristaActual.id}`,
+          { credentials: "include" }
+        );
+        if (!r.ok) throw new Error("Erro ao gerar PDF");
+        const blob = await r.blob();
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `relatorio_${(fatMotoristaActual.nome||"motorista").replace(/\s/g,"_")}_${semana}.pdf`;
+        a.click();
+      } catch (e) {
+        alert("Erro ao exportar PDF: " + e.message);
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       GANHOS — resumo da actividade do gestor
+    ══════════════════════════════════════════════════════════ */
+    async function carregarGanhos() {
+      const el = document.getElementById("ganhosContent");
+      el.innerHTML = `<div class="summary-box" style="color:var(--muted);text-align:center">A carregar...</div>`;
+      try {
+        const data = await api("/api/gestor/ganhos");
+        const g    = data?.ganhos || data || {};
+
+        el.innerHTML = `
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px">
+            <div class="fat-stat"><div class="fat-stat-val">${eur(g.totalMes)}</div><div class="fat-stat-lbl">Total este mês</div></div>
+            <div class="fat-stat"><div class="fat-stat-val">${eur(g.totalAno)}</div><div class="fat-stat-lbl">Total este ano</div></div>
+            <div class="fat-stat"><div class="fat-stat-val">${eur(g.mediaSemanal)}</div><div class="fat-stat-lbl">Média semanal</div></div>
+            <div class="fat-stat"><div class="fat-stat-val">${g.motoristasActivos ?? "—"}</div><div class="fat-stat-lbl">Motoristas activos</div></div>
+            <div class="fat-stat"><div class="fat-stat-val" style="color:${g.proximoPagamento ? 'var(--warn)' : 'var(--muted)'}">${g.proximoPagamento ? new Date(g.proximoPagamento).toLocaleDateString("pt-PT") : "—"}</div><div class="fat-stat-lbl">Próximo pagamento</div></div>
+          </div>
+          <div class="summary-box" style="margin-top:8px">
+            <div style="font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">HISTÓRICO SEMANAL</div>
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead><tr>
+                  <th style="text-align:left;padding:7px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.07em">SEMANA</th>
+                  <th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.07em">MOTORISTAS</th>
+                  <th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.07em">VIAGENS</th>
+                  <th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.07em">FATURADO</th>
+                  <th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.07em">COMISSÃO</th>
+                  <th style="text-align:right;padding:7px 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.07em">PAGO</th>
+                </tr></thead>
+                <tbody>
+                  ${(g.semanas || []).map(s => `
+                    <tr style="border-bottom:1px solid var(--line)">
+                      <td style="padding:8px 10px;color:#fff;font-weight:700">${escapeHtml(s.label || s.semana)}</td>
+                      <td style="padding:8px 10px;text-align:right;color:var(--muted)">${s.motoristas ?? "—"}</td>
+                      <td style="padding:8px 10px;text-align:right;color:var(--muted)">${s.viagens ?? "—"}</td>
+                      <td style="padding:8px 10px;text-align:right;color:#fff;font-weight:800">${eur(s.faturado)}</td>
+                      <td style="padding:8px 10px;text-align:right;color:var(--warn);font-weight:800">${eur(s.comissao)}</td>
+                      <td style="padding:8px 10px;text-align:right">
+                        <span style="color:${s.pago ? 'var(--success)' : 'var(--muted)'}">${s.pago ? "✅ Pago" : "⏳ Pendente"}</span>
+                      </td>
+                    </tr>`).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+      } catch (e) {
+        el.innerHTML = `<div class="summary-box" style="color:var(--danger)">Erro ao carregar: ${escapeHtml(e?.message || e)}</div>`;
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      inicializarSeletor();
+      initDriverModalSelections();
+      await loadCurrentGestor();
+      setTimeout(() => mapa.invalidateSize(), 250);
+    });
+  </script>
+
+  <script>
+    (function () {
+      let _pwaPrompt = null;
+      const btn = document.getElementById('btnInstalarApp');
+      if (!btn) return;
+      window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _pwaPrompt = e; });
+      window.addEventListener('appinstalled', () => { _pwaPrompt = null; });
+      btn.addEventListener('click', async () => {
+        if (_pwaPrompt) {
+          _pwaPrompt.prompt();
+          await _pwaPrompt.userChoice;
+          _pwaPrompt = null;
+        } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+          alert('Safari → Partilhar → "Adicionar ao ecrã inicial"');
+        } else {
+          alert('Chrome → menu ⋮ → "Instalar aplicação"');
+        }
+      });
+    })();
+  </script>
+<div style="position:fixed;right:14px;bottom:14px;z-index:400">
+  <div style="font-size:12px;font-family:Inter,Arial,system-ui,sans-serif;color:#9aa1ab;background:rgba(8,10,13,.72);backdrop-filter:blur(10px);padding:9px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px">
+    <span style="opacity:.7">&copy; REALMETROPOLIS</span>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('privacidade');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Privacidade</a>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('cookies');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Cookies</a>
+  </div>
+</div>
+
+<!-- Overlay translúcido — Privacidade / Cookies -->
+<div id="legalOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(4,5,7,.72);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:24px">
+  <div style="width:min(720px,94vw);max-height:86vh;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(22,25,31,.92),rgba(10,11,14,.96));border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:0 40px 100px rgba(0,0,0,.6);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;text-transform:uppercase">REALMETROPOLIS</div>
+      <button onclick="fecharLegalOverlay()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#cdd2da;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;line-height:1">&times;</button>
+    </div>
+    <iframe id="legalOverlayFrame" src="" style="flex:1;border:none;width:100%;background:transparent;min-height:60vh"></iframe>
+  </div>
+</div>
+<script>
+function abrirLegalOverlay(tipo){
+  var url = tipo === 'cookies' ? '/cookies.html' : '/privacidade.html';
+  document.getElementById('legalOverlayFrame').src = url;
+  document.getElementById('legalOverlay').style.display = 'flex';
+}
+function fecharLegalOverlay(){
+  document.getElementById('legalOverlay').style.display = 'none';
+  document.getElementById('legalOverlayFrame').src = '';
+}
+document.getElementById('legalOverlay')?.addEventListener('click', function(e){
+  if (e.target.id === 'legalOverlay') fecharLegalOverlay();
+});
+</script>
+
+</body>
+</html>

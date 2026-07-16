@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>REALMETROPOLIS — Login Validador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:      #0a0a0c;
+  --ink-2:    #111216;
+  --ink-3:    #1a1c22;
+  --ink-4:    #22242c;
+  --silver:   #c8cdd6;
+  --silver-2: #8a9099;
+  --silver-3: #4a5060;
+  --white:    #f2f4f7;
+  --green:    #19d68b;
+  --red:      #ff5a5a;
+  --border:   rgba(200,205,214,.12);
+  --border-2: rgba(200,205,214,.22);
+  --border-3: rgba(200,205,214,.40);
+}
+
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Outfit', sans-serif;
+  background: var(--ink);
+  color: var(--silver);
+  overflow: hidden;
+}
+
+/* ── FUNDO ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(200,205,214,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200,205,214,.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed; top: -30vh; left: 50%;
+  transform: translateX(-50%);
+  width: 70vw; height: 60vh; z-index: 0;
+  background: radial-gradient(ellipse, rgba(200,205,214,.045) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── CENTRAR ── */
+.page {
+  position: relative; z-index: 1;
+  height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+
+/* ── CARD ── */
+.card {
+  width: min(460px, 100%);
+  background: linear-gradient(160deg, var(--ink-2), var(--ink));
+  border: 1.5px solid var(--border-2);
+  border-radius: 28px;
+  box-shadow: 0 40px 100px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.03);
+  overflow: hidden;
+  animation: fadeUp .45s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── HEADER DO CARD ── */
+.card-header {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px;
+}
+.brand-mark {
+  width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto;
+  border: 1.5px solid var(--border-3);
+  background: rgba(200,205,214,.06);
+  display: grid; place-items: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 13px; font-weight: 700;
+  color: var(--white); letter-spacing: .06em;
+}
+.header-text {}
+.header-eyebrow {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .22em; text-transform: uppercase;
+  color: var(--silver-3); margin-bottom: 4px;
+}
+.header-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--white); letter-spacing: .02em;
+}
+
+/* ── BODY DO CARD ── */
+.card-body { padding: 28px 32px 32px; }
+
+.field { margin-bottom: 18px; }
+.field label {
+  display: block;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--silver-3); margin-bottom: 7px;
+}
+.field input {
+  width: 100%; height: 52px;
+  background: var(--ink-3);
+  border: 1.5px solid var(--border-2);
+  border-radius: 14px;
+  padding: 0 18px;
+  color: var(--white); font-size: 15px; font-weight: 500;
+  font-family: 'Outfit', sans-serif;
+  outline: none;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+}
+.field input:hover  { border-color: var(--border-3); background: var(--ink-4); }
+.field input:focus  {
+  border-color: rgba(200,205,214,.55);
+  background: var(--ink-4);
+  box-shadow: 0 0 0 3px rgba(200,205,214,.07);
+}
+.field input::placeholder { color: var(--silver-3); font-weight: 400; }
+
+/* ── BOTÕES ── */
+.btn-row { display: flex; gap: 10px; margin-top: 28px; }
+
+.btn-primary {
+  flex: 1; height: 52px;
+  border: none; border-radius: 16px;
+  background: linear-gradient(180deg, #e0e4ea, #b2b8c2);
+  color: #060708; font-weight: 700; font-size: 14px;
+  font-family: 'Outfit', sans-serif; letter-spacing: .07em;
+  cursor: pointer; transition: all .2s;
+  box-shadow: 0 6px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.btn-primary:hover   { filter: brightness(1.05); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .35; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-ghost {
+  height: 52px; padding: 0 20px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--silver-2); font-weight: 600; font-size: 14px;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer; transition: all .18s;
+}
+.btn-ghost:hover { border-color: var(--border-3); color: var(--white); }
+
+/* ── MENSAGEM ── */
+.msg {
+  margin-top: 18px; padding: 14px 16px;
+  border-radius: 14px; font-size: 13px; line-height: 1.55;
+  display: none;
+}
+.msg.ok  {
+  display: block;
+  background: rgba(25,214,139,.07);
+  border: 1.5px solid rgba(25,214,139,.22);
+  color: #7fffc4;
+}
+.msg.bad {
+  display: block;
+  background: rgba(255,90,90,.07);
+  border: 1.5px solid rgba(255,90,90,.22);
+  color: #ff9999;
+}
+
+/* ── LINK REGISTO ── */
+.footer-link {
+  margin-top: 20px; text-align: center;
+  font-size: 12px; color: var(--silver-3);
+}
+.footer-link a {
+  color: var(--silver-2); text-decoration: underline;
+  text-underline-offset: 3px; transition: color .18s;
+}
+.footer-link a:hover { color: var(--white); }
+
+/* ── CAMPO COM TOGGLE DE SENHA ── */
+.field-pw { position: relative; }
+.field-pw input { padding-right: 52px; }
+.toggle-pw {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--silver-3); font-size: 18px; padding: 4px;
+  transition: color .18s; line-height: 1;
+}
+.toggle-pw:hover { color: var(--silver); }
+@media(max-width: 480px) {
+  .card-header { padding: 22px 20px 18px; }
+  .card-body   { padding: 22px 20px 26px; }
+  .btn-row     { flex-direction: column-reverse; }
+  .btn-ghost   { height: 46px; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="card">
+
+    <div class="card-header">
+      <div class="brand-mark">RM</div>
+      <div class="header-text">
+        <div class="header-eyebrow">Realmetropolis · Área Restrita</div>
+        <div class="header-title">Acesso de Validador</div>
+      </div>
+    </div>
+
+    <div class="card-body">
+
+      <div class="field">
+        <label>Email</label>
+        <input id="email" type="email" placeholder="validador@exemplo.com" autocomplete="username">
+      </div>
+
+      <div class="field">
+        <label>Palavra-Passe</label>
+        <div class="field-pw">
+          <input id="senha" type="password" placeholder="••••••••" autocomplete="current-password">
+          <button class="toggle-pw" type="button" id="btnTogglePw" title="Mostrar/esconder">👁</button>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" id="btnLimpar">LIMPAR</button>
+        <button class="btn-primary" id="btnLogin">ENTRAR →</button>
+      </div>
+
+      <div class="msg" id="msg"></div>
+
+      <div class="footer-link">
+        Recebeu um convite? <a href="/registo-validador.html">Fazer registo aqui</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const msg      = document.getElementById('msg');
+  const API_BASE = location.protocol === 'file:' ? 'http://localhost:10000' : '';
+  const joinUrl  = (base, p) => String(base||'').replace(/\/$/,'') + '/' + String(p||'').replace(/^\//,'');
+  const nextParam = new URLSearchParams(location.search).get('next');
+
+  function show(text, type) {
+    msg.textContent = text;
+    msg.className   = 'msg ' + (type || '');
+  }
+
+  async function api(path, opts = {}) {
+    const res = await fetch(joinUrl(API_BASE, path), {
+      credentials: 'include', ...opts
+    }).catch(() => null);
+    if (!res) throw new Error('Sem ligação ao servidor.');
+    const txt = await res.text().catch(() => '');
+    let data = {};
+    try { data = txt ? JSON.parse(txt) : {}; } catch { data = { message: txt }; }
+    if (!res.ok) throw new Error(data?.message || ('HTTP ' + res.status));
+    return data;
+  }
+
+  document.getElementById('btnLimpar').onclick = () => {
+    document.getElementById('email').value = '';
+    document.getElementById('senha').value = '';
+    show('', '');
+  };
+
+  document.getElementById('btnLogin').onclick = async () => {
+    const email = (document.getElementById('email').value || '').trim().toLowerCase();
+    const senha = (document.getElementById('senha').value || '').trim();
+    if (!email || !senha) { show('Preencha email e palavra-passe.', 'bad'); return; }
+
+    const btn = document.getElementById('btnLogin');
+    btn.disabled = true; btn.textContent = 'A autenticar…';
+
+    try {
+      show('A autenticar…', 'ok');
+      const data = await api('/api/validadores/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha }),
+      });
+
+      // Redirect priority:
+      //   1. nextParam (?next=... na URL) — mantém contexto se alguém redirecionou aqui
+      //   2. data.redirectTo (backend indica destino específico — ex: setup incompleto)
+      //   3. Fallback: /validacao-painel.html — HUB do validador que mostra os
+      //      cartões "Motoristas" / "Veículos" conforme scope
+      const redirect = nextParam || data.redirectTo || '/validacao-painel.html';
+      show('✅ Login efetuado. A abrir painel…', 'ok');
+      setTimeout(() => location.href = redirect, 700);
+
+    } catch (e) {
+      show('❌ ' + (e.message || e), 'bad');
+      btn.disabled = false; btn.textContent = 'ENTRAR →';
+    }
+  };
+
+  // Toggle mostrar/esconder senha
+  document.getElementById('btnTogglePw').addEventListener('click', () => {
+    const inp = document.getElementById('senha');
+    const btn = document.getElementById('btnTogglePw');
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁';
+  });
+
+  // Enter para submeter
+  ['email','senha'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btnLogin').click();
+    });
+  });
+})();
+</script>
+</body>
+</html>

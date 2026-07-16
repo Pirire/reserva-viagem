@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REALMETROPOLIS — Painel de Validação</title>
+
+  <style>
+    :root{
+      --bg:#060606;
+      --panel:#101114;
+      --panel2:#17191d;
+      --line:rgba(220,224,230,.14);
+      --line-strong:rgba(220,224,230,.28);
+      --silver:#dce0e6;
+      --silver-soft:#b8c0ca;
+      --text:#f5f7fa;
+      --muted:rgba(220,224,230,.70);
+      --ok:#25d07f;
+      --warn:#f3c84d;
+      --bad:#ef6a6a;
+      --shadow:0 18px 48px rgba(0,0,0,.45);
+      --radius:22px;
+    }
+
+    *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);min-height:100vh}
+    body{
+      overflow:hidden;
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,.05), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(255,255,255,.04), transparent 28%),
+        linear-gradient(180deg, #080808, #050505 52%, #070707);
+    }
+
+    .shell{
+      min-height:100vh;
+      display:grid;
+      grid-template-columns: 320px 1fr;
+    }
+
+    .sidebar{
+      border-right:1px solid var(--line-strong);
+      background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015));
+      backdrop-filter: blur(14px);
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      box-shadow:var(--shadow);
+      z-index:2;
+    }
+
+    .brand{
+      border:1px solid var(--line-strong);
+      border-radius:22px;
+      padding:16px;
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      box-shadow:var(--shadow);
+    }
+    .brand-top{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{
+      width:54px;
+      height:54px;
+      border-radius:50%;
+      border:2px solid var(--silver);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      letter-spacing:.08em;
+      color:#fff;
+      background:radial-gradient(circle at 30% 30%, #2a2d32, #0b0c0f 72%);
+      flex:0 0 auto;
+    }
+    .brand h1{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.08em;
+      color:#fff;
+    }
+    .brand .sub{
+      margin-top:4px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+    }
+
+    .profile-card{
+      border:1px solid var(--line);
+      border-radius:20px;
+      padding:14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    }
+    .profile-k{
+      color:var(--muted);
+      font-size:11px;
+      letter-spacing:.08em;
+      margin-bottom:6px;
+      font-weight:900;
+    }
+    .profile-v{
+      font-size:14px;
+      font-weight:900;
+      color:#fff;
+      margin-bottom:10px;
+      line-height:1.35;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      min-height:34px;
+      padding:0 12px;
+      border-radius:999px;
+      border:1px solid var(--line-strong);
+      background:rgba(255,255,255,.04);
+      color:#fff;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.04em;
+    }
+    .dot{
+      width:9px;
+      height:9px;
+      border-radius:50%;
+      background:var(--ok);
+      box-shadow:0 0 12px rgba(37,208,127,.55);
+    }
+
+    .actions{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:4px;
+    }
+
+    .nav-btn{
+      width:100%;
+      min-height:56px;
+      padding:0 16px;
+      border-radius:18px;
+      border:1px solid var(--line-strong);
+      background:linear-gradient(180deg, #181a1e, #101216);
+      color:var(--silver);
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.04em;
+      cursor:pointer;
+      text-align:left;
+      transition:.18s ease;
+      box-shadow:0 10px 26px rgba(0,0,0,.26);
+    }
+    .nav-btn:hover{
+      transform:translateY(-1px);
+      filter:brightness(1.05);
+      border-color:rgba(220,224,230,.38);
+    }
+    .nav-btn.primary{
+      background:linear-gradient(180deg, #e3e7ed, #bbc3cc);
+      color:#000;
+      border-color:#eef2f7;
+    }
+    .nav-btn.hidden{
+      display:none !important;
+    }
+
+    .bottom-actions{
+      margin-top:auto;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .ghost-btn{
+      width:100%;
+      min-height:46px;
+      padding:0 14px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:transparent;
+      color:var(--silver);
+      font-size:12px;
+      font-weight:900;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+    .ghost-btn:hover{
+      background:rgba(255,255,255,.04);
+      border-color:var(--line-strong);
+    }
+
+    .danger-btn{
+      width:100%;
+      min-height:46px;
+      padding:0 14px;
+      border-radius:16px;
+      border:1px solid rgba(239,106,106,.28);
+      background:linear-gradient(180deg, rgba(120,24,24,.35), rgba(70,14,14,.45));
+      color:#fff;
+      font-size:12px;
+      font-weight:900;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+    .danger-btn:hover{
+      filter:brightness(1.08);
+      transform:translateY(-1px);
+    }
+
+    .content{
+      position:relative;
+      padding:26px;
+      overflow:auto;
+    }
+
+    .hero{
+      border:1px solid var(--line-strong);
+      border-radius:28px;
+      padding:26px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),
+        radial-gradient(circle at top right, rgba(255,255,255,.06), transparent 26%);
+      box-shadow:var(--shadow);
+      min-height:calc(100vh - 52px);
+      display:grid;
+      grid-template-rows:auto auto 1fr;
+      gap:20px;
+    }
+
+    .hero-head{
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      align-items:flex-start;
+      flex-wrap:wrap;
+    }
+
+    .hero-title{
+      max-width:760px;
+    }
+    .hero-title h2{
+      margin:0;
+      font-size:28px;
+      line-height:1.1;
+      color:#fff;
+      letter-spacing:.01em;
+    }
+    .hero-title p{
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.55;
+      max-width:700px;
+    }
+
+    .hero-status{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap:14px;
+    }
+
+    .stat-card{
+      border:1px solid var(--line);
+      border-radius:22px;
+      padding:18px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      box-shadow:0 12px 28px rgba(0,0,0,.22);
+    }
+    .stat-card .k{
+      color:var(--muted);
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.08em;
+    }
+    .stat-card .v{
+      margin-top:10px;
+      font-size:30px;
+      font-weight:900;
+      color:#fff;
+      letter-spacing:.01em;
+    }
+    .stat-card .s{
+      margin-top:8px;
+      color:var(--silver-soft);
+      font-size:12px;
+      line-height:1.4;
+    }
+
+    .entry-grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+      min-height:0;
+    }
+
+    .panel-card{
+      border:1px solid var(--line);
+      border-radius:24px;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      box-shadow:0 14px 36px rgba(0,0,0,.22);
+      overflow:hidden;
+    }
+    .panel-card .hd{
+      padding:16px 18px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .panel-card .hd b{
+      color:#fff;
+      font-size:13px;
+      letter-spacing:.06em;
+    }
+    .panel-card .bd{
+      padding:18px;
+    }
+
+    .welcome-list{
+      display:grid;
+      gap:12px;
+    }
+
+    .welcome-item{
+      border:1px solid rgba(220,224,230,.10);
+      border-radius:18px;
+      padding:14px;
+      background:rgba(255,255,255,.025);
+    }
+    .welcome-item strong{
+      display:block;
+      color:#fff;
+      font-size:14px;
+      margin-bottom:6px;
+    }
+    .welcome-item span{
+      display:block;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+
+    .shortcut-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .shortcut{
+      min-height:120px;
+      border-radius:20px;
+      border:1px solid rgba(220,224,230,.12);
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      padding:16px;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+    .shortcut:hover{
+      transform:translateY(-2px);
+      border-color:rgba(220,224,230,.30);
+    }
+    .shortcut h3{
+      margin:0;
+      color:#fff;
+      font-size:14px;
+      letter-spacing:.03em;
+    }
+    .shortcut p{
+      margin:8px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      min-width:280px;
+      max-width:min(92vw, 620px);
+      padding:12px 16px;
+      border-radius:16px;
+      border:1px solid var(--line-strong);
+      background:rgba(10,10,12,.95);
+      color:#fff;
+      font-size:13px;
+      font-weight:700;
+      box-shadow:var(--shadow);
+      display:none;
+      z-index:9999;
+      text-align:center;
+      white-space:pre-wrap;
+    }
+
+    @media (max-width: 1100px){
+      .shell{grid-template-columns:1fr}
+      .sidebar{
+        border-right:none;
+        border-bottom:1px solid var(--line-strong);
+      }
+      .content{padding:16px}
+      .hero{min-height:auto}
+      .entry-grid{grid-template-columns:1fr}
+    }
+
+    @media (max-width: 760px){
+      body{overflow:auto}
+      .shell{display:block}
+      .sidebar{padding:14px}
+      .content{padding:14px}
+      .hero{padding:18px;border-radius:22px}
+      .hero-title h2{font-size:22px}
+      .stats{grid-template-columns:1fr}
+      .shortcut-grid{grid-template-columns:1fr}
+      .panel-card .bd{padding:14px}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-top">
+          <div class="logo">RM</div>
+          <div>
+            <h1>REALMETROPOLIS</h1>
+            <div class="sub">Painel de acesso à validação documental e operacional.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <div class="profile-k">SESSÃO ATIVA</div>
+        <div class="profile-v" id="profileName">A verificar...</div>
+
+        <div class="profile-k">PERFIL</div>
+        <div class="profile-v" id="profileRole">A verificar...</div>
+
+        <span class="pill">
+          <span class="dot"></span>
+          <span id="sessionState">Sessão válida</span>
+        </span>
+      </div>
+
+      <div class="actions">
+        <button class="nav-btn primary" id="btnMotoristas">
+          VALIDAR MOTORISTAS
+        </button>
+
+        <button class="nav-btn primary" id="btnVeiculos">
+          VALIDAR VEÍCULOS
+        </button>
+      </div>
+
+      <div class="bottom-actions">
+        <button class="ghost-btn" id="btnRefresh">ATUALIZAR PERFIL</button>
+        <button class="danger-btn" id="btnLogout">SAIR</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="hero">
+        <div class="hero-head">
+          <div class="hero-title">
+            <h2>Painel central de validação</h2>
+            <p>
+              Selecione o módulo de trabalho autorizado para a sua sessão.
+              O sistema abre a validação já no modo correto e mantém a separação entre
+              motoristas e veículos.
+            </p>
+          </div>
+
+          <div class="hero-status">
+            <span class="pill">PRETO / PRATA</span>
+            <span class="pill">RESPONSIVO</span>
+            <span class="pill">LIGADO AO BACKEND</span>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat-card">
+            <div class="k">MÓDULOS DISPONÍVEIS</div>
+            <div class="v" id="statModules">—</div>
+            <div class="s">Quantidade de áreas de validação ativas para este perfil.</div>
+          </div>
+          <div class="stat-card">
+            <div class="k">TIPO DE PERFIL</div>
+            <div class="v" id="statRole">—</div>
+            <div class="s">O sistema adapta automaticamente os botões ao tipo de sessão.</div>
+          </div>
+          <div class="stat-card">
+            <div class="k">ESTADO DA SESSÃO</div>
+            <div class="v" id="statSession">OK</div>
+            <div class="s">Sessão autenticada e pronta para abrir o módulo de validação.</div>
+          </div>
+        </div>
+
+        <div class="entry-grid">
+          <div class="panel-card">
+            <div class="hd">
+              <b>FLUXO DE TRABALHO</b>
+              <span class="pill">VALIDAÇÃO SEGURA</span>
+            </div>
+            <div class="bd">
+              <div class="welcome-list">
+                <div class="welcome-item">
+                  <strong>Validação por perfil</strong>
+                  <span>
+                    O botão de motoristas ou veículos é ocultado automaticamente conforme
+                    o scope do validador autenticado.
+                  </span>
+                </div>
+                <div class="welcome-item">
+                  <strong>Acesso controlado</strong>
+                  <span>
+                    O painel usa o token do validador autenticado e valida a sessão
+                    no backend antes de abrir qualquer módulo.
+                  </span>
+                </div>
+                <div class="welcome-item">
+                  <strong>Entrada direta no modo correto</strong>
+                  <span>
+                    Ao clicar no módulo, o sistema abre <code>validacao.html</code> já com
+                    <code>?mode=motoristas</code> ou <code>?mode=veiculos</code>.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <div class="hd">
+              <b>ATALHOS</b>
+              <span class="pill">ABERTURA RÁPIDA</span>
+            </div>
+            <div class="bd">
+              <div class="shortcut-grid">
+                <div class="shortcut" id="shortcutMotoristas">
+                  <h3>Motoristas</h3>
+                  <p>
+                    Abrir imediatamente o módulo de validação de documentação de motoristas.
+                  </p>
+                </div>
+
+                <div class="shortcut" id="shortcutVeiculos">
+                  <h3>Veículos</h3>
+                  <p>
+                    Abrir imediatamente o módulo de validação documental de veículos.
+                  </p>
+                </div>
+
+                <div class="shortcut" id="shortcutBack">
+                  <h3>Voltar ao login</h3>
+                  <p>
+                    Encerra a sessão atual e regressa ao ecrã de autenticação.
+                  </p>
+                </div>
+
+                <div class="shortcut" id="shortcutReload">
+                  <h3>Atualizar sessão</h3>
+                  <p>
+                    Recarrega os dados atuais do utilizador e reavalia os acessos disponíveis.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  const toastEl = document.getElementById("toast");
+
+  const profileName = document.getElementById("profileName");
+  const profileRole = document.getElementById("profileRole");
+  const sessionState = document.getElementById("sessionState");
+
+  const statModules = document.getElementById("statModules");
+  const statRole = document.getElementById("statRole");
+  const statSession = document.getElementById("statSession");
+
+  const btnMotoristas = document.getElementById("btnMotoristas");
+  const btnVeiculos = document.getElementById("btnVeiculos");
+
+  const shortcutMotoristas = document.getElementById("shortcutMotoristas");
+  const shortcutVeiculos = document.getElementById("shortcutVeiculos");
+  const shortcutBack = document.getElementById("shortcutBack");
+  const shortcutReload = document.getElementById("shortcutReload");
+
+  const btnRefresh = document.getElementById("btnRefresh");
+  const btnLogout = document.getElementById("btnLogout");
+
+  // Auth via cookie httpOnly — sem localStorage
+
+  let currentValidador = null;
+  let currentScope = "";
+  let allowMotoristas = false;
+  let allowVeiculos = false;
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.style.display = "block";
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => {
+      toastEl.style.display = "none";
+    }, 2600);
+  }
+
+  function getToken(){
+    return ""; // token gerido pelo cookie httpOnly no servidor
+  }
+
+  function getStoredUser(){
+    try {
+      const raw = null; // user carregado via /api/validadores/me
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function api(path, opts = {}){
+    const token = getToken();
+
+    const headers = {
+      ...(opts.headers || {})
+    };
+
+    if (token) {
+      headers.Authorization = "Bearer " + token;
+    }
+
+    const r = await fetch(path, {
+      ...opts,
+      headers
+    }).catch(() => null);
+
+    if (!r) throw new Error("Sem ligação ao servidor.");
+
+    const txt = await r.text().catch(() => "");
+    let data = {};
+
+    try {
+      data = txt ? JSON.parse(txt) : {};
+    } catch {
+      data = { message: txt };
+    }
+
+    if (!r.ok) throw new Error(data?.message || ("HTTP " + r.status));
+
+    return data;
+  }
+
+  function normalizeRole(scope){
+    const s = String(scope || "").toLowerCase();
+
+    if (s === "motoristas") return "VALIDADOR MOTORISTAS";
+    if (s === "veiculos") return "VALIDADOR VEÍCULOS";
+    if (s === "colaboradores") return "VALIDADOR COLABORADORES";
+
+    return String(scope || "—").toUpperCase();
+  }
+
+  function computeAccess(scope){
+    const s = String(scope || "").toLowerCase();
+
+    // Scope "global" (ou admin) → dá acesso a TODOS os módulos.
+    // Assim um único validador com scope=global pode aprovar
+    // motoristas, veículos, colaboradores, etc.
+    if (s === "global" || s === "admin" || s === "adminmaster") {
+      return { motoristas: true, veiculos: true };
+    }
+
+    return {
+      motoristas: s === "motoristas",
+      veiculos:   s === "veiculos"
+    };
+  }
+
+  function applyAccessUI(){
+    btnMotoristas.classList.toggle("hidden", !allowMotoristas);
+    shortcutMotoristas.style.display = allowMotoristas ? "" : "none";
+
+    btnVeiculos.classList.toggle("hidden", !allowVeiculos);
+    shortcutVeiculos.style.display = allowVeiculos ? "" : "none";
+
+    let total = 0;
+    if (allowMotoristas) total++;
+    if (allowVeiculos) total++;
+
+    statModules.textContent = String(total);
+    statRole.textContent = normalizeRole(currentScope);
+    statSession.textContent = "OK";
+  }
+
+  function invalidateSession(){
+    /* localStorage removed */
+    /* localStorage removed */
+    setTimeout(() => {
+      location.href = "/validador-login.html?next=/validacao-painel.html";
+    }, 500);
+  }
+
+  async function loadSession(){
+    try{
+      const storedUser = getStoredUser();
+
+      if (storedUser?.email) {
+        profileName.textContent = storedUser.email;
+      }
+
+      const me = await api("/api/validadores/me");
+      currentValidador = me?.validador || null;
+      currentScope = String(
+        currentValidador?.scope ||
+        storedUser?.scope ||
+        ""
+      ).toLowerCase();
+
+      if (!currentValidador) {
+        throw new Error("Sessão inválida.");
+      }
+
+      if (!currentScope) {
+        throw new Error("Sessão sem scope.");
+      }
+
+      const access = computeAccess(currentScope);
+      allowMotoristas = access.motoristas;
+      allowVeiculos = access.veiculos;
+
+      /* localStorage removed */
+
+      profileName.textContent = currentValidador?.email || storedUser?.email || "Validador";
+      profileRole.textContent = normalizeRole(currentScope);
+      sessionState.textContent = "Sessão válida";
+
+      applyAccessUI();
+    }catch(err){
+      console.error(err);
+      sessionState.textContent = "Sessão inválida";
+      statSession.textContent = "ERRO";
+      profileName.textContent = "Sem sessão";
+      profileRole.textContent = "SEM ACESSO";
+
+      invalidateSession();
+    }
+  }
+
+  function openValidation(mode){
+    if (mode === "motoristas" && !allowMotoristas) {
+      toast("Sem permissão para validar motoristas.");
+      return;
+    }
+
+    if (mode === "veiculos" && !allowVeiculos) {
+      toast("Sem permissão para validar veículos.");
+      return;
+    }
+
+    // Cada tipo tem o seu painel dedicado (arquitectura escalável)
+    const paineis = {
+      motoristas: "/validacao-motoristas.html",
+      veiculos:   "/validacao-veiculos.html",
+      // Painéis a criar em fases seguintes:
+      // colaboradores: "/validacao-colaboradores.html",
+      // seguranca:     "/validacao-seguranca.html",
+    };
+
+    const destino = paineis[mode];
+    if (!destino) {
+      toast("Este painel ainda não está disponível.");
+      return;
+    }
+    location.href = destino;
+  }
+
+  function doLogout(){
+    /* localStorage removed */
+    /* localStorage removed */
+    location.href = "/validador-login.html";
+  }
+
+  btnMotoristas.addEventListener("click", () => openValidation("motoristas"));
+  btnVeiculos.addEventListener("click", () => openValidation("veiculos"));
+
+  shortcutMotoristas.addEventListener("click", () => openValidation("motoristas"));
+  shortcutVeiculos.addEventListener("click", () => openValidation("veiculos"));
+  shortcutBack.addEventListener("click", doLogout);
+
+  shortcutReload.addEventListener("click", async () => {
+    await loadSession();
+    toast("Sessão atualizada.");
+  });
+
+  btnRefresh.addEventListener("click", async () => {
+    await loadSession();
+    toast("Perfil atualizado.");
+  });
+
+  btnLogout.addEventListener("click", doLogout);
+
+  loadSession();
+</script>
+</body>
+</html>

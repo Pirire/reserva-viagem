@@ -1,0 +1,3996 @@
+<!DOCTYPE html>
+<!-- VERSÃO: 2026-07-02-K — popup opaco, pin/escudo invertidos, brilho rotativo no INICIAR, foto no header perfil -->
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>REALMETROPOLIS — Motorista</title>
+
+<!-- ── PWA ──────────────────────────────────────────────────── -->
+<link rel="manifest" href="/motorista-manifest.json">
+<meta name="theme-color" content="#0a0b0d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RM Motorista">
+<link rel="apple-touch-icon" href="/icons/motorista-icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #c4c9d4;
+  --gold-light: #e0e4ea;
+  --gold-dim: rgba(196,201,212,.10);
+  --bg: #0a0b0d;
+  --surface: #111318;
+  --surface-2: #181b22;
+  --border: rgba(255,255,255,.07);
+  --border-gold: rgba(196,201,212,.28);
+  --text: #e8eaf0;
+  --text-dim: #6b7280;
+  --green: #22c55e;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --blue: #3b82f6;
+  --radius: 18px;
+  --shadow: 0 24px 48px rgba(0,0,0,.55);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+/* ── LAYOUT ─────────────────────────────────────────────── */
+#app { display: flex; height: 100vh; flex-direction: column; position: relative; }
+
+/* ── HEADER ─────────────────────────────────────────────── */
+#header {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  background: none; pointer-events: none;
+}
+#header > * { pointer-events: auto; }
+.logo { font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 2px; color: var(--gold); }
+.status-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all .2s;
+}
+.status-pill .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-dim); transition: background .3s;
+}
+.status-pill.online .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+/* ── GANHOS — widget central no header, substitui o logo ───
+   Toque para ofuscar/revelar os valores (privacidade, igual a
+   apps de condução). Por defeito começa ofuscado. ──────────── */
+.ganhos-widget {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, calc(-50% + 8px));
+  display: flex; flex-direction: column; align-items: center;
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  padding: 6px 16px; border-radius: 14px;
+  background: rgba(10,11,13,.82); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.08); box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.ganhos-widget .ganhos-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 3px;
+}
+.ganhos-widget .ganhos-valor {
+  font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 700; color: var(--text);
+  transition: filter .2s ease;
+}
+.ganhos-widget.oculto .ganhos-valor { filter: blur(7px); }
+.ganhos-widget .ganhos-hint {
+  font-size: 9px; color: var(--text-dim); margin-top: 2px; opacity: .7;
+}
+
+/* ── BOTÃO ONLINE/OFFLINE — flutuante, rodapé central, estilo
+   apps de condução (Uber/Bolt). Toque grande, sempre visível. ── */
+/* ── RODAPÉ PRATA ───────────────────────────────────────── */
+#rodapePrata {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 300;
+  height: 56px;
+  background: linear-gradient(180deg, #d0d5de, #a8adb6);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 18px;
+}
+
+/* Botões dentro do rodapé — ícone preto, SEM círculo/sombra à volta */
+#rodapePrata .btn-rodape {
+  width: 32px; height: 32px; border: none; background: transparent;
+  color: #000; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+#rodapePrata .btn-rodape svg { width: 22px; height: 22px; display: block; }
+
+/* ── BOTÃO INICIAR (offline) — flutua ~12px acima do rodapé ── */
+#btnOnlineToggle {
+  position: absolute; bottom: 68px; left: 50%; transform: translateX(-50%);
+  z-index: 400;
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 22px; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 10.5px; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #24262b, #131417); color: #c4c9d4;
+  border: 1.5px solid transparent;
+  box-shadow: 0 6px 18px rgba(0,0,0,.55);
+  transition: bottom .2s ease, padding .2s ease, background .2s ease, color .2s ease,
+              transform .15s ease;
+  overflow: hidden; isolation: isolate;
+}
+
+/* Brilho a percorrer a moldura — só no estado offline (INICIAR).
+   Técnica: um pseudo-elemento maior que o botão, com conic-gradient
+   a rodar, mascarado por uma "moldura" transparente. */
+#btnOnlineToggle::before {
+  content: ""; position: absolute; inset: -50%;
+  background: conic-gradient(from 0deg,
+    transparent 0deg, transparent 300deg,
+    #c4c9d4 340deg, #ffffff 355deg, #c4c9d4 10deg,
+    transparent 50deg, transparent 360deg);
+  animation: rmBrilhoInic 2.8s linear infinite;
+  z-index: -2;
+}
+#btnOnlineToggle::after {
+  content: ""; position: absolute; inset: 1.5px; border-radius: 999px;
+  background: linear-gradient(180deg, #24262b, #131417); z-index: -1;
+}
+@keyframes rmBrilhoInic { to { transform: rotate(360deg); } }
+
+#btnOnlineToggle:active { transform: translateX(-50%) scale(.96); }
+#btnOnlineToggle .dot-toggle { display: none; }
+#btnOnlineToggle .txt-iniciar { display: inline; }
+#btnOnlineToggle .txt-online { display: none; }
+
+/* Estado ONLINE — vive DENTRO do rodapé, sem brilho a rodar */
+#btnOnlineToggle.is-online {
+  bottom: 12px; padding: 7px 16px;
+  background: #000; color: var(--green);
+  border-color: transparent; box-shadow: none;
+  gap: 7px; overflow: visible; isolation: auto;
+}
+#btnOnlineToggle.is-online::before,
+#btnOnlineToggle.is-online::after { display: none; }
+#btnOnlineToggle.is-online .dot-toggle {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  animation: rmDotBlink 1.1s ease-in-out infinite;
+}
+#btnOnlineToggle.is-online .txt-iniciar { display: none; }
+#btnOnlineToggle.is-online .txt-online { display: inline; }
+@keyframes rmDotBlink { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
+#btnOnlineToggle.is-busy { opacity: .6; pointer-events: none; }
+
+#btnMenu { display: none; } /* deixou de existir no cabeçalho — vive no rodapé */
+
+/* ── MAPA ───────────────────────────────────────────────── */
+#map { position: absolute; inset: 0; z-index: 0; }
+.leaflet-control-zoom { display: none; }
+
+/* ── PIN (mira, canto direito, acima do rodapé) — só o ícone,
+   sem círculo/sombra à volta ─────────────────────────────── */
+#btnRecentrar {
+  position: absolute; bottom: 72px; right: 16px; z-index: 200;
+  width: 40px; height: 40px; border: none; background: transparent;
+  color: #000;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+  transition: transform .2s;
+}
+#btnRecentrar:hover { transform: scale(1.08); }
+
+/* ── ESCUDO DE AJUDA (canto esquerdo, acima do rodapé) ── */
+#btnAjuda {
+  position: absolute; bottom: 72px; left: 16px; z-index: 200;
+  width: 46px; height: 50px; border: none; background: none;
+  cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.5));
+  transition: transform .2s;
+}
+#btnAjuda:hover { transform: scale(1.08); }
+#btnAjuda svg { display: block; }
+
+#btnCategorias { display: none; } /* deixou de flutuar — vive no rodapé */
+
+/* Quando uma secção está aberta, esconde tudo o que é do mapa
+   (widget de ganhos, botões flutuantes, rodapé, INICIAR).
+   Só o cabeçalho fino da secção fica visível. */
+body.secao-aberta #btnRecentrar,
+body.secao-aberta #btnAjuda,
+body.secao-aberta #rodapePrata,
+body.secao-aberta #btnOnlineToggle,
+body.secao-aberta #header { display: none; }
+
+/* ── OVERLAY DE CATEGORIAS — ecrã completo, entra da direita para
+   a esquerda (mesmo padrão de transição, agora ocupando tudo) ── */
+#categoriasOverlay {
+  position: absolute; inset: 0; right: -100% !important; z-index: 700;
+  background: var(--bg);
+  transition: right .3s cubic-bezier(.4,0,.2,1);
+  display: flex; flex-direction: column; overflow: hidden;
+  visibility: hidden;
+}
+#categoriasOverlay.open { right: 0 !important; visibility: visible; }
+#categoriasOverlayBg {
+  position: absolute; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 699; display: none;
+}
+#categoriasOverlayBg.show { display: block; }
+.categorias-header {
+  padding: 40px 20px 6px; flex: 0 0 auto;
+}
+.categorias-titulo { font-size: 22px; font-weight: 700; line-height: 1.2; color: var(--text); }
+.categorias-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+.categorias-banner {
+  margin: 12px 20px; background: #4a3018; border-radius: 14px;
+  padding: 12px 16px; flex: 0 0 auto;
+}
+.categorias-banner-txt { font-size: 12.5px; color: #f2d9b8; line-height: 1.5; }
+.categorias-body {
+  flex: 1; padding: 4px 20px 16px; box-sizing: border-box;
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); gap: 10px;
+}
+
+/* ── ALERTA DE PROXIMIDADE ──────────────────────────────── */
+#alertaProximidade {
+  position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+  z-index: 400; width: min(380px, 92vw);
+  background: linear-gradient(135deg, #92400e, #78350f);
+  border: 1px solid #f59e0b; border-radius: 14px;
+  padding: 14px 18px; display: none;
+  box-shadow: 0 8px 32px rgba(245,158,11,.4);
+  animation: slideDown .3s ease;
+}
+@keyframes slideDown { from { opacity:0; transform: translateX(-50%) translateY(-10px); } }
+#alertaProximidade .alerta-titulo { font-weight: 700; color: #fde68a; font-size: 15px; }
+#alertaProximidade .alerta-sub { color: #fbbf24; font-size: 13px; margin-top: 4px; }
+
+/* ── PAINEL LATERAL ─────────────────────────────────────── */
+#painelLateral {
+  position: absolute; top: 0; left: -320px; bottom: 0; z-index: 500;
+  width: min(150px, 60vw); background: var(--surface);
+  border-right: 1px solid var(--border);
+  transition: left .3s cubic-bezier(.4,0,.2,1);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#painelLateral.open { left: 0; }
+.painel-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 499; display: none;
+}
+.painel-overlay.show { display: block; }
+
+.painel-header {
+  padding: 40px 10px 14px;
+  background: linear-gradient(180deg, rgba(196,201,212,.08), transparent);
+  border-bottom: 1px solid var(--border);
+}
+.painel-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--gold-dim); border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700; color: var(--gold);
+  margin-bottom: 8px; overflow: hidden;
+}
+.painel-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.painel-nome { font-size: 12px; font-weight: 700; line-height: 1.25; word-break: break-word; }
+.painel-email { font-size: 8.5px; color: var(--text-dim); margin-top: 3px; line-height: 1.3; word-break: break-word; }
+.painel-status-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 7px; border-radius: 999px;
+  background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3);
+  color: var(--green); font-size: 8.5px; font-weight: 600;
+  margin-top: 8px;
+}
+
+.painel-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+.nav-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 10px; cursor: pointer; font-size: 10.5px;
+  font-weight: 500; transition: background .15s; border-radius: 0;
+  line-height: 1.25;
+}
+.nav-item:hover { background: var(--surface-2); }
+.nav-item.active { background: var(--gold-dim); color: var(--gold); border-right: 3px solid var(--gold); }
+.nav-icon { font-size: 14px; width: 18px; text-align: center; flex: 0 0 auto; }
+.nav-badge {
+  margin-left: auto; background: var(--gold); color: #000;
+  font-size: 8.5px; font-weight: 700; padding: 2px 6px;
+  border-radius: 999px; min-width: 16px; text-align: center; flex: 0 0 auto;
+}
+
+.painel-footer { padding: 12px 10px; border-top: 1px solid var(--border); }
+.btn-sair {
+  width: 100%; padding: 8px; border-radius: 10px; border: 1px solid var(--border);
+  background: transparent; color: var(--red); font-weight: 600;
+  font-size: 9.5px; cursor: pointer; transition: background .2s;
+}
+.btn-sair:hover { background: rgba(239,68,68,.08); }
+
+/* ── SECÇÕES ────────────────────────────────────────────── */
+.secao {
+  position: absolute; inset: 0; z-index: 100;
+  display: none; flex-direction: column; overflow: hidden;
+}
+.secao.ativa { display: flex; }
+.secao-header {
+  padding: 14px 20px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.secao-titulo { font-size: 15px; font-weight: 700; }
+.secao-sub { display: none; }
+.secao-body { flex: 1; overflow-y: auto; padding: 16px 20px 24px; }
+
+/* ── GANHOS — aparece no rodapé, não a ocupar o ecrã todo ── */
+#sec-ganhos {
+  display: flex !important;
+  top: auto; bottom: 0; height: auto; max-height: 82vh;
+  border-radius: 20px 20px 0 0;
+  background: var(--bg);
+  box-shadow: 0 -8px 30px rgba(0,0,0,.5);
+  transform: translateY(100%);
+  visibility: hidden;
+  transition: transform .3s cubic-bezier(.4,0,.2,1), visibility .3s;
+}
+#sec-ganhos.ativa { transform: translateY(0); visibility: visible; }
+
+/* ── CARDS INFO ─────────────────────────────────────────── */
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.info-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.info-card.gold { border-color: var(--border-gold); background: var(--gold-dim); }
+.info-card-label { font-size: 11px; font-weight: 600; color: var(--text-dim); letter-spacing: .8px; text-transform: uppercase; }
+.info-card-value { font-size: 26px; font-weight: 700; margin-top: 6px; color: var(--text); }
+.info-card.gold .info-card-value { color: var(--gold-light); }
+.info-card-sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+/* ── CARDS VIAGENS (lista) ──────────────────────────────── */
+.viagem-lista-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+  cursor: pointer; transition: all .2s;
+}
+.viagem-lista-card:hover { border-color: var(--border-gold); background: var(--surface-2); }
+.viagem-lista-card.ativa { border-color: var(--gold); background: var(--gold-dim); }
+.vlc-hora { font-size: 11px; font-weight: 600; color: var(--text-dim); letter-spacing: .8px; text-transform: uppercase; }
+.vlc-rota { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0; }
+.vlc-pontos { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 3px; }
+.vlc-dot { width: 8px; height: 8px; border-radius: 50%; }
+.vlc-dot.origem { background: var(--gold); }
+.vlc-dot.destino { background: var(--red); }
+.vlc-line { width: 1px; height: 22px; background: var(--border); }
+.vlc-enderecos { flex: 1; }
+.vlc-end { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+.vlc-end:last-child { margin-bottom: 0; }
+.vlc-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.vlc-cat { font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-dim); }
+.vlc-val { font-size: 15px; font-weight: 700; color: var(--gold-light); }
+
+/* ── FATURA MOTORISTA ───────────────────────────────────── */
+.fat-periodo { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .8px; }
+.fat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.fat-card-info .fat-nome { font-size: 14px; font-weight: 600; }
+.fat-card-info .fat-viagens { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.fat-valor { font-size: 17px; font-weight: 700; color: var(--gold-light); }
+
+/* ── BOTTOM CARDS VIAGENS ───────────────────────────────── */
+#tripBar {
+  display: none;
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 200;
+  background: linear-gradient(0deg, rgba(10,11,13,.98) 70%, transparent);
+  padding: 12px 0 20px;
+}
+#tripBar-inner {
+  display: flex; gap: 12px; overflow-x: auto; padding: 0 16px;
+  scrollbar-width: none;
+}
+#tripBar-inner::-webkit-scrollbar { display: none; }
+
+.cvd-passageiro-oculto {
+  font-size: 11px; color: var(--text-dim); font-style: italic;
+  padding: 6px 0 0; border-top: 1px solid var(--border); margin-top: 8px;
+}
+.cvd-passageiro-visivel {
+  font-size: 12px; color: var(--text); font-weight: 600;
+  padding: 8px 0 0; border-top: 1px solid var(--border); margin-top: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.cvd-passageiro-visivel a {
+  color: var(--gold); text-decoration: none; font-size: 11px;
+}
+.trip-card {
+  flex: 0 0 260px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 16px;
+  padding: 14px; cursor: pointer; transition: all .25s;
+  position: relative; overflow: hidden;
+}
+.trip-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  opacity: 0; transition: opacity .25s;
+}
+.trip-card:hover { border-color: var(--border-gold); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+.trip-card:hover::before { opacity: 1; }
+.trip-card.selected { border-color: var(--gold); background: var(--gold-dim); }
+.trip-card.selected::before { opacity: 1; }
+.trip-card.urgente { border-color: rgba(245,158,11,.5); animation: pulseCard 2s infinite; }
+@keyframes pulseCard {
+  0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,.3); }
+  50% { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+}
+
+.tc-hora { font-size: 11px; font-weight: 600; color: var(--text-dim); letter-spacing: .8px; display: flex; align-items: center; gap: 6px; }
+.tc-urgente-badge { background: var(--amber); color: #000; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+.tc-origem { font-size: 13px; font-weight: 600; margin: 6px 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc-destino { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.tc-val { font-size: 14px; font-weight: 700; color: var(--gold-light); }
+.tc-dist { font-size: 11px; color: var(--text-dim); }
+
+.btn-iniciar {
+  width: 100%; margin-top: 10px; padding: 10px;
+  background: linear-gradient(180deg,#e0e4ea,#bec6d1);
+  border: none; border-radius: 10px; color: #07080a;
+  font-weight: 700; font-size: 13px; cursor: pointer;
+  transition: all .2s;
+  display: block !important; visibility: visible !important; opacity: 1 !important;
+}
+.btn-iniciar:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* ── EMPTY STATE ────────────────────────────────────────── */
+.empty {
+  text-align: center; padding: 48px 20px;
+  color: var(--text-dim); font-size: 14px;
+}
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+/* ── PERFIL CARD — encolhido ao conteúdo, ancorado à esquerda; a
+   largura máxima exata (= largura do campo Email) é aplicada via JS
+   em carregarPerfil(), depois de medir o texto já renderizado ──── */
+.perfil-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 14px;
+  width: fit-content; max-width: 100%; overflow: hidden;
+}
+.perfil-row { display: flex; justify-content: flex-start; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); gap: 14px; }
+.perfil-row:last-child { border-bottom: none; }
+.perfil-label { font-size: 13px; color: var(--text-dim); flex: 0 0 110px; }
+.perfil-val { font-size: 14px; font-weight: 600; text-align: left; }
+
+/* ── LINHAS DE CATEGORIA — overlay lateral; prata = ativa, vermelho
+   = desativada ────────────────────────────────────────────────── */
+.cat-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  font-family: inherit; border-radius: 14px; cursor: pointer;
+  background: transparent; transition: opacity .15s;
+}
+.cat-card.on  { border: 3px solid #c4c9d4; }
+.cat-card.off { border: 3px solid #7a3030; opacity: .8; }
+.cat-card.indisponivel {
+  border: 1.5px solid rgba(255,255,255,.12); opacity: .35; cursor: default;
+}
+.cat-card-check {
+  position: absolute; top: 8px; right: 8px; width: 17px; height: 17px;
+  display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900;
+  box-sizing: border-box;
+}
+.cat-card.on  .cat-card-check { background: #c4c9d4; color: #0a0b0d; }
+.cat-card.off .cat-card-check { border: 1.5px solid #ef4444; background: transparent; }
+.cat-card-icon { font-size: 34px; line-height: 1; }
+.cat-card.on  .cat-card-icon { color: #c4c9d4; }
+.cat-card.off .cat-card-icon { color: #ef4444; }
+.cat-card.indisponivel .cat-card-icon { color: #6b6f76; }
+.cat-card-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .01em; line-height: 1.25;
+  text-align: center; word-break: break-word; padding: 0 4px;
+}
+.cat-card.on  .cat-card-label { color: #c4c9d4; }
+.cat-card.off .cat-card-label { color: #ef4444; }
+.cat-card.indisponivel .cat-card-label { color: #6b6f76; }
+.cat-card:disabled, .cat-card[data-loading] { opacity: .5; pointer-events: none; }
+.cat-card.voltar {
+  border: 1.5px solid rgba(255,255,255,.25); background: rgba(255,255,255,.04);
+}
+.cat-card.voltar .cat-card-icon,
+.cat-card.voltar .cat-card-label { color: #e5e7eb; }
+
+/* ── SEPARADORES DIA / SEMANA (Ganhos) ──────────────────────── */
+.ganhos-periodo-tabs { display: flex; gap: 8px; }
+.periodo-tab {
+  flex: 1; font-family: inherit; font-size: 12.5px; font-weight: 800; letter-spacing: .06em;
+  padding: 10px 0; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text-dim); cursor: pointer;
+  transition: all .15s;
+}
+.periodo-tab.selected { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+
+/* ── CARTÕES DE VEÍCULO ─────────────────────────────────────── */
+#listaVeiculos {
+  max-height: 268px; /* ≈ 5 linhas visíveis; resto por scroll */
+  overflow-y: auto;
+}
+.veiculo-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 13px 16px; border-radius: var(--radius); border: 1px solid rgba(196,201,212,.25);
+  background: rgba(196,201,212,.06); margin-bottom: 8px; cursor: pointer; transition: all .15s;
+}
+.veiculo-card:hover { border-color: rgba(196,201,212,.4); }
+/* Selecionado — destaque suave, não o dourado forte de antes */
+.veiculo-card.selecionado { border-color: rgba(196,201,212,.5); background: rgba(196,201,212,.14); }
+/* Ocupado — cinzento distinto, quer seja por mim quer por outro
+   motorista. Não revela de quem é, só que está indisponível agora. */
+.veiculo-card.ocupado {
+  cursor: not-allowed;
+  border-color: rgba(107,114,128,.4); background: rgba(107,114,128,.15);
+}
+.veiculo-card.ocupado .veiculo-nome,
+.veiculo-card.ocupado .veiculo-sub { color: #9ca3af; }
+.veiculo-card-info { min-width: 0; display: flex; align-items: baseline; gap: 12px; flex: 1; }
+.veiculo-nome { font-size: 13px; font-weight: 600; color: var(--text); }
+.veiculo-sub { font-size: 12px; color: var(--text-dim); }
+.veiculo-check {
+  width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto;
+  border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: transparent; transition: all .15s;
+}
+.veiculo-card.selecionado .veiculo-check { background: rgba(196,201,212,.5); border-color: rgba(196,201,212,.5); color: #0a0b0d; }
+.veiculo-card.ocupado .veiculo-check { border-color: rgba(107,114,128,.5); color: #9ca3af; font-size: 11px; }
+
+
+/* ── LOADING ────────────────────────────────────────────── */
+.spinner {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--gold);
+  animation: spin .7s linear infinite; margin: 32px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── MOBILE ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .info-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- MAPA -->
+  <div id="map"></div>
+
+  <!-- HEADER — só o widget de ganhos flutuante -->
+  <div id="header">
+    <div class="ganhos-widget oculto" id="ganhosWidget" title="Toque para mostrar/ocultar">
+      <div class="ganhos-valor" id="ganhosValorHeader">€0,00</div>
+    </div>
+  </div>
+
+  <!-- BOTÃO INICIAR / ONLINE — muda de posição consoante o estado -->
+  <button id="btnOnlineToggle" type="button">
+    <span class="dot-toggle"></span>
+    <span class="txt-iniciar">FICAR ON-LINE</span>
+    <span class="txt-online">FICAR OFF-LINE</span>
+  </button>
+
+  <!-- ALERTA PROXIMIDADE -->
+  <div id="alertaProximidade">
+    <div class="alerta-titulo" id="alertaTitulo">⏰ Partida em breve</div>
+    <div class="alerta-sub" id="alertaSub"></div>
+  </div>
+
+  <!-- PIN (mira) — canto direito, acima do rodapé -->
+  <button id="btnRecentrar" aria-label="Recentrar">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-linecap="round" style="filter:drop-shadow(0 0 3px rgba(255,255,255,.9)) drop-shadow(0 0 3px rgba(255,255,255,.9))">
+      <circle cx="12" cy="12" r="6.5" stroke="#000" stroke-width="2"/>
+      <circle cx="12" cy="12" r="1.4" fill="#000" stroke="none"/>
+      <line x1="12" y1="1"  x2="12" y2="4.2" stroke="#000" stroke-width="2"/>
+      <line x1="12" y1="19.8" x2="12" y2="23" stroke="#000" stroke-width="2"/>
+      <line x1="1"  y1="12" x2="4.2"  y2="12" stroke="#000" stroke-width="2"/>
+      <line x1="19.8" y1="12" x2="23" y2="12" stroke="#000" stroke-width="2"/>
+    </svg>
+  </button>
+
+  <!-- ESCUDO DE AJUDA — canto esquerdo, acima do rodapé -->
+  <button id="btnAjuda" title="Ajuda">
+    <svg width="30" height="32" viewBox="0 0 24 26">
+      <path d="M12 1.5 L21 5 V11.5 C21 17 17 21.5 12 24.2 C7 21.5 3 17 3 11.5 V5 Z"
+            fill="#fff" stroke="#000" stroke-width="1.8" stroke-linejoin="round"/>
+      <text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="800" fill="#000" font-family="'DM Sans', sans-serif">?</text>
+    </svg>
+  </button>
+
+  <!-- Botão categorias (sem uso visual — mantido só como fallback JS, escondido) -->
+  <button id="btnCategorias" aria-hidden="true" style="display:none"></button>
+
+  <!-- RODAPÉ PRATA — hambúrguer + categorias, ícones pretos sem círculo -->
+  <div id="rodapePrata">
+    <button id="btnMenu" class="btn-rodape" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <line x1="4" y1="7"  x2="20" y2="7"/>
+        <line x1="4" y1="12" x2="20" y2="12"/>
+        <line x1="4" y1="17" x2="20" y2="17"/>
+      </svg>
+    </button>
+    <button id="btnCategoriasRodape" class="btn-rodape" aria-label="Categorias">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 9a6 6 0 0 1 6-6h4"/>
+        <path d="M14 1l2 2-2 2"/>
+        <path d="M18 15a6 6 0 0 1-6 6H8"/>
+        <path d="M10 23l-2-2 2-2"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- OVERLAY DE CATEGORIAS -->
+  <div id="categoriasOverlayBg"></div>
+  <div id="categoriasOverlay">
+    <div class="categorias-header">
+      <div class="categorias-titulo">Categorias</div>
+      <div class="categorias-sub">Escolha as categorias em que este veículo recebe pedidos</div>
+    </div>
+    <div class="categorias-banner">
+      <div class="categorias-banner-txt">Ativas recebem pedidos de despacho. Desativadas não recebem nenhum.</div>
+    </div>
+    <div class="categorias-body" id="categoriasLista"></div>
+  </div>
+
+  <!-- OVERLAY PAINEL -->
+  <div class="painel-overlay" id="painelOverlay"></div>
+
+  <!-- PAINEL LATERAL -->
+  <div id="painelLateral">
+    <div class="painel-header">
+      <div class="painel-avatar" id="pAvatar">M</div>
+      <div class="painel-nome" id="pNome">Motorista</div>
+      <div class="painel-email" id="pEmail">—</div>
+      <div class="painel-status-badge"><span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block"></span> Aprovado</div>
+    </div>
+    <nav class="painel-nav">
+      <div class="nav-item active" data-sec="mapa">
+        <span class="nav-icon">🗺️</span> Mapa ao vivo
+      </div>
+      <div class="nav-item" data-sec="viagens">
+        <span class="nav-icon">🚗</span> Minhas viagens
+        <span class="nav-badge" id="badgeViagens">0</span>
+      </div>
+      <div class="nav-item" data-sec="ganhos">
+        <span class="nav-icon">💰</span> Ganhos
+      </div>
+      <div class="nav-item" data-sec="veiculo">
+        <span class="nav-icon">🚙</span> Veículo
+      </div>
+      <div class="nav-item" data-sec="perfil">
+        <span class="nav-icon">👤</span> Perfil
+      </div>
+    </nav>
+    <div class="painel-footer">
+      <button class="btn-sair" id="btnSair">Terminar sessão</button>
+    </div>
+  </div>
+
+  <!-- SECÇÃO: VIAGENS -->
+  <div class="secao" id="sec-viagens">
+    <div class="secao-header" style="background:var(--bg)">
+      <button onclick="voltarAoMenu()" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0;line-height:1;flex:0 0 auto">←</button>
+      <div class="secao-titulo">Minhas viagens</div>
+      <div class="secao-sub">Todas as viagens atribuídas</div>
+    </div>
+    <div class="secao-body" id="listaViagens">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- SECÇÃO: GANHOS -->
+  <div class="secao" id="sec-ganhos">
+    <div class="secao-header" style="background:var(--bg)">
+      <button onclick="voltarAoMenu()" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0;line-height:1;flex:0 0 auto">←</button>
+      <div class="secao-titulo">Ganhos</div>
+      <div class="secao-sub">Faturação detalhada</div>
+    </div>
+
+    <!-- Faturação semanal — valor centrado, semana por baixo,
+         levantamento (desativado por agora) pequeno e sem moldura,
+         encostado à direita -->
+    <div style="position:relative;padding:20px 16px 4px;background:var(--surface);border-bottom:1px solid var(--border);text-align:center">
+      <div id="ganhosPeriodoTotal" style="font-size:26px;font-weight:900;color:#c4c9d4">€0,00</div>
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;margin-top:2px">
+        <span id="ganhosPeriodoTotalLabel" style="font-size:10px;color:var(--text-dim)">total da semana</span>
+      </div>
+      <div id="ganhosPeriodoRange" style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-dim);text-transform:uppercase;margin-top:4px">—</div>
+      <button id="btnPedirSaldo" disabled style="
+        position:absolute;right:16px;top:22px;
+        padding:8px 10px;border:none;border-radius:9px;
+        background:transparent;box-shadow:none;
+        color:#c4c9d4;font-weight:700;font-size:10px;
+        cursor:not-allowed;opacity:.55;
+      ">
+        💳 Levantamento
+      </button>
+    </div>
+
+      <div style="position:relative;height:200px;margin-top:14px">
+        <canvas id="ganhosChart"></canvas>
+      </div>
+      <div id="ganhosChartVazio" style="display:none;text-align:center;font-size:12px;color:var(--text-dim);padding:12px 0">Sem faturação registada esta semana.</div>
+
+    <div class="secao-body" id="listaGanhos" style="display:none">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- MODAL PEDIDO DE LEVANTAMENTO -->
+  <div id="modalSaldo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);z-index:200;align-items:center;justify-content:center;padding:24px">
+    <div style="width:min(380px,100%);max-height:90vh;overflow-y:auto;background:#0a0b0d;border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.6)">
+      <div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:4px">Pedido de Levantamento</div>
+      <div style="font-size:12px;color:#8b95a2;margin-bottom:18px">Saldo disponível: <span id="modalSaldoDisp" style="color:#fff;font-weight:800">—</span></div>
+
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#8b95a2;margin-bottom:6px">VALOR A LEVANTAR (€)</div>
+        <input type="number" id="inputValorSaldo" min="1" step="1" placeholder="Ex: 150"
+          style="width:100%;padding:14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.12);background:#111318;color:#fff;font-size:16px;font-weight:700;outline:none">
+      </div>
+
+      <div id="msgModalSaldo" style="font-size:12px;margin-bottom:12px;min-height:16px"></div>
+
+      <div style="display:flex;gap:10px">
+        <button onclick="fecharModalSaldo()" style="flex:1;padding:13px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#8b95a2;font-weight:700;cursor:pointer">CANCELAR</button>
+        <button id="btnConfirmarSaldo" onclick="confirmarPedidoSaldo()" style="flex:1;padding:13px;border-radius:12px;border:none;background:linear-gradient(180deg,#e3e8ef,#bfc7d2);color:#000;font-weight:900;cursor:pointer">CONFIRMAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP: DADOS DO OPERADOR -->
+  <div id="popupOperador" style="display:none;position:fixed;inset:0;background:#0a0b0d;z-index:9500;align-items:center;justify-content:center;padding:24px">
+    <div style="width:min(380px,100%);max-height:90vh;overflow-y:auto;background:#0a0b0d;border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.6)">
+      <div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:16px">Dados do Operador</div>
+      <div class="perfil-card" style="margin-bottom:16px">
+        <div class="perfil-row"><span class="perfil-label">Operador de Frota</span><span class="perfil-val" id="popOpNome">—</span></div>
+        <div class="perfil-row"><span class="perfil-label">NIF</span><span class="perfil-val" id="popOpNif">—</span></div>
+        <div class="perfil-row"><span class="perfil-label">Contacto</span><span class="perfil-val" id="popOpContacto">—</span></div>
+        <div class="perfil-row"><span class="perfil-label">Email</span><span class="perfil-val" id="popOpEmail">—</span></div>
+      </div>
+      <button onclick="fecharPopupOperador()" style="width:100%;padding:13px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#8b95a2;font-weight:700;cursor:pointer">FECHAR</button>
+    </div>
+  </div>
+
+  <!-- SECÇÃO: VEÍCULO -->
+  <div class="secao" id="sec-veiculo">
+    <div class="secao-header" style="background:var(--bg)">
+      <button onclick="voltarAoMenu()" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0;line-height:1;flex:0 0 auto">←</button>
+      <div class="secao-titulo">Veículo</div>
+      <div class="secao-sub">Selecione o veículo com que vai trabalhar</div>
+    </div>
+    <div class="secao-body" id="listaVeiculos">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- SECÇÃO: PERFIL -->
+  <div class="secao" id="sec-perfil">
+    <div class="secao-header" style="background:var(--bg)">
+      <button onclick="voltarAoMenu()" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0;line-height:1;flex:0 0 auto">←</button>
+      <div id="perfilAvatarTopo" style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:var(--gold-dim);border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--gold);flex:0 0 auto"></div>
+      <div class="secao-titulo">Perfil</div>
+    </div>
+    <div class="secao-body" id="dadosPerfil">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- TRIP BAR — rodapé com viagens próximas -->
+  <div id="tripBar">
+    <div id="tripBar-inner">
+      <div style="color:var(--text-dim);font-size:13px;padding:12px 4px">A carregar viagens…</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+/* ================================================================
+   CONFIG
+================================================================ */
+const API_BASE   = location.origin;
+const TOKEN_KEY  = "motorista_token";
+const REFRESH_MS = 30000; // actualizar viagens a cada 30s
+
+/* ================================================================
+   ESTADO
+================================================================ */
+let motoInfo    = null;
+let minhasViagens = [];
+let selectedTrip  = null;
+let routeLayer    = null;
+let myMarker      = null;
+let ultimoHeadingValido = null; // último heading GPS válido (graus, 0=Norte)
+let destinoActivoCoords = null; // {lat,lng} do destino da viagem selecionada/em curso — usado como reserva da seta quando o GPS não dá heading (motorista parado)
+let myPos         = null;
+let alertShown    = new Set();
+let watchId       = null;
+let socket        = null;     // ligação Socket.io para localização em tempo real
+
+/* ════════════════════════════════════════════════════════════════
+   PONTE PARA APP NATIVA (Capacitor) — ainda não é uma app, mas esta
+   página já está preparada para o dia em que for embrulhada com
+   Capacitor. Quando isso acontecer, e o plugin @capacitor/push-
+   -notifications estiver instalado, o handler de notificação
+   recebida só precisa de chamar window.receberOfertaNativa(payload)
+   — a lógica de mostrar o cartão já está pronta, reaproveitando
+   exactamente o mesmo caminho que o socket já usa hoje. Enquanto
+   corre só como página web (como agora), isto não faz nada.
+   Ver GUIA-APP-NATIVA.md para o resto da configuração.
+════════════════════════════════════════════════════════════════ */
+window.__RM_NATIVE__ = !!(window.Capacitor?.isNativePlatform?.());
+window.receberOfertaNativa = function(payload){
+  // payload esperado: o mesmo formato que o servidor já envia via
+  // socket.emit("trip_offer", {...}) — tripId, motorista, viagem.
+  if (typeof window.mostrarOfertaViagem === "function") window.mostrarOfertaViagem(payload);
+};
+
+let viagemAtivaId = null;     // id da viagem com recolha iniciada — define a sala "trip_*"
+
+/* ================================================================
+   AUTH
+================================================================ */
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+async function apiFetch(path, opts = {}) {
+  const token = getToken();
+  const headers = { "Accept": "application/json", ...(opts.headers || {}) };
+  if (token) headers["Authorization"] = "Bearer " + token;
+  if (opts.body && typeof opts.body === "object" && !(opts.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(opts.body);
+  }
+  const res = await fetch(API_BASE + path, { credentials: "include", ...opts, headers });
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem(TOKEN_KEY);
+    location.href = "/motorista-login.html";
+    throw new Error("Sessão expirada");
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || "HTTP " + res.status);
+  return data;
+}
+
+/* ================================================================
+   MAPA LEAFLET
+================================================================ */
+const map = L.map("map", { zoomControl: false, attributionControl: false })
+  .setView([38.7169, -9.139], 13);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  subdomains: "abc"
+}).addTo(map);
+
+// Ícone motorista — seta dentro de círculo prata; a rotação é
+// aplicada depois via JS (id="rmDriverArrow"), conforme a direção
+// real de marcha (heading do GPS) ou, quando parado, o rumo até ao
+// destino da viagem ativa.
+const iconMotorista = L.divIcon({
+  html: `
+    <div style="position:relative;width:40px;height:40px">
+      <div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.55);border:3px solid rgba(196,201,212,.75);box-shadow:0 4px 14px rgba(0,0,0,.55)"></div>
+      <div id="rmDriverArrow" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:transform .25s linear;transform:rotate(0deg)">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2 L19.5 21 L12 16.5 L4.5 21 Z" fill="#c4c9d4"/></svg>
+      </div>
+    </div>`,
+  className: "", iconSize: [40, 40], iconAnchor: [20, 20]
+});
+
+// Calcula o rumo (bearing, em graus, 0 = Norte) de um ponto A para
+// um ponto B — usado como reserva quando o GPS não dá heading (ex:
+// motorista parado), apontando a seta para o destino da viagem.
+function calcularBearing(lat1, lng1, lat2, lng2) {
+  const toRad = d => d * Math.PI / 180;
+  const toDeg = r => r * 180 / Math.PI;
+  const dLng = toRad(lng2 - lng1);
+  const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2))
+          - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+function makeIcon(color, emoji) {
+  return L.divIcon({
+    html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:${color};border:3px solid #fff;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:12px">${emoji}</span></div>`,
+    className: "", iconSize: [28, 28], iconAnchor: [14, 28]
+  });
+}
+
+const iconOrigem  = makeIcon("#c4c9d4", "📍");
+const iconDestino = makeIcon("#ef4444", "🏁");
+
+/* ================================================================
+   GEOLOCALIZAÇÃO
+================================================================ */
+function iniciarGPS() {
+  if (!navigator.geolocation) return;
+  watchId = navigator.geolocation.watchPosition(pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    myPos = { lat, lng };
+
+    if (!myMarker) {
+      myMarker = L.marker([lat, lng], { icon: iconMotorista }).addTo(map);
+    } else {
+      myMarker.setLatLng([lat, lng]);
+    }
+
+    // Direção da seta: heading real do GPS (direção de marcha) quando
+    // disponível; senão, rumo até ao destino da viagem ativa; senão,
+    // mantém a última direção conhecida (não "salta" para Norte).
+    const headingGPS = pos.coords?.heading;
+    if (headingGPS != null && !Number.isNaN(headingGPS)) {
+      ultimoHeadingValido = headingGPS;
+    } else if (destinoActivoCoords) {
+      ultimoHeadingValido = calcularBearing(lat, lng, destinoActivoCoords.lat, destinoActivoCoords.lng);
+    }
+    if (ultimoHeadingValido != null) {
+      const arrowEl = document.getElementById("rmDriverArrow");
+      if (arrowEl) arrowEl.style.transform = `rotate(${ultimoHeadingValido}deg)`;
+    }
+
+    // Enviar localização ao servidor
+    enviarLocalizacao(lat, lng, pos.coords);
+
+    // Verificar alertas de viagens próximas
+    verificarAlertas();
+
+  }, err => console.warn("GPS:", err), {
+    enableHighAccuracy: true, maximumAge: 5000, timeout: 15000
+  });
+}
+
+let ultimoEnvio = 0;
+async function enviarLocalizacao(lat, lng, coords) {
+  // Tempo real: emitir já via socket, sem esperar pelo throttle do
+  // HTTP abaixo — só enquanto há uma viagem com recolha iniciada
+  // (viagemAtivaId), que é quando o utilizador está de facto a
+  // acompanhar o mapa.
+  if (socket && viagemAtivaId) {
+    socket.emit("driver_location", {
+      tripId: viagemAtivaId,
+      driverId: motoInfo?._id || motoInfo?.id,
+      lat, lng,
+      accuracy: coords?.accuracy, speed: coords?.speed, heading: coords?.heading,
+    });
+  }
+
+  // Persistência no servidor (histórico/auditoria) — mantém-se com
+  // throttle, pois não precisa de ser tão frequente quanto o socket.
+  const agora = Date.now();
+  if (agora - ultimoEnvio < 15000) return;
+  ultimoEnvio = agora;
+  try {
+    await apiFetch("/api/motorista/localizacao", {
+      method: "POST",
+      body: { lat, lng, accuracy: coords?.accuracy, speed: coords?.speed, heading: coords?.heading, ts: Date.now() }
+    });
+    setOnline(true);
+  } catch { setOnline(false); }
+}
+
+document.getElementById("btnRecentrar").onclick = () => {
+  if (myPos) map.setView([myPos.lat, myPos.lng], 15, { animate: true });
+};
+
+document.getElementById("btnAjuda").onclick = async () => {
+  if (!viagemAtivaId) {
+    alert("Esta função está disponível durante uma viagem em curso.");
+    return;
+  }
+  if (!confirm("Enviar alerta de SOS ao centro de segurança agora?")) return;
+
+  const btn = document.getElementById("btnAjuda");
+  btn.style.pointerEvents = "none";
+  try {
+    await apiFetch("/api/tracking/alertas/sos", {
+      method: "POST",
+      body: { reservaId: viagemAtivaId, lat: myPos?.lat, lng: myPos?.lng }
+    });
+    alert("Alerta enviado. O centro de segurança foi notificado e a sua localização está a ser acompanhada.");
+  } catch (err) {
+    alert("Não foi possível enviar o alerta: " + err.message + "\nLigue diretamente para o suporte se a situação for urgente.");
+  } finally {
+    btn.style.pointerEvents = "auto";
+  }
+};
+
+document.getElementById("btnCategorias").onclick = abrirCategorias;
+document.getElementById("btnCategoriasRodape").onclick = abrirCategorias;
+document.getElementById("categoriasOverlayBg").onclick = fecharCategorias;
+
+/* ================================================================
+   STATUS ONLINE/OFFLINE
+================================================================ */
+function setOnline(online) {
+  // O indicador antigo (statusPill) foi removido — o único controlo
+  // de Online/Offline visível agora é o botão do rodapé
+  // (btnOnlineToggle), que reflecte a disponibilidade REAL para
+  // receber viagens, não apenas se o GPS está a responder. Esta
+  // função é mantida (sem efeito visual) para não quebrar as
+  // chamadas já existentes em enviarLocalizacao().
+}
+
+/* ── BOTÃO ONLINE/OFFLINE (rodapé, estilo Uber) ──────────────────
+   Controla se o motorista está disponível para receber pedidos
+   (Motorista.disponivel no backend, usado pelo motor de despacho).
+   Distinto do statusPill, que só reflecte se o GPS está activo. ── */
+let estaOnline = false;
+
+async function alternarOnline() {
+  const btn = document.getElementById("btnOnlineToggle");
+  if (!btn) return;   // botão não existe (defensive) — nada a fazer
+  const novoEstado = !estaOnline;
+
+  // ── Vai ficar ONLINE: precisa de veículo ANTES de tocar no backend ──
+  if (novoEstado) {
+    const temVeic = window.RMVeicSel
+      ? await window.RMVeicSel.temVeiculoAtual()
+      : true;
+    if (!temVeic) {
+      if (window.RMVeicSel) {
+        window.RMVeicSel.abrirModal(() => alternarOnline());
+      }
+      return; // bloqueia — não chama o backend, não muda classes
+    }
+  }
+
+  btn.classList.add("is-busy");
+  try {
+    const data = await apiFetch("/api/motorista/disponibilidade", {
+      method: "POST",
+      body: { disponivel: novoEstado },
+    });
+    estaOnline = !!data?.disponivel;
+  } catch {
+    // (estaOnline mantém o valor)
+  } finally {
+    btn.classList.remove("is-busy");
+    btn.classList.toggle("is-online", estaOnline);
+  }
+
+  if (!estaOnline && window.RMVeicSel) {
+    window.RMVeicSel.libertarVeiculo();
+  }
+}
+const _btnOnlineToggle = document.getElementById("btnOnlineToggle");
+if (_btnOnlineToggle) _btnOnlineToggle.addEventListener("click", alternarOnline);
+
+/* ── WIDGET DE GANHOS NO HEADER — toque para ofuscar/revelar ──── */
+async function carregarGanhosHeader() {
+  try {
+    const data = await apiFetch("/api/motorista/ganhos");
+    const hoje = data?.hoje ?? data?.totalHoje ?? data?.ganhosHoje ?? 0;
+    const fmt  = v => new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(v);
+    const el = document.getElementById("ganhosValorHeader");
+    if (el) el.textContent = fmt(Number(hoje) || 0);
+  } catch { /* silencioso — widget fica em €0,00 se falhar */ }
+}
+
+document.getElementById("ganhosWidget").addEventListener("click", function () {
+  this.classList.toggle("oculto");
+});
+
+/* ================================================================
+   CARREGAR DADOS DO MOTORISTA
+================================================================ */
+async function carregarMotorista() {
+  try {
+    const data = await apiFetch("/api/motorista/me");
+    motoInfo = data?.motorista || data;
+    if (motoInfo) {
+      // A foto de rosto (obrigatória no registo) é gravada em
+      // motorista.fotoPerfil como { path, originalName, ... }; noutros
+      // fluxos legados pode vir como string direta em motorista.foto
+      // ou motorista.fotoUrl. Extrair o caminho de qualquer um deles.
+      const fontesFoto = [
+        motoInfo.fotoPerfil, motoInfo.fotoRosto,
+        motoInfo.foto,       motoInfo.fotoUrl,
+        motoInfo.selfieUrl,  motoInfo.documentos?.foto,
+        motoInfo.docs?.foto,
+      ];
+      let fotoUrl = null;
+      for (const src of fontesFoto) {
+        if (!src) continue;
+        if (typeof src === "string") { fotoUrl = src; break; }
+        if (typeof src === "object" && (src.path || src.url)) {
+          fotoUrl = src.path || src.url; break;
+        }
+      }
+
+      const avatarEl = document.getElementById("pAvatar");
+      if (fotoUrl) {
+        avatarEl.innerHTML = `<img src="${fotoUrl}" alt="Foto do motorista" onerror="this.parentElement.textContent='${(motoInfo.nome||'M')[0].toUpperCase()}'">`;
+      } else {
+        const ini = String(motoInfo.nome || "M")[0].toUpperCase();
+        avatarEl.textContent = ini;
+      }
+      document.getElementById("pNome").textContent   = motoInfo.nome || "Motorista";
+      document.getElementById("pEmail").textContent  = motoInfo.email || "—";
+      conectarSocket();
+    }
+  } catch { /* sem dados de perfil */ }
+}
+
+// Liga ao servidor via Socket.io para envio de localização em tempo
+// real. Mantém-se ligado durante toda a sessão do motorista — entra
+// na sala "trip_*" só quando uma viagem é iniciada (ver
+// confirmarInicioViagem), e sai dela quando a viagem termina.
+function conectarSocket() {
+  if (socket || typeof io === "undefined") return;
+  try {
+    socket = io({ transports: ["websocket", "polling"] });
+    socket.on("connect", () => {
+      const driverId = motoInfo?._id || motoInfo?.id;
+      if (driverId) socket.emit("driver_join", { driverId });
+    });
+    // Operador do painel de segurança solicitou uma foto em tempo real
+    // (botão "📷 Solicitar Imagem" no painel-seguranca.html).
+    socket.on("solicitar_imagem_seguranca", (d) => {
+      mostrarPedidoImagemSeguranca(d);
+    });
+    // Reserva atribuída via dispatch.service.js (sistema paralelo ao
+    // Trip, usado pelo fluxo real de reserva do site). Sem isto, o
+    // motorista só saberia de uma viagem nova até 30s depois (o
+    // próximo ciclo de polling) — aqui refresca de imediato assim
+    // que o servidor avisa. O polling em si (carregarViagens a cada
+    // REFRESH_MS) continua activo por baixo como rede de segurança,
+    // para o caso do socket cair ou a app ter estado em background.
+    socket.on("nova_reserva", (d) => {
+      console.log("[Socket] nova_reserva recebida:", d?.codigo || d?.reservaId);
+      carregarViagens();
+    });
+    // Oferta de viagem do motor de despacho unificado (Trip +
+    // dispatch.offer.engine.js) — mostra o cartão com Aceitar/Recusar.
+    // 12s para responder, o mesmo tempo do timeout no servidor.
+    socket.on("trip_offer", (d) => {
+      console.log("[Socket] trip_offer recebida:", d?.tripId);
+      if (typeof window.mostrarOfertaViagem === "function") window.mostrarOfertaViagem(d);
+    });
+    // Outro motorista foi mais rápido a aceitar, ou o pedido já
+    // não é válido (ver dispatch.accept.service.js → ALREADY_TAKEN).
+    socket.on("trip_accept_failed", (d) => {
+      console.warn("[Socket] trip_accept_failed:", d?.reason);
+      if (window.RMTripOffer) window.RMTripOffer.aoFalharAceitar(d);
+    });
+    // Confirmação de que este motorista ficou mesmo com a viagem
+    // (ver dispatch.events.js → "trip_accept" → "dispatch_accepted").
+    socket.on("dispatch_accepted", (d) => {
+      console.log("[Socket] dispatch_accepted:", d?.tripId);
+      if (window.RMTripOffer) window.RMTripOffer.aoConfirmarAceite(d);
+    });
+    // Aviso automático "é hora de partir" (ver
+    // verificarProximidadeMotoristas.service.js) — abre-se sozinho,
+    // sem o motorista ter tocado em nada.
+    socket.on("hora_de_partir", (d) => {
+      console.log("[Socket] hora_de_partir:", d?.tripId);
+      if (typeof window.mostrarHoraDePartir === "function") window.mostrarHoraDePartir(d);
+    });
+    // Confirmação do cancelamento — só informativo, o ecrã já se
+    // fechou no momento do clique/timeout.
+    socket.on("cancelar_recolha_ok", (d) => {
+      console.log("[Socket] cancelar_recolha_ok:", d);
+    });
+  } catch (err) {
+    console.warn("[Socket] Falha ao ligar:", err?.message);
+    socket = null;
+  }
+}
+
+/* ================================================================
+   CARREGAR VIAGENS
+================================================================ */
+async function carregarViagens() {
+  try {
+    const data = await apiFetch("/api/motorista/viagens");
+    minhasViagens = Array.isArray(data?.viagens) ? data.viagens
+      : Array.isArray(data) ? data : [];
+
+    // Ordenar por data/hora
+    minhasViagens.sort((a, b) => new Date(a.datahora) - new Date(b.datahora));
+
+    // Filtrar viagens futuras/pendentes para o tripBar
+    const pendentes = minhasViagens.filter(v =>
+      ["pendente", "atribuida", "aceite"].includes(String(v.status || "").toLowerCase())
+      && new Date(v.datahora) > new Date(Date.now() - 30 * 60 * 1000)
+    );
+
+    renderTripBar(pendentes);
+    document.getElementById("badgeViagens").textContent = pendentes.length;
+
+    // Render na secção de viagens
+    renderListaViagens();
+
+  } catch (err) {
+    console.warn("Viagens:", err);
+    renderTripBar([]);
+  }
+}
+
+/* ================================================================
+   TRIP BAR — rodapé horizontal
+================================================================ */
+function renderTripBar(viagens) {
+  const bar = document.getElementById("tripBar-inner");
+  if (!viagens.length) {
+    bar.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:12px 4px;white-space:nowrap">Sem viagens atribuídas</div>`;
+    return;
+  }
+
+  bar.innerHTML = viagens.map((v, i) => {
+    const dt    = new Date(v.datahora);
+    const hora  = dt.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+    const data  = dt.toLocaleDateString("pt-PT", { weekday: "short", day: "numeric", month: "short" });
+    const mins  = Math.round((dt - Date.now()) / 60000);
+    const urg   = mins <= 30 && mins > 0;
+    const valor = Number(v.valor || v.total || 0).toFixed(2);
+
+    return `
+      <div class="trip-card ${urg ? "urgente" : ""}" id="tc-${i}" onclick="selecionarViagem(${i})">
+        <div class="tc-hora">
+          ${hora} · ${data}
+          ${urg ? `<span class="tc-urgente-badge">⚡ ${mins}min</span>` : ""}
+        </div>
+        <div class="tc-origem">📍 ${v.partida || v.origem || "—"}</div>
+        <div class="tc-destino">🏁 ${v.destino || "—"}</div>
+        <div class="tc-footer">
+          <span class="tc-val">€${valor}</span>
+          <span class="tc-dist">${v.categoria || v.tipo || ""}</span>
+        </div>
+        <button class="btn-iniciar" onclick="event.stopPropagation();iniciarViagem('${v._id || v.id}')">
+          Iniciar recolha →
+        </button>
+      </div>
+    `;
+  }).join("");
+}
+
+/* ================================================================
+   SELECCIONAR VIAGEM — traçar rota no mapa
+================================================================ */
+async function selecionarViagem(idx) {
+  selectedTrip = minhasViagens[idx];
+
+  // Highlight card
+  document.querySelectorAll(".trip-card").forEach((c, i) => {
+    c.classList.toggle("selected", i === idx);
+  });
+
+  const v = selectedTrip;
+  if (!v) return;
+
+  // Ir para o mapa
+  fecharSecao();
+
+  // Geocodificar origem e destino se não tiver coordenadas
+  let oLat = v.origemLat, oLng = v.origemLng;
+  let dLat = v.destinoLat, dLng = v.destinoLng;
+
+  if (!oLat && v.partida) {
+    const geo = await nominatimGeo(v.partida);
+    if (geo) { oLat = geo.lat; oLng = geo.lng; }
+  }
+  if (!dLat && v.destino) {
+    const geo = await nominatimGeo(v.destino);
+    if (geo) { dLat = geo.lat; dLng = geo.lng; }
+  }
+
+  if (!oLat || !dLat) return;
+
+  // Guardar destino ativo — a seta do motorista passa a apontar para
+  // aqui sempre que o GPS não der heading (ex: parado num semáforo)
+  destinoActivoCoords = { lat: dLat, lng: dLng };
+
+  // Remover rota anterior
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+
+  // Marcadores origem/destino
+  L.marker([oLat, oLng], { icon: iconOrigem }).addTo(map)
+    .bindPopup(`<b>Origem</b><br>${v.partida || ""}`).openPopup();
+  L.marker([dLat, dLng], { icon: iconDestino }).addTo(map)
+    .bindPopup(`<b>Destino</b><br>${v.destino || ""}`);
+
+  // Traçar rota OSRM
+  try {
+    const r = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson`
+    );
+    const d = await r.json();
+    if (d.routes?.[0]) {
+      const coords = d.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+      routeLayer = L.polyline(coords, { color: "#1a1d24", weight: 5, opacity: 0.85 }).addTo(map);
+      map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
+    }
+  } catch { map.setView([oLat, oLng], 14); }
+}
+
+/* ================================================================
+   ABRIR DETALHE DE VIAGEM — "Minhas Viagens" (secção), distinto da
+   barra inferior (trip bar), que continua a usar selecionarViagem()
+   e a desenhar no mapa principal, sem abrir este ecrã.
+================================================================ */
+function abrirDetalheViagem(idx) {
+  const v = minhasViagens[idx];
+  if (!v) return;
+  if (typeof window.mostrarDetalheViagem === "function") {
+    window.mostrarDetalheViagem(v);
+  }
+}
+
+/* ================================================================
+   GEOCODIFICAÇÃO NOMINATIM
+================================================================ */
+async function nominatimGeo(address) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=pt`);
+    const d = await r.json();
+    if (d?.[0]) return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
+  } catch {}
+  return null;
+}
+
+/* ================================================================
+   INICIAR VIAGEM
+================================================================ */
+async function iniciarViagem(id) {
+  if (!id) return;
+  const v = minhasViagens.find(x => String(x._id || x.id) === String(id));
+
+  // ── Bloqueio: não deixa iniciar a recolha antes da hora marcada
+  // da viagem. Aplica-se a QUALQUER sítio que chame iniciarViagem()
+  // — tanto o botão da barra inferior como o "Iniciar Recolha" do
+  // ecrã de detalhe (Minhas Viagens), já que ambos passam por aqui.
+  if (v?.datahora) {
+    const horaPrevista = new Date(v.datahora).getTime();
+    const agora = Date.now();
+    if (agora < horaPrevista) {
+      const faltamMin = Math.ceil((horaPrevista - agora) / 60000);
+      const horaFmt = new Date(v.datahora).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+      alert(`Ainda não pode iniciar a recolha desta viagem.\n\nHorário previsto: ${horaFmt} (faltam ${faltamMin} min).`);
+      return;
+    }
+  }
+
+  // Guardar ID e abrir modal de escolha de mapa
+  window._rmViagemIdPendente = id;
+  window._rmViagemPendente = v || null;
+  document.getElementById('modalMapaDestino').textContent =
+    v ? (v.partida || v.origem || 'Local de recolha') : 'Local de recolha';
+
+  // Requisitos especiais (cadeira de ovo / cadeirinha / elevação) —
+  // mostrados em destaque ANTES de o motorista partir para a recolha,
+  // para que possa garantir que tem o equipamento no carro a tempo,
+  // em vez de descobrir isso só com o passageiro já à sua espera.
+  const reqEl = document.getElementById('modalMapaRequisitos');
+  const req = v?.requisitosEspeciais;
+  const temReq = req && typeof req === 'object' && Object.values(req).some(q => Number(q) > 0);
+  if (reqEl) {
+    if (temReq) {
+      const labels = { ovo: 'Cadeira de ovo para bebé', cadeirinha: 'Cadeirinha para bebé', elevacao: 'Assento de elevação' };
+      const itens = Object.entries(req)
+        .filter(([, qty]) => Number(qty) > 0)
+        .map(([key, qty]) => `<li>${labels[key] || key} <b>×${qty}</b></li>`)
+        .join('');
+      reqEl.innerHTML = `
+        <div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(255,160,60,.10);border:1px solid rgba(255,160,60,.35)">
+          <div style="font-size:11px;font-weight:900;color:#ffc98a;letter-spacing:.02em;margin-bottom:4px">⚠️ Equipamento obrigatório nesta viagem</div>
+          <ul style="margin:0;padding-left:16px;font-size:11.5px;color:#ffe3bd;line-height:1.5">${itens}</ul>
+          <div style="font-size:10.5px;color:#cdd2da;margin-top:6px">Confirme que tem isto no veículo antes de seguir para a recolha.</div>
+        </div>`;
+    } else {
+      reqEl.innerHTML = '';
+    }
+  }
+
+  document.getElementById('modalMapa').style.display = 'flex';
+}
+
+async function confirmarInicioViagem(app) {
+  const id = window._rmViagemIdPendente;
+  const v  = window._rmViagemPendente;
+  if (!id) return;
+
+  document.getElementById('modalMapa').style.display = 'none';
+
+  // Obter coordenadas de destino para abrir o mapa
+  let dLat = v?.destinoLat, dLng = v?.destinoLng;
+  if (!dLat && v?.destino) {
+    try {
+      const geo = await nominatimGeo(v.destino);
+      if (geo) { dLat = geo.lat; dLng = geo.lng; }
+    } catch {}
+  }
+
+  // Abrir app de navegação escolhida
+  if (dLat && dLng) {
+    if (app === 'waze') {
+      window.open(`https://waze.com/ul?ll=${dLat},${dLng}&navigate=yes&zoom=17`, '_blank');
+    } else {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${dLat},${dLng}&travelmode=driving`, '_blank');
+    }
+  }
+
+  // Marcar viagem como iniciada na API — CORRIGIDO: /api/reservas/:id/iniciar
+  // nunca existiu em nenhum ficheiro do backend (confirmado a
+  // procurar no projeto todo); todos os pedidos falhavam sempre,
+  // em silêncio, e o sistema de segurança nunca chegava a ficar
+  // ativo para nenhuma viagem. A rota certa é /api/tracking/iniciar
+  // — envia-se também o motoristaId explicitamente (o motorista já
+  // sabe o seu próprio id), para funcionar tanto com reservas do
+  // sistema antigo como do motor de despacho unificado (Trip).
+  try {
+    await apiFetch(`/api/tracking/iniciar`, {
+      method: 'POST',
+      body: { reservaId: id, motoristaId: motoInfo?._id || motoInfo?.id },
+    });
+    await carregarViagens();
+    mostrarPainelViagemEmCurso(v);
+
+    // Entrar na sala da viagem — a partir daqui, enviarLocalizacao()
+    // passa a emitir driver_location via socket para esta sala,
+    // chegando em tempo real ao utilizador que já fez trip_join no
+    // minha-conta.html.
+    viagemAtivaId = id;
+    if (socket) socket.emit("trip_join", { tripId: id });
+  } catch (err) {
+    alert('Erro ao iniciar: ' + err.message);
+  }
+}
+
+// Mostra o painel "Viagem em curso" com o botão de contacto ao
+// passageiro — só chamado depois de /api/reservas/:id/iniciar
+// confirmar sucesso. Antes disso, o motorista não tem este botão
+// disponível em lado nenhum da interface.
+function mostrarPainelViagemEmCurso(v) {
+  const painel  = document.getElementById('painelViagemEmCurso');
+  const nomeEl  = document.getElementById('picPassageiroNome');
+  const btn     = document.getElementById('picBtnContactar');
+  if (!painel || !v) return;
+
+  const nome     = v.nome || v.passageiro || v.nomePassageiro || 'Passageiro';
+  const contacto = v.contacto || v.telefone || v.contactoPassageiro || v.telefonePassageiro || '';
+
+  if (nomeEl) nomeEl.textContent = nome;
+
+  // Requisitos especiais (cadeira de ovo / cadeirinha / elevação)
+  // pedidos pelo passageiro na reserva — útil para o motorista
+  // confirmar que tem o equipamento certo no veículo.
+  let reqEl = document.getElementById('picRequisitos');
+  if (!reqEl) {
+    reqEl = document.createElement('div');
+    reqEl.id = 'picRequisitos';
+    reqEl.style.marginBottom = '8px';
+    nomeEl.insertAdjacentElement('afterend', reqEl);
+  }
+  reqEl.innerHTML = renderRequisitosBadges(v.requisitosEspeciais);
+
+  if (btn) {
+    if (contacto) {
+      const numero = String(contacto).replace(/[^\d+]/g, '');
+      btn.href = 'sms:' + numero;
+      btn.dataset.numero = numero; // usado pelo botão de câmera
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    } else {
+      btn.removeAttribute('href');
+      delete btn.dataset.numero;
+      btn.style.opacity = '.5';
+      btn.style.pointerEvents = 'none';
+    }
+  }
+  painel.style.display = 'block';
+  bindCameraPassageiro();
+}
+
+function esconderPainelViagemEmCurso() {
+  const painel = document.getElementById('painelViagemEmCurso');
+  if (painel) painel.style.display = 'none';
+  // Sair da sala da viagem — deixa de emitir driver_location para
+  // este tripId, já que a viagem terminou/foi cancelada.
+  if (socket && viagemAtivaId) socket.emit("trip_leave", { tripId: viagemAtivaId });
+  viagemAtivaId = null;
+  destinoActivoCoords = null;
+}
+
+// Câmera — tirar foto de referência (ex: ponto de recolha) e
+// partilhar com o passageiro. Activa a câmera traseira do telemóvel
+// (capture="environment"), nunca a galeria. Usa a Web Share API para
+// abrir a app de Mensagens já com a foto anexada; se o browser não
+// suportar partilha de ficheiros, descarrega a foto e abre a app de
+// SMS para o motorista anexar manualmente. Os listeners só são
+// associados uma vez (guarda via dataset), já que esta função pode
+// ser chamada de novo em cada nova viagem iniciada.
+function bindCameraPassageiro() {
+  const btnCam = document.getElementById('picBtnCamera');
+  const input  = document.getElementById('picCameraInput');
+  if (!btnCam || !input || btnCam.dataset.bound) return;
+  btnCam.dataset.bound = '1';
+
+  btnCam.addEventListener('click', () => input.click());
+  input.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const numero = document.getElementById('picBtnContactar')?.dataset.numero || '';
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'Foto para o passageiro',
+          text: 'Referência para a recolha',
+        });
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    const tmpUrl = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = tmpUrl; a.download = 'foto-recolha.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(tmpUrl), 4000);
+    if (numero) setTimeout(() => { window.location.href = 'sms:' + numero; }, 600);
+  });
+}
+
+/* ================================================================
+   PEDIDO DE IMAGEM PELO OPERADOR DE SEGURANÇA
+   Chega via socket "solicitar_imagem_seguranca" (emitido pelo
+   painel-seguranca.html quando um alerta está activo). Mostra um
+   banner urgente; ao tocar, activa a câmara traseira do telemóvel
+   (capture="environment", nunca a galeria) e envia a foto ao
+   backend, que a reencaminha ao operador via
+   "imagem_seguranca_recebida".
+================================================================ */
+let _pedidoImagemSeguranca = null; // { reservaId, alertaId }
+
+function mostrarPedidoImagemSeguranca(d) {
+  _pedidoImagemSeguranca = { reservaId: d.reservaId, alertaId: d.alertaId };
+  const el = document.getElementById('alertaImagemSeguranca');
+  if (!el) return;
+  el.style.display = 'flex';
+  document.getElementById('alertaImagemSegStatus').textContent = '';
+  tocarAlerta();
+}
+
+function fecharPedidoImagemSeguranca() {
+  const el = document.getElementById('alertaImagemSeguranca');
+  if (el) el.style.display = 'none';
+  _pedidoImagemSeguranca = null;
+}
+
+function bindImagemSeguranca() {
+  const btn   = document.getElementById('btnTirarFotoSeguranca');
+  const input = document.getElementById('segCameraInput');
+  const skip  = document.getElementById('btnIgnorarPedidoSeguranca');
+  if (!btn || !input || btn.dataset.bound) return;
+  btn.dataset.bound = '1';
+
+  btn.addEventListener('click', () => input.click());
+  skip?.addEventListener('click', fecharPedidoImagemSeguranca);
+
+  input.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !_pedidoImagemSeguranca) return;
+
+    const statusEl = document.getElementById('alertaImagemSegStatus');
+    statusEl.textContent = 'A enviar foto…';
+    try {
+      const fd = new FormData();
+      fd.append('foto', file, 'seguranca.jpg');
+      fd.append('reservaId', _pedidoImagemSeguranca.reservaId || '');
+      if (_pedidoImagemSeguranca.alertaId) fd.append('alertaId', _pedidoImagemSeguranca.alertaId);
+
+      await apiFetch(`/api/tracking/alertas/${_pedidoImagemSeguranca.alertaId || 'atual'}/imagem`, {
+        method: 'POST', body: fd
+      });
+
+      statusEl.textContent = '✅ Foto enviada ao operador.';
+      setTimeout(fecharPedidoImagemSeguranca, 2000);
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = '❌ Falha ao enviar. Tente novamente.';
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', bindImagemSeguranca);
+
+/* ================================================================
+   ALERTAS DE PROXIMIDADE TEMPORAL
+================================================================ */
+function verificarAlertas() {
+  const agora = Date.now();
+  minhasViagens.forEach(v => {
+    if (!v._id && !v.id) return;
+    const id  = String(v._id || v.id);
+    const dt  = new Date(v.datahora);
+    const mins = Math.round((dt - agora) / 60000);
+
+    // Alerta entre 20 e 10 minutos antes
+    if (mins <= 20 && mins > 10 && !alertShown.has(id + "_20")) {
+      alertShown.add(id + "_20");
+      mostrarAlerta(`⏰ Partida em ${mins} minutos`, `${v.partida || "Local de recolha"} — Prepare-se!`);
+      tocarAlerta();
+    }
+
+    // Alerta final — 10 minutos
+    if (mins <= 10 && mins > 0 && !alertShown.has(id + "_10")) {
+      alertShown.add(id + "_10");
+      mostrarAlerta(`🚨 Partida em ${mins} minutos!`, `${v.partida || "Local de recolha"} — Deve estar a caminho!`);
+      tocarAlerta();
+    }
+  });
+}
+
+function mostrarAlerta(titulo, sub) {
+  const el = document.getElementById("alertaProximidade");
+  document.getElementById("alertaTitulo").textContent = titulo;
+  document.getElementById("alertaSub").textContent = sub;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 8000);
+}
+
+function tocarAlerta() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [440, 523, 659].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.3);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + i * 0.15 + 0.3);
+    });
+  } catch {}
+}
+
+/* ================================================================
+   RENDER LISTA VIAGENS (secção)
+================================================================ */
+function renderRequisitosBadges(req) {
+  if (!req || typeof req !== "object" || !Object.keys(req).length) return "";
+  const labels = { ovo: "🍼 Ovo", cadeirinha: "🪑 Cadeirinha", elevacao: "⬆️ Elevação" };
+  const chips = Object.entries(req)
+    .filter(([, qty]) => Number(qty) > 0)
+    .map(([key, qty]) => `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#ffd9ab;background:rgba(255,160,60,.12);border:1px solid rgba(255,160,60,.3);border-radius:999px;padding:2px 8px;margin-right:4px">${labels[key] || key} ×${qty}</span>`)
+    .join("");
+  return chips ? `<div style="margin-top:6px">${chips}</div>` : "";
+}
+
+function renderListaViagens() {
+  const el = document.getElementById("listaViagens");
+  if (!minhasViagens.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🚗</div>Sem viagens atribuídas</div>`;
+    return;
+  }
+
+  el.innerHTML = minhasViagens.map((v, i) => {
+    const dt   = new Date(v.datahora);
+    const hora = dt.toLocaleString("pt-PT", { weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
+    const val  = Number(v.valor || v.total || 0).toFixed(2);
+    const st   = String(v.status || "pendente");
+    const stColor = st === "concluida" ? "var(--green)" : st === "cancelada" ? "var(--red)" : "var(--amber)";
+    const reqBadges = renderRequisitosBadges(v.requisitosEspeciais);
+
+    return `
+      <div class="viagem-lista-card" onclick="abrirDetalheViagem(${i})">
+        <div class="vlc-hora">${hora} · <span style="color:${stColor};font-weight:700">${st.toUpperCase()}</span></div>
+        <div class="vlc-rota">
+          <div class="vlc-pontos">
+            <div class="vlc-dot origem"></div>
+            <div class="vlc-line"></div>
+            <div class="vlc-dot destino"></div>
+          </div>
+          <div class="vlc-enderecos">
+            <div class="vlc-end">${v.partida || v.origem || "—"}</div>
+            <div class="vlc-end">${v.destino || "—"}</div>
+          </div>
+        </div>
+        <div class="vlc-footer">
+          <span class="vlc-cat">${v.categoria || "—"}</span>
+          <span class="vlc-val">€${val}</span>
+        </div>
+        ${reqBadges}
+      </div>
+    `;
+  }).join("");
+}
+
+/* ================================================================
+   GANHOS
+================================================================ */
+/* ── Saldo e Levantamentos ────────────────────────────────── */
+async function carregarSaldo() {
+  try {
+    const data = await apiFetch("/api/motorista/saldo");
+    const saldo = data?.saldoDisponivel ?? data?.saldo ?? 0;
+    const fmt   = v => new Intl.NumberFormat("pt-PT", { style:"currency", currency:"EUR" }).format(v);
+    const elSaldo = document.getElementById("saldoDisponivel");
+    if (elSaldo) elSaldo.textContent = fmt(saldo);
+    document.getElementById("modalSaldoDisp").textContent  = fmt(saldo);
+    // Guardar em memória para validação
+    document.getElementById("inputValorSaldo").dataset.maxSaldo = saldo;
+  } catch { /* silencioso */ }
+}
+
+function abrirModalSaldo() {
+  document.getElementById("modalSaldo").style.display = "flex";
+  document.getElementById("inputValorSaldo").value = "";
+  document.getElementById("msgModalSaldo").textContent = "";
+}
+
+function fecharModalSaldo() {
+  document.getElementById("modalSaldo").style.display = "none";
+}
+
+function abrirPopupOperador() {
+  const d = window._dadosOperador || {};
+  document.getElementById("popOpNome").textContent     = d.gestorNome     || "—";
+  document.getElementById("popOpNif").textContent      = d.gestorNif      || "—";
+  document.getElementById("popOpContacto").textContent = d.gestorContacto || "—";
+  document.getElementById("popOpEmail").textContent    = d.gestorEmail    || "—";
+  document.getElementById("popupOperador").style.display = "flex";
+}
+function fecharPopupOperador() {
+  document.getElementById("popupOperador").style.display = "none";
+}
+
+async function confirmarPedidoSaldo() {
+  const input   = document.getElementById("inputValorSaldo");
+  const msgEl   = document.getElementById("msgModalSaldo");
+  const btn     = document.getElementById("btnConfirmarSaldo");
+  const valor   = Number(input.value);
+  const maxSaldo= Number(input.dataset.maxSaldo || 0);
+
+  msgEl.style.color = "#ff9999";
+  if (!valor || valor <= 0) { msgEl.textContent = "Indique um valor válido."; return; }
+  if (valor > maxSaldo)     { msgEl.textContent = "Valor superior ao saldo disponível."; return; }
+
+  btn.disabled = true; btn.textContent = "A enviar...";
+  try {
+    const data = await apiFetch("/api/motorista/pedido-saldo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ valorSolicitado: valor })
+    });
+    msgEl.style.color = "#19d68b";
+    msgEl.textContent = "✅ " + (data?.message || "Pedido enviado. O seu gestor será notificado.");
+    setTimeout(() => { fecharModalSaldo(); carregarSaldo(); }, 2000);
+  } catch(e) {
+    msgEl.textContent = "❌ " + (e?.message || "Erro ao enviar pedido.");
+  } finally {
+    btn.disabled = false; btn.textContent = "CONFIRMAR";
+  }
+}
+
+/* ================================================================
+   GRÁFICO DE FATURAÇÃO — DIA / SEMANA
+   Endpoint esperado (backend a confirmar/criar):
+     GET /api/motorista/ganhos/historico?periodo=dia
+       → { data:"2026-06-30", label:"Hoje", valor: 62.10 }
+     GET /api/motorista/ganhos/historico?periodo=semana
+       → { dataInicio:"2026-06-22", dataFim:"2026-06-28",
+           dias:[ {data,label,valor} x7 ], total: 310.40 }
+   Enquanto o endpoint não existir, cai em datas calculadas no
+   próprio browser com valores a €0,00 (não parte a página).
+================================================================ */
+let ganhosChartInst = null;
+
+function segundaDaSemana(ref) {
+  const d = new Date(ref);
+  const diaSemana = (d.getDay() + 6) % 7; // 0 = Segunda
+  d.setDate(d.getDate() - diaSemana);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatarDiaMes(d) {
+  return String(d.getDate()).padStart(2, "0");
+}
+
+async function carregarGanhosChart() {
+  let dados = null;
+  try {
+    dados = await apiFetch(`/api/motorista/ganhos/historico?periodo=semana`);
+  } catch { /* endpoint indisponível — usa reserva abaixo */ }
+
+  const hoje = new Date();
+
+  let diasInfo = Array.isArray(dados?.dias) ? dados.dias : null;
+  let inicio, fim;
+  if (diasInfo && diasInfo.length === 7) {
+    inicio = new Date(diasInfo[0].data);
+    fim    = new Date(diasInfo[6].data);
+  } else {
+    inicio = segundaDaSemana(hoje);
+    fim    = new Date(inicio); fim.setDate(fim.getDate() + 6);
+    const nomes = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+    diasInfo = nomes.map((label, i) => {
+      const d = new Date(inicio); d.setDate(d.getDate() + i);
+      return { data: d.toISOString(), label, valor: 0 };
+    });
+  }
+
+  const total = dados?.total != null ? Number(dados.total)
+    : diasInfo.reduce((s, d) => s + Number(d.valor || 0), 0);
+
+  ganhosSemanaCache = {
+    diasInfo, total, inicio, fim,
+    labels: diasInfo.map(d => d.label || ""),
+    valores: diasInfo.map(d => Number(d.valor || 0)),
+  };
+  ganhosDiaSelecionado = null;
+
+  atualizarCabecalhoGanhos();
+  renderGanhosChart(ganhosSemanaCache.labels, ganhosSemanaCache.valores);
+}
+
+// Estado da seleção de barra ao clique
+let ganhosSemanaCache = null;
+let ganhosDiaSelecionado = null; // índice (0-6) da barra selecionada, ou null
+
+function atualizarCabecalhoGanhos() {
+  if (!ganhosSemanaCache) return;
+  const { inicio, fim, total, valores, diasInfo } = ganhosSemanaCache;
+
+  if (ganhosDiaSelecionado != null) {
+    const d = new Date(diasInfo[ganhosDiaSelecionado].data);
+    const valor = valores[ganhosDiaSelecionado];
+    document.getElementById("ganhosPeriodoRange").textContent =
+      d.toLocaleDateString("pt-PT", { weekday: "long", day: "2-digit", month: "long" }).toUpperCase();
+    document.getElementById("ganhosPeriodoTotal").textContent = "€" + valor.toFixed(2).replace(".", ",");
+    document.getElementById("ganhosPeriodoTotalLabel").textContent = "faturado neste dia";
+  } else {
+    document.getElementById("ganhosPeriodoRange").textContent =
+      `${formatarDiaMes(inicio)} – ${formatarDiaMes(fim)} ${fim.toLocaleDateString("pt-PT", { month: "short" }).toUpperCase().replace(".", "")}`;
+    document.getElementById("ganhosPeriodoTotal").textContent = "€" + total.toFixed(2).replace(".", ",");
+    document.getElementById("ganhosPeriodoTotalLabel").textContent = "total da semana";
+  }
+}
+
+// Plugin próprio — desenha o valor (€) só sobre a barra selecionada,
+// ou sobre todas se nenhuma estiver selecionada. Junta a lógica de
+// escurecer as barras não seleccionadas.
+const plugValoresEmCima = {
+  id: "plugValoresEmCima",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    ctx.save();
+    ctx.font = "800 12px 'DM Sans', sans-serif";
+    ctx.fillStyle = "#c4c9d4";
+    ctx.textAlign = "center";
+    const dados = chart.data.datasets[0].data;
+    dados.forEach((valor, i) => {
+      const meta = chart.getDatasetMeta(0);
+      const bar = meta.data[i];
+      if (!bar) return;
+      // Se houver seleção, só mostra o valor da barra selecionada
+      if (ganhosDiaSelecionado != null && ganhosDiaSelecionado !== i) return;
+      // Dias sem faturação não desenham valor — a barra tem altura
+      // zero, e "€0" ficaria colado ao rótulo do dia por baixo.
+      if (!valor) return;
+      const texto = "€" + Number(valor).toFixed(valor && valor % 1 !== 0 ? 2 : 0).replace(".", ",");
+      ctx.fillText(texto, bar.x, bar.y - 8);
+    });
+    ctx.restore();
+  }
+};
+
+// Segundo plugin — desenha o dia da semana (SEG/TER/QUA...) dentro
+// da própria coluna, junto à base, em vez de usar os rótulos
+// padrão do eixo X (que ficariam fora, por baixo do gráfico).
+const plugDiaDentroBarra = {
+  id: "plugDiaDentroBarra",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    ctx.save();
+    ctx.font = "700 9px 'DM Sans', sans-serif";
+    ctx.textAlign = "center";
+    const meta   = chart.getDatasetMeta(0);
+    const labels = chart.data.labels;
+    meta.data.forEach((bar, i) => {
+      if (!bar) return;
+      ctx.fillStyle = (ganhosDiaSelecionado === i) ? "#0a0b0d" : "#6b7280";
+      ctx.fillText(String(labels[i] || "").toUpperCase(), bar.x, bar.base - 6);
+    });
+    ctx.restore();
+  }
+};
+
+function corBarra(i) {
+  if (ganhosDiaSelecionado == null) return "rgba(196,201,212,.55)";
+  return i === ganhosDiaSelecionado ? "rgba(196,201,212,.95)" : "rgba(196,201,212,.15)";
+}
+function corBorda(i) {
+  if (ganhosDiaSelecionado == null) return "rgba(196,201,212,.9)";
+  return i === ganhosDiaSelecionado ? "#e5e7eb" : "rgba(196,201,212,.25)";
+}
+
+function renderGanhosChart(labels, valores) {
+  const canvas = document.getElementById("ganhosChart");
+  const vazioEl = document.getElementById("ganhosChartVazio");
+  if (!canvas) return;
+
+  const temDados = valores.some(v => v > 0);
+  vazioEl.style.display = temDados ? "none" : "block";
+
+  if (ganhosChartInst) { ganhosChartInst.destroy(); ganhosChartInst = null; }
+  if (typeof Chart === "undefined") return;
+
+  ganhosChartInst = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: valores.map((_, i) => corBarra(i)),
+        borderColor:     valores.map((_, i) => corBorda(i)),
+        borderWidth: 1.5, borderRadius: 5, borderSkipped: false,
+        maxBarThickness: 44,
+      }]
+    },
+    plugins: [plugValoresEmCima, plugDiaDentroBarra],
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 26 } },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      onClick(evt, elements) {
+        // Toggle: clicar de novo na barra selecionada desmarca
+        if (elements.length) {
+          const idx = elements[0].index;
+          ganhosDiaSelecionado = (ganhosDiaSelecionado === idx) ? null : idx;
+        } else {
+          ganhosDiaSelecionado = null;
+        }
+        atualizarCabecalhoGanhos();
+        renderGanhosChart(labels, valores);
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { display: false } },
+        y: { display: false, beginAtZero: true, suggestedMax: Math.max(...valores, 10) * 1.35 }
+      }
+    }
+  });
+}
+
+async function carregarGanhos() {
+  const el = document.getElementById("listaGanhos");
+  try {
+    const data = await apiFetch("/api/motorista/ganhos");
+    const total    = Number(data?.totalBruto   || 0).toFixed(2);
+    const motorista= Number(data?.totalMotorista || 0).toFixed(2);
+    const viagens  = Number(data?.viagensConcluidas || 0);
+    const semanas  = Array.isArray(data?.semanas) ? data.semanas : [];
+
+    el.innerHTML = `
+      <div class="info-grid">
+        <div class="info-card gold">
+          <div class="info-card-label">Total bruto</div>
+          <div class="info-card-value">€${total}</div>
+          <div class="info-card-sub">${viagens} viagens</div>
+        </div>
+        <div class="info-card gold">
+          <div class="info-card-label">A receber</div>
+          <div class="info-card-value">€${motorista}</div>
+          <div class="info-card-sub">85% do bruto</div>
+        </div>
+      </div>
+      ${semanas.length ? `
+        <div class="fat-periodo">Por semana</div>
+        ${semanas.map(s => `
+          <div class="fat-card">
+            <div class="fat-card-info">
+              <div class="fat-nome">Semana ${s.weekNumber || ""} / ${s.year || ""}</div>
+              <div class="fat-viagens">${s.viagensConcluidas || 0} viagens concluídas</div>
+            </div>
+            <div class="fat-valor">€${Number(s.totalBruto || 0).toFixed(2)}</div>
+          </div>
+        `).join("")}
+      ` : `<div class="empty"><div class="empty-icon">💰</div>Sem dados de ganhos ainda</div>`}
+    `;
+  } catch {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">💰</div>Sem dados de ganhos ainda</div>`;
+  }
+}
+
+/* ================================================================
+   PERFIL
+================================================================ */
+async function carregarPerfil() {
+  const el = document.getElementById("dadosPerfil");
+  try {
+    const data = await apiFetch("/api/motorista/me");
+    const m = data?.motorista || data || {};
+
+    // Preencher o avatar do topo do overlay com a foto de rosto,
+    // usando a mesma lógica de extração robusta de carregarMotorista().
+    const avatarTopo = document.getElementById("perfilAvatarTopo");
+    if (avatarTopo) {
+      const fontesFoto = [
+        m.fotoPerfil, m.fotoRosto, m.foto, m.fotoUrl, m.selfieUrl,
+        m.documentos?.foto, m.docs?.foto,
+      ];
+      let fotoUrl = null;
+      for (const src of fontesFoto) {
+        if (!src) continue;
+        if (typeof src === "string") { fotoUrl = src; break; }
+        if (typeof src === "object" && (src.path || src.url)) {
+          fotoUrl = src.path || src.url; break;
+        }
+      }
+      if (fotoUrl) {
+        avatarTopo.innerHTML = `<img src="${fotoUrl}" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='${(m.nome||'M')[0].toUpperCase()}'">`;
+      } else {
+        avatarTopo.textContent = (m.nome || "M")[0].toUpperCase();
+      }
+    }
+
+    // Dados do gestor/operador de frota — o backend devolve nested ou flat.
+    // ASSUNÇÃO: gestor.nif e gestor.contacto podem não vir ainda do
+    // backend (só confirmei nome/empresa/email no /me) — mostra "—"
+    // até isso ser confirmado/adicionado.
+    const gestor = m.gestor || m.colaborador || {};
+    const gestorNome     = gestor.nome     || gestor.nomeCompleto || m.gestorNome     || "—";
+    const gestorNif      = gestor.nif                             || m.gestorNif      || "—";
+    const gestorContacto = gestor.contacto || gestor.telefone      || m.gestorContacto || "—";
+    const gestorEmail    = gestor.email                            || m.gestorEmail    || "—";
+    window._dadosOperador = { gestorNome, gestorNif, gestorContacto, gestorEmail };
+
+    el.innerHTML = `
+      <div class="perfil-card">
+        <div class="perfil-row"><span class="perfil-label">Nome</span><span class="perfil-val">${m.nome || "—"}</span></div>
+        <div class="perfil-row" id="perfilEmailRow"><span class="perfil-label">Email</span><span class="perfil-val">${m.email || "—"}</span></div>
+        <div class="perfil-row"><span class="perfil-label">Contacto</span><span class="perfil-val">${m.contacto || "—"}</span></div>
+        <div class="perfil-row"><span class="perfil-label">NIF</span><span class="perfil-val">${m.nif || "—"}</span></div>
+        <div class="perfil-row"><span class="perfil-label">IBAN</span><span class="perfil-val">${m.iban || "—"}</span></div>
+        <div class="perfil-row"><span class="perfil-label">Estado</span><span class="perfil-val" style="color:var(--green)">${m.aprovacao || "—"}</span></div>
+        <button type="button" id="btnDadosOperador" style="width:100%;margin-top:14px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
+          <span>Dados do Operador</span><span style="color:var(--text-dim)">›</span>
+        </button>
+      </div>
+    `;
+    document.getElementById("btnDadosOperador").onclick = abrirPopupOperador;
+
+    // Largura máxima do cartão = largura real da linha do Email,
+    // medida já renderizada (com o cartão ainda em fit-content,
+    // antes de aplicar o limite) — conforme pedido explicitamente.
+    const card = el.querySelector(".perfil-card");
+    const emailRow = document.getElementById("perfilEmailRow");
+    if (card && emailRow) {
+      const larguraDisponivel = el.clientWidth || window.innerWidth;
+      const largura = Math.min(Math.ceil(emailRow.getBoundingClientRect().width) + 40, larguraDisponivel); // + padding do card, sem exceder o ecrã
+      card.style.maxWidth = largura + "px";
+    }
+  } catch {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">👤</div>Sem dados de perfil</div>`;
+  }
+}
+
+/* ================================================================
+   SELEÇÃO DE VEÍCULO — separador "Veículo" do menu.
+
+   Consolidado para usar as MESMAS rotas seguras do fluxo "Ficar
+   Online" (Sistema A, em motoristaVeiculos.routes.js) — fonte única
+   de verdade (Veiculo.motoristaId), protegida contra condições de
+   corrida. As rotas antigas /veiculos-disponiveis e
+   /selecionar-veiculo foram descontinuadas (410 Gone) porque
+   permitiam a um motorista roubar silenciosamente o veículo de outro
+   motorista em serviço activo, sem qualquer proteção.
+     GET  /api/motorista/frota-disponivel
+     POST /api/motorista/veiculo/selecionar/:id
+================================================================ */
+function escapeHTMLVeiculos(s) {
+  return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function carregarVeiculos() {
+  const el = document.getElementById("listaVeiculos");
+  el.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const data = await apiFetch("/api/motorista/frota-disponivel");
+    const veiculos = Array.isArray(data?.items) ? data.items : [];
+
+    if (!veiculos.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">🚙</div>Sem veículos aprovados disponíveis.<br>Contacte o seu gestor de frota.</div>`;
+      return;
+    }
+
+    el.innerHTML = veiculos.map(v => {
+      const nome = `${v.marca || ""} ${v.modelo || ""}`.trim() || "Veículo";
+      const est  = v.estado; // "livre" | "em_uso" | "meu"
+      const ocupado  = est === "em_uso" || est === "meu";
+      const estLabel = est === "livre" ? "Livre" : "Em uso";
+      return `
+        <div class="veiculo-card${ocupado ? " ocupado" : ""}"
+             data-veiculo="${escapeHTMLVeiculos(v.id)}" data-estado="${est}">
+          <div class="veiculo-card-info">
+            <span class="veiculo-nome">${escapeHTMLVeiculos(nome)}</span>
+            <span class="veiculo-sub">${escapeHTMLVeiculos(v.matricula || "—")}</span>
+            <span class="veiculo-sub">${estLabel}</span>
+          </div>
+          <div class="veiculo-check">${est === "meu" ? "✓" : (est === "em_uso" ? "🚫" : "")}</div>
+        </div>`;
+    }).join("");
+
+    el.querySelectorAll(".veiculo-card").forEach(card => {
+      card.addEventListener("click", () => selecionarVeiculo(card.dataset.veiculo, card.dataset.estado));
+    });
+  } catch (err) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🚙</div>${escapeHTMLVeiculos(err.message) || "Erro ao carregar veículos."}</div>`;
+  }
+}
+
+async function selecionarVeiculo(veiculoId, estado) {
+  if (estado === "meu") return;   // já é este — nada a fazer
+  if (estado === "em_uso") {
+    alert("🚫 Este veículo está em uso.");
+    return;
+  }
+  const el = document.getElementById("listaVeiculos");
+  el.querySelectorAll(".veiculo-card").forEach(c => c.style.pointerEvents = "none");
+  try {
+    await apiFetch(`/api/motorista/veiculo/selecionar/${encodeURIComponent(veiculoId)}`, {
+      method: "POST"
+    });
+    await carregarVeiculos();
+  } catch (err) {
+    alert("Não foi possível selecionar este veículo: " + err.message);
+    el.querySelectorAll(".veiculo-card").forEach(c => c.style.pointerEvents = "auto");
+  }
+}
+
+/* ================================================================
+   OVERLAY DE CATEGORIAS — sidebar da direita para a esquerda,
+   aberta pelo botão "Categorias" (abaixo do escudo de ajuda).
+
+   IMPORTANTE: só mostra (e só permite ligar) as categorias que
+   constam em Veiculo.categoriasPermitidas — o teto fixo definido
+   pelo admin no painel "Categorias Veículos", por Marca/Modelo do
+   veículo que este motorista está a usar agora. CATEGORIAS_LABELS
+   abaixo é só uma tabela de tradução id→ícone/rótulo, não a lista
+   do que aparece — isso vem sempre do backend, nunca fixo aqui.
+================================================================ */
+const ICON_PESSOA = `<svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 21c0-4.42 3.58-8 8-8s8 3.58 8 8"/></svg>`;
+const ICON_GRUPO  = `<svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor" aria-hidden="true"><circle cx="8" cy="7" r="3.2"/><path d="M2 20.4c0-3.6 2.69-6.4 6-6.4s6 2.8 6 6.4"/><circle cx="17.2" cy="8" r="2.6"/><path d="M13.1 20.4c.28-3.1 2.4-5.4 5.1-5.4 2.5 0 4.55 1.95 4.9 4.6"/></svg>`;
+
+const CATEGORIAS_LABELS = {
+  economica: { label: "ECONÓMICA",      icon: ICON_PESSOA },
+  confort:   { label: "CONFORTO",       icon: ICON_PESSOA },
+  executive: { label: "EXECUTIVA",      icon: ICON_PESSOA },
+  luxury:    { label: "LUXO",           icon: ICON_PESSOA },
+  grupo6:    { label: "GRUPO — ATÉ 6",  icon: ICON_GRUPO },
+  grupo8:    { label: "GRUPO — ATÉ 8",  icon: ICON_GRUPO },
+  grupo17:   { label: "GRUPO — ATÉ 17", icon: ICON_GRUPO },
+};
+
+let categoriasActivas    = [];
+let categoriasPermitidas = [];
+
+async function carregarCategorias() {
+  try {
+    const data = await apiFetch("/api/motorista/me");
+    const m = data?.motorista || data || {};
+    const veiculo = m.veiculoId || {};
+    categoriasPermitidas = Array.isArray(veiculo.categoriasPermitidas) ? veiculo.categoriasPermitidas.slice() : [];
+    categoriasActivas    = Array.isArray(veiculo.categoriasAtivas)    ? veiculo.categoriasAtivas.slice()    : [];
+  } catch { categoriasPermitidas = []; categoriasActivas = []; }
+  renderCategoriasLista();
+}
+
+function renderCategoriasLista() {
+  const cont = document.getElementById("categoriasLista");
+  if (!cont) return;
+
+  if (!categoriasPermitidas.length) {
+    cont.innerHTML = `
+      <div class="empty" style="padding:20px;text-align:center;grid-column:1/-1">
+        Este veículo ainda não tem categorias autorizadas pelo administrador.<br>
+        <span style="font-size:11px;opacity:.7">Contacte o suporte para configurar a Marca/Modelo.</span>
+      </div>
+      <button type="button" class="cat-card voltar" id="btnVoltarCategorias">
+        <div class="cat-card-icon">←</div>
+        <div class="cat-card-label">VOLTAR</div>
+      </button>`;
+    document.getElementById("btnVoltarCategorias").addEventListener("click", fecharCategorias);
+    return;
+  }
+
+  // Mostra sempre as 7 categorias, em posição fixa. As que este
+  // veículo NÃO está autorizado a fazer continuam visíveis (ícone +
+  // nome), mas sem destaque (moldura fina, cor apagada) e sem
+  // reagir ao toque — não são um botão funcional, só mostram que a
+  // categoria existe e não está disponível para este veículo.
+  const cardsCategorias = Object.keys(CATEGORIAS_LABELS).map(id => {
+    const info = CATEGORIAS_LABELS[id];
+    const permitida = categoriasPermitidas.includes(id);
+
+    if (!permitida) {
+      return `<div class="cat-card indisponivel" aria-hidden="true">
+        <div class="cat-card-icon">${info.icon}</div>
+        <div class="cat-card-label">${info.label}</div>
+      </div>`;
+    }
+
+    const on = categoriasActivas.includes(id);
+    return `<button type="button" class="cat-card${on ? " on" : " off"}" data-cat="${id}">
+      <span class="cat-card-check">${on ? "✓" : ""}</span>
+      <div class="cat-card-icon">${info.icon}</div>
+      <div class="cat-card-label">${info.label}</div>
+    </button>`;
+  }).join("");
+  const cardVoltar = `<button type="button" class="cat-card voltar" id="btnVoltarCategorias">
+    <div class="cat-card-icon">←</div>
+    <div class="cat-card-label">VOLTAR</div>
+  </button>`;
+  cont.innerHTML = cardsCategorias + cardVoltar;
+
+  document.getElementById("btnVoltarCategorias").addEventListener("click", fecharCategorias);
+
+  cont.querySelectorAll(".cat-card:not(.voltar):not(.indisponivel)").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const cat = btn.dataset.cat;
+      const novoEstado = !categoriasActivas.includes(cat);
+      categoriasActivas = novoEstado ? [...categoriasActivas, cat] : categoriasActivas.filter(c => c !== cat);
+      renderCategoriasLista();
+      cont.querySelectorAll(".cat-card:not(.voltar):not(.indisponivel)").forEach(b => b.setAttribute("data-loading", ""));
+      try {
+        await apiFetch("/api/motorista/categorias", {
+          method: "PATCH",
+          body: { categoriasAtivas: categoriasActivas }
+        });
+      } catch (err) {
+        categoriasActivas = novoEstado ? categoriasActivas.filter(c => c !== cat) : [...categoriasActivas, cat];
+        renderCategoriasLista();
+        alert("Não foi possível atualizar a categoria: " + err.message);
+      } finally {
+        cont.querySelectorAll(".cat-card:not(.voltar):not(.indisponivel)").forEach(b => b.removeAttribute("data-loading"));
+      }
+    });
+  });
+}
+
+function abrirCategorias() {
+  document.getElementById("categoriasOverlay")?.classList.add("open");
+  document.getElementById("categoriasOverlayBg")?.classList.add("show");
+  carregarCategorias();
+}
+function fecharCategorias() {
+  document.getElementById("categoriasOverlay")?.classList.remove("open");
+  document.getElementById("categoriasOverlayBg")?.classList.remove("show");
+}
+
+/* ================================================================
+   NAVEGAÇÃO
+================================================================ */
+function abrirSecao(id) {
+  document.querySelectorAll(".secao").forEach(s => s.classList.remove("ativa"));
+  const sec = document.getElementById("sec-" + id);
+  if (sec) {
+    sec.classList.add("ativa");
+    document.body.classList.add("secao-aberta");
+    if (id === "viagens") renderListaViagens();
+    if (id === "ganhos")  { carregarGanhos(); carregarSaldo(); carregarGanhosChart(); }
+    if (id === "perfil")  carregarPerfil();
+    if (id === "veiculo") carregarVeiculos();
+  }
+
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.sec === id || (id === "mapa" && n.dataset.sec === "mapa")));
+  fecharPainel();
+}
+
+function fecharSecao() {
+  document.querySelectorAll(".secao").forEach(s => s.classList.remove("ativa"));
+  document.body.classList.remove("secao-aberta");
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.sec === "mapa"));
+}
+
+// Usado pela seta "←" dentro das secções abertas a partir do menu
+// hambúrguer (Viagens, Ganhos, Veículo, Perfil) — em vez de fechar
+// tudo e ir parar ao mapa, fecha a secção e volta a abrir o painel
+// lateral, de onde o motorista veio.
+function voltarAoMenu() {
+  fecharSecao();
+  abrirPainel();
+}
+
+function abrirPainel() {
+  document.getElementById("painelLateral").classList.add("open");
+  document.getElementById("painelOverlay").classList.add("show");
+}
+
+function fecharPainel() {
+  document.getElementById("painelLateral").classList.remove("open");
+  document.getElementById("painelOverlay").classList.remove("show");
+}
+
+/* ================================================================
+   EVENTOS
+================================================================ */
+document.getElementById("btnMenu").onclick = abrirPainel;
+document.getElementById("painelOverlay").onclick = fecharPainel;
+
+// Ganhos é a única secção que fica como folha no rodapé, deixando
+// ver o mapa por cima — por isso é a única onde "clicar fora" faz
+// sentido como gesto de fecho completo (as outras ocupam o ecrã
+// todo, não há "fora" para clicar). A seta continua a voltar ao
+// menu; isto é só para quem prefere tocar fora, no mapa.
+document.addEventListener("click", (e) => {
+  const ganhos = document.getElementById("sec-ganhos");
+  const painel = document.getElementById("painelLateral");
+  if (
+    ganhos && ganhos.classList.contains("ativa") &&
+    !ganhos.contains(e.target) &&
+    !(painel && painel.contains(e.target))
+  ) {
+    fecharSecao();
+  }
+});
+document.getElementById("btnSair").onclick = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  location.href = "/motorista-login.html";
+};
+
+document.querySelectorAll(".nav-item").forEach(n => {
+  n.onclick = () => abrirSecao(n.dataset.sec);
+});
+
+/* ================================================================
+   INIT
+================================================================ */
+async function init() {
+  // A sessão é httpOnly (cookie definido pelo servidor no login) —
+  // não existe nenhum token guardado em localStorage para verificar
+  // aqui. Esta verificação local estava SEMPRE a falhar (getToken()
+  // devolvia sempre vazio), expulsando o motorista de volta ao
+  // login mesmo com uma sessão válida, antes de sequer chamar o
+  // servidor. A validação real já é feita correctamente pelo
+  // servidor em cada pedido (authMotorista, via cookie httpOnly);
+  // apiFetch() já trata um 401/403 genuíno redireccionando para o
+  // login — não é preciso (nem correcto) duplicar essa verificação
+  // aqui no arranque.
+
+  iniciarGPS();
+  await carregarMotorista();
+  await carregarViagens();
+  carregarGanhosHeader();
+
+  // Actualizar viagens periodicamente
+  setInterval(carregarViagens, REFRESH_MS);
+  setInterval(verificarAlertas, 60000);
+}
+
+init();
+</script>
+
+
+
+
+<!-- ── PWA Install Button ─────────────────────────────────── -->
+<div id="pwaInstallBtn" style="
+  display:none;
+  position:fixed;bottom:24px;right:20px;z-index:9999;
+  align-items:center;gap:10px;
+  background:linear-gradient(145deg,#111318,#0d0f15);
+  border:1px solid rgba(200,210,230,.22);
+  border-radius:50px;
+  padding:10px 18px 10px 12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.04);
+  cursor:pointer;
+  animation:slideUpBtn .4s cubic-bezier(.22,1,.36,1);
+  user-select:none;">
+  <div style="
+    width:36px;height:36px;border-radius:50%;flex-shrink:0;
+    border:1.5px solid rgba(200,210,230,.45);
+    background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.02));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.15);
+    display:grid;place-items:center;
+    font-family:'Playfair Display',Georgia,serif;
+    font-size:12px;font-weight:900;color:#fff;letter-spacing:.04em;">RM</div>
+  <div>
+    <div style="font-size:12px;font-weight:700;color:#fff;line-height:1.3">Instalar app</div>
+    <div style="font-size:10px;color:#6b7280;line-height:1.3">Adicionar ao ecrã inicial</div>
+  </div>
+  <div style="
+    width:28px;height:28px;border-radius:50%;
+    background:linear-gradient(135deg,#e2e6ee,#b8c0cc);
+    display:grid;place-items:center;
+    font-size:14px;flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);">⬇</div>
+</div>
+
+<style>
+@keyframes slideUpBtn {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+#pwaInstallBtn:hover {
+  border-color:rgba(200,210,230,.45);
+  box-shadow:0 12px 40px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.07);
+  transform:translateY(-2px);
+  transition:.2s;
+}
+</style>
+
+<script>
+(function () {
+  var btn    = document.getElementById("pwaInstallBtn");
+  var prompt = null;
+
+  function isInstalled() {
+    return window.matchMedia("(display-mode: standalone)").matches ||
+           window.navigator.standalone === true;
+  }
+
+  function dismissed() {
+    var t = localStorage.getItem("rm_pwa_dismissed");
+    return t && (Date.now() - Number(t)) < 3 * 24 * 60 * 60 * 1000;
+  }
+
+  function show() {
+    if (!isInstalled() && !dismissed()) {
+      setTimeout(function () { btn.style.display = "flex"; }, 1500);
+    }
+  }
+
+  // Android / Chrome — espera pelo evento nativo
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    prompt = e;
+    show();
+  });
+
+  // iOS Safari — sem evento, mostrar sempre se não instalado
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !isInstalled()) {
+    show();
+  }
+
+  // Clique no botão
+  btn.addEventListener("click", function () {
+    if (prompt) {
+      prompt.prompt();
+      prompt.userChoice.then(function (r) {
+        btn.style.display = "none";
+        if (r.outcome !== "accepted") {
+          localStorage.setItem("rm_pwa_dismissed", Date.now());
+        }
+        prompt = null;
+      });
+    } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      alert("No Safari:\n1. Toque em ↑ (Partilhar)\n2. Toque em 'Adicionar ao ecrã principal'");
+      btn.style.display = "none";
+      localStorage.setItem("rm_pwa_dismissed", Date.now());
+    } else {
+      // Chrome sem evento — abrir menu de instalação manualmente
+      btn.style.display = "none";
+      localStorage.setItem("rm_pwa_dismissed", Date.now());
+    }
+  });
+
+  // Se já instalado, esconde
+  window.addEventListener("appinstalled", function () {
+    btn.style.display = "none";
+  });
+})();
+</script>
+
+
+<!-- ═══ PAINEL: VIAGEM EM CURSO (recolha iniciada) ════════════
+     Aparece só depois de confirmarInicioViagem() ter sucesso —
+     antes disso o motorista ainda não está autorizado a contactar
+     o passageiro directamente por este botão. Fecha-se quando a
+     secção de viagens é reaberta ou quando o motorista marca a
+     viagem como concluída (chamarVoltarParaListaViagens / similar). -->
+<div id="painelViagemEmCurso" style="display:none;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(380px,92vw);background:#0e1014;border:1px solid rgba(196,201,212,.18);border-radius:18px;padding:14px 16px;z-index:500;box-shadow:0 20px 50px rgba(0,0,0,.6)">
+  <div style="font-size:9px;font-weight:700;letter-spacing:.14em;color:#6b7280;text-transform:uppercase;margin-bottom:6px">Viagem em curso · recolha iniciada</div>
+  <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:10px" id="picPassageiroNome">Passageiro</div>
+  <div style="display:flex;gap:8px">
+    <a id="picBtnContactar" href="#" style="
+      flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+      min-height:44px;border-radius:12px;
+      border:1px solid rgba(31,201,125,.35);
+      background:linear-gradient(180deg,rgba(31,201,125,.16),rgba(20,140,85,.10));
+      color:#4ee8a0;font-size:12.5px;font-weight:800;letter-spacing:.04em;
+      text-decoration:none;font-family:inherit;cursor:pointer;
+    ">💬 Enviar SMS ao passageiro</a>
+    <button id="picBtnCamera" type="button" title="Tirar foto e enviar ao passageiro" style="
+      flex:0 0 auto;width:44px;min-height:44px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
+      color:#fff;font-size:18px;cursor:pointer;font-family:inherit;padding:0;
+    ">📷</button>
+    <input type="file" id="picCameraInput" accept="image/*" capture="environment" style="display:none">
+  </div>
+</div>
+
+<!-- ═══ BANNER: PEDIDO DE IMAGEM DO OPERADOR DE SEGURANÇA ════
+     Independente do painelViagemEmCurso — um pedido de segurança
+     pode chegar em qualquer momento da viagem. Fica acima de tudo
+     (z-index alto) até o motorista tirar a foto ou ignorar. -->
+<div id="alertaImagemSeguranca" style="display:none;position:fixed;left:50%;top:16px;transform:translateX(-50%);width:min(380px,92vw);background:linear-gradient(180deg,#241a10,#160f0a);border:1px solid rgba(255,160,60,.4);border-radius:18px;padding:14px 16px;z-index:9000;box-shadow:0 20px 50px rgba(0,0,0,.6)">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <span style="font-size:18px">🚨</span>
+    <div style="font-size:12.5px;font-weight:900;color:#ffc98a;letter-spacing:.02em">O operador de segurança pediu uma foto</div>
+  </div>
+  <div style="font-size:11.5px;color:#cdd2da;margin-bottom:10px">Tire uma foto da situação actual. Será enviada de imediato ao centro de segurança.</div>
+  <div id="alertaImagemSegStatus" style="font-size:11px;color:#ffa03c;min-height:14px;margin-bottom:6px"></div>
+  <div style="display:flex;gap:8px">
+    <button id="btnTirarFotoSeguranca" type="button" style="
+      flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+      min-height:46px;border-radius:12px;border:1px solid rgba(255,160,60,.4);
+      background:linear-gradient(180deg,rgba(255,160,60,.22),rgba(255,160,60,.12));
+      color:#ffd9ab;font-size:12.5px;font-weight:900;letter-spacing:.04em;
+      cursor:pointer;font-family:inherit;
+    ">📷 Tirar Foto Agora</button>
+    <button id="btnIgnorarPedidoSeguranca" type="button" style="
+      flex:0 0 auto;padding:0 14px;min-height:46px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);
+      color:#9aa1ab;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;
+    ">Ignorar</button>
+  </div>
+  <input type="file" id="segCameraInput" accept="image/*" capture="environment" style="display:none">
+</div>
+
+<!-- ═══ MODAL: ESCOLHER MAPA ════════════════════════════════ -->
+<div id="modalMapa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(14px);z-index:9999;align-items:center;justify-content:center;padding:24px">
+  <div style="width:min(340px,94vw);max-height:90vh;overflow-y:auto;background:#0e1014;border:1px solid rgba(196,201,212,.18);border-radius:22px;box-shadow:0 32px 80px rgba(0,0,0,.8)">
+
+    <div style="padding:22px 22px 16px;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#6b7280;text-transform:uppercase;margin-bottom:8px">Iniciar recolha</div>
+      <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:3px">Escolha a app de navegação</div>
+      <div style="font-size:12px;color:#6b7280">📍 <span id="modalMapaDestino">Local de recolha</span></div>
+      <div id="modalMapaRequisitos"></div>
+    </div>
+
+    <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+
+      <!-- WAZE -->
+      <button onclick="confirmarInicioViagem('waze')" style="
+        width:100%;padding:16px 20px;border-radius:14px;border:1px solid rgba(196,201,212,.14);
+        background:#0a0b0d;color:#fff;cursor:pointer;text-align:left;
+        display:flex;align-items:center;gap:16px;transition:.15s;
+      " onmouseover="this.style.borderColor='rgba(196,201,212,.35)'" onmouseout="this.style.borderColor='rgba(196,201,212,.14)'">
+        <div style="width:46px;height:46px;border-radius:12px;background:#1a1dee;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:22px">🗺️</div>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:2px">Waze</div>
+          <div style="font-size:11px;color:#6b7280">Navegação com tráfego em tempo real</div>
+        </div>
+        <span style="margin-left:auto;font-size:18px;color:#6b7280">›</span>
+      </button>
+
+      <!-- GOOGLE MAPS -->
+      <button onclick="confirmarInicioViagem('google')" style="
+        width:100%;padding:16px 20px;border-radius:14px;border:1px solid rgba(196,201,212,.14);
+        background:#0a0b0d;color:#fff;cursor:pointer;text-align:left;
+        display:flex;align-items:center;gap:16px;transition:.15s;
+      " onmouseover="this.style.borderColor='rgba(196,201,212,.35)'" onmouseout="this.style.borderColor='rgba(196,201,212,.14)'">
+        <div style="width:46px;height:46px;border-radius:12px;background:#1a1a1a;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:2px">Google Maps</div>
+          <div style="font-size:11px;color:#6b7280">Rotas e navegação detalhada</div>
+        </div>
+        <span style="margin-left:auto;font-size:18px;color:#6b7280">›</span>
+      </button>
+
+      <button onclick="document.getElementById('modalMapa').style.display='none'" style="
+        width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.07);
+        background:transparent;color:#6b7280;font-size:13px;font-weight:600;cursor:pointer;margin-top:2px;
+      ">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div style="display:none;position:fixed;right:14px;bottom:14px;z-index:400">
+  <div style="font-size:12px;font-family:Inter,Arial,system-ui,sans-serif;color:#9aa1ab;background:rgba(8,10,13,.72);backdrop-filter:blur(10px);padding:9px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px">
+    <span style="opacity:.7">&copy; REALMETROPOLIS</span>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('privacidade');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Privacidade</a>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('cookies');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Cookies</a>
+  </div>
+</div>
+
+<!-- Overlay translúcido — Privacidade / Cookies -->
+<div id="legalOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(4,5,7,.72);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:24px">
+  <div style="width:min(720px,94vw);max-height:86vh;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(22,25,31,.92),rgba(10,11,14,.96));border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:0 40px 100px rgba(0,0,0,.6);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;text-transform:uppercase">REALMETROPOLIS</div>
+      <button onclick="fecharLegalOverlay()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#cdd2da;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;line-height:1">&times;</button>
+    </div>
+    <iframe id="legalOverlayFrame" src="" style="flex:1;border:none;width:100%;background:transparent;min-height:60vh"></iframe>
+  </div>
+</div>
+<script>
+function abrirLegalOverlay(tipo){
+  var url = tipo === 'cookies' ? '/cookies.html' : '/privacidade.html';
+  document.getElementById('legalOverlayFrame').src = url;
+  document.getElementById('legalOverlay').style.display = 'flex';
+}
+function fecharLegalOverlay(){
+  document.getElementById('legalOverlay').style.display = 'none';
+  document.getElementById('legalOverlayFrame').src = '';
+}
+document.getElementById('legalOverlay')?.addEventListener('click', function(e){
+  if (e.target.id === 'legalOverlay') fecharLegalOverlay();
+});
+
+// ── PWA: registar service worker, com aviso de atualização ───────
+// Em vez de trocar de versão às escondidas (o que podia deixar a
+// página com HTML novo mas JS/CSS antigos a meio de uma viagem),
+// mostra um aviso discreto e só troca quando o motorista confirmar.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/motorista-sw.js')
+      .then(reg => {
+        // Já existe uma versão nova à espera (ex: instalada antes
+        // de reabrir a app)
+        if (reg.waiting) mostrarAvisoAtualizacao(reg.waiting);
+
+        // Uma versão nova acabou de ser instalada em segundo plano
+        reg.addEventListener('updatefound', () => {
+          const novoWorker = reg.installing;
+          if (!novoWorker) return;
+          novoWorker.addEventListener('statechange', () => {
+            if (novoWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              mostrarAvisoAtualizacao(novoWorker);
+            }
+          });
+        });
+      })
+      .catch(err => {
+        console.warn('⚠️ Service worker não registado:', err.message);
+      });
+
+    // Quando a nova versão assume o controlo, recarrega a página
+    // automaticamente (só acontece depois do motorista confirmar)
+    let jaRecarregou = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (jaRecarregou) return;
+      jaRecarregou = true;
+      window.location.reload();
+    });
+  });
+}
+
+function mostrarAvisoAtualizacao(novoWorker) {
+  if (document.getElementById('avisoUpdateSW')) return; // já visível
+  const aviso = document.createElement('div');
+  aviso.id = 'avisoUpdateSW';
+  aviso.style.cssText = `
+    position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
+    z-index:600; max-width:92vw; width:340px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:14px 16px;
+    box-shadow:0 8px 28px rgba(0,0,0,.55);
+    display:flex; align-items:center; gap:12px;
+    font-family:inherit; color:var(--text);
+  `;
+  aviso.innerHTML = `
+    <span style="font-size:20px">⬆️</span>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:700">Nova versão disponível</div>
+      <div style="font-size:11.5px;color:var(--text-dim);margin-top:1px">Atualize quando lhe for conveniente</div>
+    </div>
+    <button id="btnAtualizarAgora" style="
+      background:var(--gold); color:#1a1300; border:none; border-radius:999px;
+      padding:8px 14px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;
+    ">Atualizar</button>
+  `;
+  document.body.appendChild(aviso);
+  document.getElementById('btnAtualizarAgora').addEventListener('click', () => {
+    novoWorker.postMessage('SKIP_WAITING');
+    aviso.remove();
+  });
+}
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SELETOR DE VEÍCULO — bloco standalone para motorista.html
+
+     Como usar:
+       1. Copia TODO este bloco (das linhas <!-- BEGIN ... até END ... -->)
+       2. Cola-o no final do teu `motorista.html`, imediatamente ANTES
+          da tag </body>.
+       3. Não é preciso mexer em mais nada. O código intercepta o clique
+          em #btnOnlineToggle sozinho.
+
+     Comportamento:
+       • Motorista clica "INICIAR / ONLINE" → abre modal com veículos
+         aprovados da frota do gestor dele.
+       • Cada veículo mostra: Marca Modelo · Matrícula · estado.
+       • Clique em "Livre" → seleciona e continua para online.
+       • Clique num "Em utilização" → alerta "VEÍCULO EM UTILIZAÇÃO!".
+       • Auto-refresh do modal a cada 8s (mostra em tempo real quem está
+         a usar o quê).
+       • Motorista clica de novo "ONLINE" (para ficar offline) → liberta
+         o veículo antes de continuar o fluxo original.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SELETOR DE VEÍCULO — bloco standalone para motorista.html
+
+     Como usar:
+       1. Copia TODO este bloco (das linhas <!-- BEGIN ... até END ... -->)
+       2. Cola-o no final do teu `motorista.html`, imediatamente ANTES
+          da tag </body>.
+       3. Não é preciso mexer em mais nada. O código intercepta o clique
+          em #btnOnlineToggle sozinho.
+
+     Comportamento:
+       • Motorista clica "INICIAR / ONLINE" → abre modal com veículos
+         aprovados da frota do gestor dele.
+       • Cada veículo mostra: Marca Modelo · Matrícula · estado.
+       • Clique em "Livre" → seleciona e continua para online.
+       • Clique num "Em utilização" → alerta "VEÍCULO EM UTILIZAÇÃO!".
+       • Auto-refresh do modal a cada 8s (mostra em tempo real quem está
+         a usar o quê).
+       • Motorista clica de novo "ONLINE" (para ficar offline) → liberta
+         o veículo antes de continuar o fluxo original.
+     ═══════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     OFERTA DE VIAGEM — cartão de rodapé mostrado quando o servidor
+     emite "trip_offer" (Socket.io, ver dispatch.offer.engine.js). O
+     motorista tem 12s para aceitar/recusar (o mesmo tempo do timeout
+     do servidor) — o preenchimento do botão "Aceitar" esvazia da
+     direita para a esquerda ao longo desses 12s, como contador
+     visual. Mapa próprio (Leaflet + OSRM), independente do mapa
+     principal da app, para não interferir com a navegação em curso.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style>
+  #tripOfferOverlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.75);
+    z-index:99997;
+    display:none;
+    align-items:flex-end;justify-content:center;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  #tripOfferOverlay.is-open{display:flex}
+  #tripOfferCard{
+    background:#0a0b0d;
+    border-radius:20px 20px 0 0;
+    max-width:420px;width:100%;
+    max-height:88vh;overflow:hidden auto;
+    box-shadow:0 -8px 30px rgba(0,0,0,.5);
+  }
+  #tripOfferMap{
+    width:100%;height:140px;background:#1a1c20;
+  }
+  /* Versões em classe — reutilizadas pelo ecrã de Detalhe de Viagem
+     (tripDetailOverlay), que precisa exactamente do mesmo aspecto
+     do cartão de oferta, mas não podia usar os mesmos IDs (dois
+     elementos não podem partilhar o mesmo id na página). */
+  .toc-overlay-base{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.75);
+    z-index:99996;
+    display:none;
+    align-items:flex-end;justify-content:center;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  .toc-overlay-base.is-open{display:flex}
+  .toc-card-base{
+    background:#0a0b0d;
+    border-radius:20px 20px 0 0;
+    max-width:420px;width:100%;
+    max-height:88vh;overflow:hidden auto;
+    box-shadow:0 -8px 30px rgba(0,0,0,.5);
+  }
+  .toc-map-base{
+    width:100%;height:140px;background:#1a1c20;
+  }
+
+  /* ── Ecrã de Detalhe de Viagem — 100% dominante, cobre o ecrã
+     inteiro, sem nada visível por trás (ao contrário do cartão de
+     oferta, que fica como folha no rodapé, com o mapa ainda visível
+     por cima). 100dvh em vez de 100vh — em telemóveis, 100vh conta
+     a barra de endereço do browser como visível mesmo quando ela
+     desaparece ao fazer scroll, o que deixa sempre uma faixa a
+     mais/a menos consoante o estado da barra; 100dvh ("dynamic
+     viewport height") acompanha a altura REAL disponível a cada
+     momento — dá responsividade a sério em qualquer ecrã, não só
+     nos que foram testados manualmente. */
+  .td-overlay-full{
+    position:fixed;inset:0;
+    background:#0a0b0d;
+    z-index:99995;
+    display:none;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  .td-overlay-full.is-open{display:flex;flex-direction:column}
+  .td-card-full{
+    background:#0a0b0d;
+    width:100%;height:100%;height:100dvh;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  .td-map-full{
+    width:100%;flex:0 0 auto;
+    height:38vh;height:38dvh;
+    background:#1a1c20;
+  }
+  /* O corpo (informação + botões) ocupa o resto do ecrã e pode
+     rolar por si só, sem nunca deixar o mapa acima nem os botões
+     abaixo saírem de vista. */
+  .td-card-full .toc-body{
+    flex:1 1 auto;overflow-y:auto;
+  }
+  .toc-body{padding:18px 18px 20px}
+  .toc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .toc-titulo{color:#e5e7eb;font-size:14px;font-weight:700}
+  .toc-cronometro{
+    color:#c4c9d4;font-size:12px;font-weight:700;
+    border:1px solid rgba(196,201,212,.35);border-radius:20px;padding:3px 10px;
+  }
+  .toc-datahora{
+    background:rgba(196,201,212,.1);border:1px solid rgba(196,201,212,.3);
+    border-radius:12px;padding:10px 14px;margin-bottom:16px;text-align:center;
+  }
+  .toc-datahora-valor{color:#c4c9d4;font-size:18px;font-weight:800}
+  .toc-locais{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+  .toc-local{display:flex;gap:10px;align-items:flex-start}
+  .toc-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:0 0 auto}
+  .toc-dot-o{background:#7fffc4}
+  .toc-dot-d{background:#ff8888}
+  .toc-local-txt{color:#dfe4ec;font-size:13px;line-height:1.4}
+  .toc-linha{width:1px;height:14px;background:rgba(255,255,255,.15);margin-left:3.5px}
+  .toc-info{
+    background:rgba(196,201,212,.06);border:1px solid rgba(196,201,212,.15);
+    border-radius:12px;padding:10px 14px;margin-bottom:18px;
+  }
+  .toc-info-row{display:flex;justify-content:space-between}
+  .toc-info-label{color:#8b95a2;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+  .toc-info-valor{color:#e5e7eb;font-size:13px;font-weight:700;margin-top:2px}
+  .toc-info-valor-prata{color:#c4c9d4}
+  .toc-duracao{
+    border-top:1px solid rgba(255,255,255,.1);margin-top:10px;padding-top:8px;
+    color:#8b95a2;font-size:12px;
+  }
+  .toc-btns{display:flex;gap:10px}
+  .toc-btn{
+    flex:1;padding:13px;border:none;border-radius:12px;font-weight:700;font-size:13px;
+    font-family:inherit;cursor:pointer;
+  }
+  #tocBtnRecusar{
+    border:1px solid rgba(255,255,255,.16);background:transparent;color:#c4c9d4;box-shadow:none;
+  }
+  #tocBtnAceitar{
+    position:relative;background:#4a4d52;color:#0a0b0d;overflow:hidden;
+  }
+  #tocBtnAceitarFill{
+    position:absolute;inset:0;background:#c4c9d4;transform-origin:left;
+  }
+  #tocBtnAceitarFill.is-animando{
+    animation:tocEsvaziar 12s linear forwards;
+  }
+  #tocBtnAceitarLabel{position:relative;z-index:1}
+  .toc-btn:disabled{opacity:.6;cursor:not-allowed}
+  @keyframes tocEsvaziar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+</style>
+
+<div id="tripOfferOverlay">
+  <div id="tripOfferCard">
+    <div id="tripOfferMap"></div>
+    <div class="toc-body">
+      <div class="toc-header">
+        <span class="toc-titulo">Nova viagem</span>
+        <span class="toc-cronometro" id="tocCronometro">00:12</span>
+      </div>
+
+      <div class="toc-datahora">
+        <div class="toc-datahora-valor" id="tocDataHora">—</div>
+      </div>
+
+      <div class="toc-locais">
+        <div class="toc-local">
+          <span class="toc-dot toc-dot-o"></span>
+          <span class="toc-local-txt" id="tocPartida">—</span>
+        </div>
+        <div class="toc-linha"></div>
+        <div class="toc-local">
+          <span class="toc-dot toc-dot-d"></span>
+          <span class="toc-local-txt" id="tocDestino">—</span>
+        </div>
+      </div>
+
+      <div class="toc-info">
+        <div class="toc-info-row">
+          <div>
+            <div class="toc-info-label">Distância</div>
+            <div class="toc-info-valor" id="tocDistancia">—</div>
+          </div>
+          <div>
+            <div class="toc-info-label">Categoria</div>
+            <div class="toc-info-valor" id="tocCategoria">—</div>
+          </div>
+          <div>
+            <div class="toc-info-label" id="tocValorLabel">O seu ganho</div>
+            <div class="toc-info-valor toc-info-valor-prata" id="tocValor">—</div>
+          </div>
+        </div>
+        <div class="toc-duracao" id="tocDuracao">—</div>
+      </div>
+
+      <div class="toc-btns">
+        <button type="button" class="toc-btn" id="tocBtnRecusar">Recusar</button>
+        <button type="button" class="toc-btn" id="tocBtnAceitar">
+          <span id="tocBtnAceitarFill"></span>
+          <span id="tocBtnAceitarLabel">Aceitar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let ofertaAtual = null;      // { tripId, driverId }
+  let ofertaMap = null;        // instância Leaflet própria deste cartão
+  let ofertaRouteLayer = null;
+  let ofertaMarkerO = null;
+  let ofertaMarkerD = null;
+  let ofertaCountdownTimer = null;
+  let ofertaSegundosRestantes = 12;
+
+  const overlay   = document.getElementById("tripOfferOverlay");
+  const cronometro = document.getElementById("tocCronometro");
+  const btnAceitar = document.getElementById("tocBtnAceitar");
+  const btnAceitarFill  = document.getElementById("tocBtnAceitarFill");
+  const btnAceitarLabel = document.getElementById("tocBtnAceitarLabel");
+  const btnRecusar = document.getElementById("tocBtnRecusar");
+
+  function formatarDataHora(iso){
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      const hoje = new Date();
+      const mesmodia = d.toDateString() === hoje.toDateString();
+      const hora = d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+      if (mesmodia) return `Hoje · ${hora}`;
+      return `${d.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" })} · ${hora}`;
+    } catch { return "—"; }
+  }
+
+  function formatarDistancia(km){
+    if (km == null) return "—";
+    return `${Number(km).toFixed(1)} km`;
+  }
+
+  function formatarValor(v){
+    if (v == null) return "—";
+    return `€${Number(v).toFixed(2).replace(".", ",")}`;
+  }
+
+  function formatarDuracaoMin(segundos){
+    if (segundos == null) return "—";
+    const min = Math.round(segundos / 60);
+    return `Viagem de ~${min} min`;
+  }
+
+  /* ─── Mapa próprio do cartão — inicializa uma vez, reutiliza ─── */
+  function garantirMapa(){
+    if (ofertaMap || typeof L === "undefined") return;
+    ofertaMap = L.map("tripOfferMap", { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(ofertaMap);
+  }
+
+  async function desenharMapaOferta(origemGeo, destinoGeo){
+    garantirMapa();
+    if (!ofertaMap) return;
+
+    if (ofertaRouteLayer) { ofertaMap.removeLayer(ofertaRouteLayer); ofertaRouteLayer = null; }
+    if (ofertaMarkerO)    { ofertaMap.removeLayer(ofertaMarkerO);    ofertaMarkerO = null; }
+    if (ofertaMarkerD)    { ofertaMap.removeLayer(ofertaMarkerD);    ofertaMarkerD = null; }
+
+    if (!origemGeo?.lat || !origemGeo?.lng) {
+      ofertaMap.setView([38.7169, -9.139], 12);
+      return;
+    }
+
+    const pinO = L.divIcon({ html: `<div style="width:13px;height:13px;border-radius:50%;background:#7fffc4;border:2.5px solid rgba(255,255,255,.7);box-shadow:0 0 0 4px rgba(127,255,196,.25)"></div>`, className: "", iconSize: [13,13], iconAnchor: [6,6] });
+    const pinD = L.divIcon({ html: `<div style="width:13px;height:13px;border-radius:50%;background:#ff8888;border:2.5px solid rgba(255,255,255,.7);box-shadow:0 0 0 4px rgba(255,136,136,.25)"></div>`, className: "", iconSize: [13,13], iconAnchor: [6,6] });
+
+    ofertaMarkerO = L.marker([origemGeo.lat, origemGeo.lng], { icon: pinO }).addTo(ofertaMap);
+
+    if (!destinoGeo?.lat || !destinoGeo?.lng) {
+      ofertaMap.setView([origemGeo.lat, origemGeo.lng], 14);
+      return;
+    }
+
+    ofertaMarkerD = L.marker([destinoGeo.lat, destinoGeo.lng], { icon: pinD }).addTo(ofertaMap);
+
+    try {
+      const r = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${origemGeo.lng},${origemGeo.lat};${destinoGeo.lng},${destinoGeo.lat}?overview=full&geometries=geojson`
+      );
+      const d = await r.json();
+      if (d.routes?.[0]) {
+        const coords = d.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        ofertaRouteLayer = L.polyline(coords, { color: "#0a0b0d", weight: 6, opacity: 0.95, lineCap: "round" }).addTo(ofertaMap);
+        ofertaMap.fitBounds(ofertaRouteLayer.getBounds(), { padding: [24, 24] });
+
+        // Distância/duração REAIS da rota (OSRM), em vez de
+        // Trip.distanciaKm — esse campo raramente vem preenchido
+        // (não é calculado na criação da viagem), o que deixava o
+        // cartão sempre com "—". Já estamos a pedir esta rota de
+        // qualquer forma para desenhar o mapa; a resposta já traz
+        // ambos os valores, sem precisar de mais nenhum pedido.
+        const distKm = d.routes[0].distance / 1000;
+        const durSeg = d.routes[0].duration;
+        const elDist = document.getElementById("tocDistancia");
+        const elDur  = document.getElementById("tocDuracao");
+        if (elDist) elDist.textContent = formatarDistancia(distKm);
+        if (elDur)  elDur.textContent  = formatarDuracaoMin(durSeg);
+      } else {
+        ofertaMap.fitBounds(L.latLngBounds([[origemGeo.lat, origemGeo.lng],[destinoGeo.lat, destinoGeo.lng]]), { padding: [24, 24] });
+      }
+    } catch {
+      ofertaMap.fitBounds(L.latLngBounds([[origemGeo.lat, origemGeo.lng],[destinoGeo.lat, destinoGeo.lng]]), { padding: [24, 24] });
+    }
+  }
+
+  /* ─── Contador — 12s, sincronizado com o timeout do servidor
+     (dispatch.offer.engine.js). Se esgotar sem ação, o servidor já
+     avança sozinho para o próximo motorista — aqui só fechamos o
+     cartão, sem enviar trip_reject (não é uma recusa activa). ─── */
+  function iniciarContador(){
+    ofertaSegundosRestantes = 12;
+    cronometro.textContent = "00:12";
+    btnAceitarFill.classList.remove("is-animando");
+    void btnAceitarFill.offsetWidth; // reinicia a animação CSS
+    btnAceitarFill.classList.add("is-animando");
+
+    if (ofertaCountdownTimer) clearInterval(ofertaCountdownTimer);
+    ofertaCountdownTimer = setInterval(() => {
+      ofertaSegundosRestantes--;
+      const s = Math.max(0, ofertaSegundosRestantes);
+      cronometro.textContent = `00:${String(s).padStart(2, "0")}`;
+      if (ofertaSegundosRestantes <= 0) {
+        clearInterval(ofertaCountdownTimer);
+        ofertaCountdownTimer = null;
+        esconderOfertaViagem();
+      }
+    }, 1000);
+  }
+
+  function pararContador(){
+    if (ofertaCountdownTimer) { clearInterval(ofertaCountdownTimer); ofertaCountdownTimer = null; }
+    btnAceitarFill.classList.remove("is-animando");
+  }
+
+  function definirBotoesOcupados(ocupado, texto){
+    btnAceitar.disabled = ocupado;
+    btnRecusar.disabled = ocupado;
+    btnAceitarLabel.textContent = texto || "Aceitar";
+  }
+
+  /* ─── Mostrar/esconder o cartão ─── */
+  window.mostrarOfertaViagem = function(data){
+    if (!data?.tripId) return;
+    const driverId = motoInfo?._id || motoInfo?.id;
+    if (!driverId) return;
+
+    ofertaAtual = { tripId: data.tripId, driverId };
+    definirBotoesOcupados(false, "Aceitar");
+
+    const v = data.viagem || {};
+    document.getElementById("tocPartida").textContent  = v.partida  || "—";
+    document.getElementById("tocDestino").textContent  = v.destino  || "—";
+    document.getElementById("tocCategoria").textContent = (v.categoria || "—").toString().toUpperCase();
+    document.getElementById("tocDistancia").textContent = formatarDistancia(v.distanciaKm);
+    // Mostra o que o MOTORISTA vai ganhar (já com a comissão da
+    // plataforma descontada) — não o valor total que o cliente paga.
+    // Sem isto, o motorista não tinha forma de perceber que uma
+    // oferta reforçada (comissão reduzida) paga melhor que outra.
+    document.getElementById("tocValor").textContent =
+      v.ganhoMotorista != null ? formatarValor(v.ganhoMotorista) : formatarValor(v.valor);
+    const labelValor = document.getElementById("tocValorLabel");
+    if (data.comissaoReduzida) {
+      labelValor.textContent = "🔥 O seu ganho (reforçado +10%)";
+      labelValor.style.color = "#7fffc4";
+    } else {
+      labelValor.textContent = "O seu ganho";
+      labelValor.style.color = "";
+    }
+    document.getElementById("tocDataHora").textContent  = formatarDataHora(v.datahora);
+    document.getElementById("tocDuracao").textContent   =
+      v.distanciaKm != null ? formatarDuracaoMin(v.distanciaKm * 120) : "—"; // ~ estimativa: 30km/h médios em cidade
+
+    overlay.classList.add("is-open");
+    iniciarContador();
+
+    // Entra na sala desta viagem (ver dispatch.events.js — join_trip)
+    if (socket) socket.emit("join_trip", { tripId: data.tripId, driverId });
+
+    // Mapa desenha-se em segundo plano — não bloqueia o cartão
+    desenharMapaOferta(v.origemGeo, v.destinoGeo).catch(() => {});
+  };
+
+  function esconderOfertaViagem(){
+    overlay.classList.remove("is-open");
+    pararContador();
+    ofertaAtual = null;
+  }
+
+  btnAceitar.addEventListener("click", () => {
+    if (!ofertaAtual || !socket) return;
+    pararContador();
+    definirBotoesOcupados(true, "A confirmar…");
+    socket.emit("trip_accept", { tripId: ofertaAtual.tripId, driverId: ofertaAtual.driverId });
+  });
+
+  btnRecusar.addEventListener("click", () => {
+    if (!ofertaAtual || !socket) { esconderOfertaViagem(); return; }
+    socket.emit("trip_reject", { tripId: ofertaAtual.tripId, driverId: ofertaAtual.driverId });
+    esconderOfertaViagem();
+  });
+
+  /* ─── API pública para conectarSocket() ligar os eventos ─── */
+  window.RMTripOffer = {
+    aoFalharAceitar(result){
+      alert(result?.reason === "ALREADY_TAKEN"
+        ? "Este pedido já foi aceite por outro motorista."
+        : "Não foi possível aceitar. Tente novamente.");
+      esconderOfertaViagem();
+    },
+    aoConfirmarAceite(){
+      esconderOfertaViagem();
+      if (typeof carregarViagens === "function") carregarViagens();
+    },
+  };
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     DETALHE DE VIAGEM ATRIBUÍDA — abre ao selecionar uma viagem em
+     "Minhas Viagens". Reutiliza exactamente as mesmas classes visuais
+     do cartão de oferta (.toc-*) — mesma aparência, como já foi
+     combinado — mas com botões diferentes: Cancelar e Iniciar
+     Recolha, em vez de Recusar/Aceitar. Sem contador (a viagem já
+     está atribuída, não há prazo de resposta).
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div id="tripDetailOverlay" class="td-overlay-full">
+  <div id="tripDetailCard" class="td-card-full">
+    <div id="tripDetailMap" class="td-map-full"></div>
+    <div class="toc-body">
+      <div class="toc-header">
+        <span class="toc-titulo">Viagem atribuída</span>
+        <span class="toc-cronometro" id="tdStatusBadge">—</span>
+      </div>
+
+      <div class="toc-datahora">
+        <div class="toc-datahora-valor" id="tdDataHora">—</div>
+      </div>
+
+      <div class="toc-locais">
+        <div class="toc-local">
+          <span class="toc-dot toc-dot-o"></span>
+          <span class="toc-local-txt" id="tdPartida">—</span>
+        </div>
+        <div class="toc-linha"></div>
+        <div class="toc-local">
+          <span class="toc-dot toc-dot-d"></span>
+          <span class="toc-local-txt" id="tdDestino">—</span>
+        </div>
+      </div>
+
+      <div class="toc-info">
+        <div class="toc-info-row">
+          <div>
+            <div class="toc-info-label">Distância</div>
+            <div class="toc-info-valor" id="tdDistancia">—</div>
+          </div>
+          <div>
+            <div class="toc-info-label">Categoria</div>
+            <div class="toc-info-valor" id="tdCategoria">—</div>
+          </div>
+          <div>
+            <div class="toc-info-label">O seu ganho</div>
+            <div class="toc-info-valor toc-info-valor-prata" id="tdValor">—</div>
+          </div>
+        </div>
+        <div class="toc-duracao" id="tdDuracao">—</div>
+      </div>
+
+      <div class="toc-btns">
+        <button type="button" class="toc-btn" id="tdBtnCancelar">Cancelar</button>
+        <button type="button" class="toc-btn" id="tdBtnIniciar" style="background:#c4c9d4;color:#0a0b0d">Iniciar Recolha</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let tdMap = null;
+  let tdIntervaloIniciar = null;
+  let tdRouteLayer = null;
+  let tdMarkerO = null;
+  let tdMarkerD = null;
+  let tdViagemAtual = null;
+
+  const overlay = document.getElementById("tripDetailOverlay");
+  const btnCancelar = document.getElementById("tdBtnCancelar");
+  const btnIniciar  = document.getElementById("tdBtnIniciar");
+
+  function garantirMapaDetalhe(){
+    if (tdMap || typeof L === "undefined") return;
+    tdMap = L.map("tripDetailMap", { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(tdMap);
+  }
+
+  async function desenharMapaDetalhe(origemGeo, destinoGeo){
+    garantirMapaDetalhe();
+    if (!tdMap) return;
+
+    if (tdRouteLayer) { tdMap.removeLayer(tdRouteLayer); tdRouteLayer = null; }
+    if (tdMarkerO)    { tdMap.removeLayer(tdMarkerO);    tdMarkerO = null; }
+    if (tdMarkerD)    { tdMap.removeLayer(tdMarkerD);    tdMarkerD = null; }
+
+    if (!origemGeo?.lat || !origemGeo?.lng) { tdMap.setView([38.7169, -9.139], 12); return; }
+
+    const pinO = L.divIcon({ html: `<div style="width:13px;height:13px;border-radius:50%;background:#7fffc4;border:2.5px solid rgba(255,255,255,.7);box-shadow:0 0 0 4px rgba(127,255,196,.25)"></div>`, className: "", iconSize: [13,13], iconAnchor: [6,6] });
+    const pinD = L.divIcon({ html: `<div style="width:13px;height:13px;border-radius:50%;background:#ff8888;border:2.5px solid rgba(255,255,255,.7);box-shadow:0 0 0 4px rgba(255,136,136,.25)"></div>`, className: "", iconSize: [13,13], iconAnchor: [6,6] });
+
+    tdMarkerO = L.marker([origemGeo.lat, origemGeo.lng], { icon: pinO }).addTo(tdMap);
+    if (!destinoGeo?.lat || !destinoGeo?.lng) { tdMap.setView([origemGeo.lat, origemGeo.lng], 14); return; }
+    tdMarkerD = L.marker([destinoGeo.lat, destinoGeo.lng], { icon: pinD }).addTo(tdMap);
+
+    try {
+      const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${origemGeo.lng},${origemGeo.lat};${destinoGeo.lng},${destinoGeo.lat}?overview=full&geometries=geojson`);
+      const d = await r.json();
+      if (d.routes?.[0]) {
+        const coords = d.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        tdRouteLayer = L.polyline(coords, { color: "#0a0b0d", weight: 6, opacity: 0.95, lineCap: "round" }).addTo(tdMap);
+        tdMap.fitBounds(tdRouteLayer.getBounds(), { padding: [24, 24] });
+        const elDist = document.getElementById("tdDistancia");
+        const elDur  = document.getElementById("tdDuracao");
+        if (elDist) elDist.textContent = `${(d.routes[0].distance / 1000).toFixed(1)} km`;
+        if (elDur)  elDur.textContent  = `Viagem de ~${Math.round(d.routes[0].duration / 60)} min`;
+      } else {
+        tdMap.fitBounds(L.latLngBounds([[origemGeo.lat, origemGeo.lng],[destinoGeo.lat, destinoGeo.lng]]), { padding: [24, 24] });
+      }
+    } catch {
+      tdMap.fitBounds(L.latLngBounds([[origemGeo.lat, origemGeo.lng],[destinoGeo.lat, destinoGeo.lng]]), { padding: [24, 24] });
+    }
+  }
+
+  function formatarDataHoraDetalhe(iso){
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      const hoje = new Date();
+      const mesmodia = d.toDateString() === hoje.toDateString();
+      const hora = d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+      return mesmodia ? `Hoje · ${hora}` : `${d.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" })} · ${hora}`;
+    } catch { return "—"; }
+  }
+
+  /* ─── Reflete no botão "Iniciar Recolha" se já pode ser usado —
+     desativado e com a hora certa enquanto for cedo demais, em vez
+     de deixar clicar e só depois avisar com um alerta. Chamada uma
+     vez ao abrir o ecrã, e depois a cada 15s enquanto estiver
+     aberto, para o botão ativar-se sozinho quando a hora chegar,
+     sem o motorista precisar de fechar e voltar a abrir. ─── */
+  function atualizarEstadoBotaoIniciar(v){
+    const btn = document.getElementById("tdBtnIniciar");
+    if (!btn || !v?.datahora) { if (btn) { btn.disabled = false; btn.textContent = "Iniciar Recolha"; } return; }
+    const horaPrevista = new Date(v.datahora).getTime();
+    const agora = Date.now();
+    if (agora < horaPrevista) {
+      const faltamMin = Math.ceil((horaPrevista - agora) / 60000);
+      const horaFmt = new Date(v.datahora).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+      btn.disabled = true;
+      btn.style.opacity = ".5";
+      btn.textContent = faltamMin > 60
+        ? `Disponível às ${horaFmt}`
+        : `Disponível às ${horaFmt} (${faltamMin} min)`;
+    } else {
+      btn.disabled = false;
+      btn.style.opacity = "";
+      btn.textContent = "Iniciar Recolha";
+    }
+  }
+
+  /* ─── Mostrar detalhe — chamada a partir de selecionarViagem() ─── */
+  window.mostrarDetalheViagem = async function(v){
+    if (!v) return;
+    tdViagemAtual = v;
+
+    document.getElementById("tdPartida").textContent  = v.partida  || v.origem  || "—";
+    document.getElementById("tdDestino").textContent  = v.destino  || "—";
+    document.getElementById("tdCategoria").textContent = (v.categoria || v.tipo || "—").toString().toUpperCase();
+    document.getElementById("tdValor").textContent = v.ganhoMotorista != null
+      ? `€${Number(v.ganhoMotorista).toFixed(2).replace(".", ",")}`
+      : `€${Number(v.valor || v.total || 0).toFixed(2).replace(".", ",")}`;
+    document.getElementById("tdDataHora").textContent = formatarDataHoraDetalhe(v.datahora);
+    document.getElementById("tdDistancia").textContent = "—";
+    document.getElementById("tdDuracao").textContent   = "—";
+
+    const st = String(v.status || "pendente").toLowerCase();
+    const badge = document.getElementById("tdStatusBadge");
+    badge.textContent = st === "em_viagem" ? "Em curso" : st === "aceite" || st === "atribuida" ? "Atribuída" : st.toUpperCase();
+
+    atualizarEstadoBotaoIniciar(v);
+    if (tdIntervaloIniciar) clearInterval(tdIntervaloIniciar);
+    tdIntervaloIniciar = setInterval(() => atualizarEstadoBotaoIniciar(v), 15000);
+
+    overlay.classList.add("is-open");
+
+    // Coordenadas — geocodifica se necessário (mesma função já usada
+    // em selecionarViagem para o mapa principal).
+    let oLat = v.origemLat, oLng = v.origemLng;
+    let dLat = v.destinoLat, dLng = v.destinoLng;
+    if ((!oLat || !oLng) && v.partida && typeof nominatimGeo === "function") {
+      const geo = await nominatimGeo(v.partida);
+      if (geo) { oLat = geo.lat; oLng = geo.lng; }
+    }
+    if ((!dLat || !dLng) && v.destino && typeof nominatimGeo === "function") {
+      const geo = await nominatimGeo(v.destino);
+      if (geo) { dLat = geo.lat; dLng = geo.lng; }
+    }
+    desenharMapaDetalhe(
+      oLat != null ? { lat: oLat, lng: oLng } : null,
+      dLat != null ? { lat: dLat, lng: dLng } : null
+    ).catch(() => {});
+  };
+
+  function esconderDetalheViagem(){
+    overlay.classList.remove("is-open");
+    tdViagemAtual = null;
+    if (tdIntervaloIniciar) { clearInterval(tdIntervaloIniciar); tdIntervaloIniciar = null; }
+  }
+
+  btnIniciar.addEventListener("click", () => {
+    const id = tdViagemAtual?._id || tdViagemAtual?.id;
+    esconderDetalheViagem();
+    if (id && typeof iniciarViagem === "function") iniciarViagem(id);
+  });
+
+  // Cancelar-e-reatribuir — procura logo outro motorista (excluindo
+  // este), com o mesmo ciclo de duas voltas + incentivo de 10% já
+  // usado no despacho inicial; se não houver mais ninguém, a viagem
+  // fica visível no despacho manual do admin. Pede confirmação
+  // antes — isto não tem volta atrás depois de clicado.
+  btnCancelar.addEventListener("click", () => {
+    const id = tdViagemAtual?._id || tdViagemAtual?.id;
+    if (!id) return;
+    if (!confirm("Tem a certeza que quer cancelar esta recolha? A viagem vai ser oferecida a outro motorista.")) return;
+    const driverId = motoInfo?._id || motoInfo?.id;
+    if (socket && driverId) {
+      socket.emit("cancelar_recolha", { tripId: id, driverId });
+    }
+    esconderDetalheViagem();
+    if (typeof carregarViagens === "function") carregarViagens();
+  });
+
+  document.getElementById("tripDetailOverlay").addEventListener("click", (ev) => {
+    if (ev.target.id === "tripDetailOverlay") esconderDetalheViagem();
+  });
+})();
+</script>
+
+<!-- BEGIN veiculo-selector -->
+<style>
+
+  #rmVeicSel-overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.82);
+    z-index:99998;
+    display:none;
+    align-items:flex-end;justify-content:center;
+    padding:0;
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  #rmVeicSel-overlay.is-open{display:flex}
+
+  /* ── Vista 1: folha branca "Continuar com este veículo?" ── */
+  #rmVeicSel-confirm{
+    display:none;
+    background:#ffffff;
+    border-radius:20px 20px 0 0;
+    padding:24px 22px 28px;
+    max-width:520px;
+    width:100%;
+    box-shadow:0 -8px 30px rgba(0,0,0,.35);
+  }
+  #rmVeicSel-confirm.is-open{display:block}
+  #rmVeicSel-confirm-titulo{
+    color:#0a0b0d;
+    font-size:16px;
+    font-weight:700;
+    text-align:center;
+    margin-bottom:6px;
+  }
+  #rmVeicSel-confirm-sub{
+    color:#6b6b6b;
+    font-size:13px;
+    text-align:center;
+    margin-bottom:20px;
+  }
+  #rmVeicSel-confirm-btn{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:#0a0b0d;
+    color:#c4c9d4;
+    font-weight:700;
+    font-size:14px;
+    font-family:inherit;
+    margin-bottom:10px;
+    cursor:pointer;
+  }
+  #rmVeicSel-mudar-btn{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:#ffffff;
+    color:#0a0b0d;
+    font-weight:700;
+    font-size:14px;
+    font-family:inherit;
+    box-shadow:none;
+    cursor:pointer;
+  }
+
+  #rmVeicSel-box{
+    display:none;
+    background:linear-gradient(180deg,#0f1013,#0a0b0d);
+    border:1px solid rgba(196,201,212,.25);
+    border-radius:20px 20px 0 0;
+    padding:22px 20px 24px;
+    max-width:520px;
+    width:100%;
+    color:#dfe4ec;
+    box-shadow:0 -8px 30px rgba(0,0,0,.5);
+    max-height:82vh;
+    overflow:auto;
+  }
+  #rmVeicSel-box.is-open{display:block}
+  #rmVeicSel-title{
+    color:#f3f5f8;
+    font-size:15px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    text-align:center;
+    margin-bottom:4px;
+  }
+  #rmVeicSel-sub{
+    color:#8b95a2;
+    font-size:12px;
+    text-align:center;
+    margin-bottom:18px;
+    letter-spacing:.02em;
+  }
+  #rmVeicSel-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    max-height:268px; /* ≈ 5 linhas visíveis; resto por scroll */
+    overflow-y:auto;
+  }
+  .rmVeicSel-card{
+    background:rgba(196,201,212,.06);
+    border:1px solid rgba(196,201,212,.25);
+    border-radius:12px;
+    padding:12px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .rmVeicSel-card.is-ocupado{
+    background:rgba(107,114,128,.15);
+    border-color:rgba(107,114,128,.4);
+  }
+  .rmVeicSel-info{
+    flex:1;
+    min-width:0;
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+  }
+  .rmVeicSel-nome{
+    color:#e5e7eb;
+    font-weight:600;
+    font-size:13px;
+  }
+  .rmVeicSel-card.is-ocupado .rmVeicSel-nome{ color:#9ca3af; }
+  .rmVeicSel-matricula{
+    color:#8b95a2;
+    font-size:12px;
+  }
+  .rmVeicSel-estado{
+    font-size:12px;
+    color:#8b95a2;
+  }
+  .rmVeicSel-card.is-ocupado .rmVeicSel-estado{ color:#6b7280; }
+  .rmVeicSel-btn{
+    padding:9px 14px;
+    border:none;
+    border-radius:9px;
+    font-weight:600;
+    font-size:11px;
+    letter-spacing:.02em;
+    cursor:pointer;
+    font-family:inherit;
+    white-space:nowrap;
+  }
+  .rmVeicSel-btn.select{
+    background:rgba(196,201,212,.5);
+    color:#0a0b0d;
+  }
+  .rmVeicSel-btn.busy{
+    background:transparent;
+    color:#6b7280;
+    cursor:not-allowed;
+  }
+  .rmVeicSel-btn:hover:not(.busy){
+    filter:brightness(1.1);
+  }
+
+  #rmVeicSel-empty{
+    text-align:center;
+    padding:26px 14px;
+    color:#8b95a2;
+    font-size:13px;
+    border:1px dashed rgba(255,255,255,.12);
+    border-radius:12px;
+    background:rgba(255,255,255,.02);
+  }
+
+  #rmVeicSel-cancel{
+    margin-top:16px;
+    width:100%;
+    padding:11px;
+    background:transparent;
+    border:1px solid rgba(255,255,255,.14);
+    color:#c4c9d4;
+    border-radius:9px;
+    font-weight:800;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  #rmVeicSel-cancel:hover{
+    background:rgba(255,255,255,.04);
+  }
+
+  /* Popup "VEÍCULO EM UTILIZAÇÃO!" */
+  #rmVeicSel-alert{
+    position:fixed;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    background:linear-gradient(180deg,#050507,#0a0b0d);
+    border:2px solid #ff5050;
+    color:#ff8888;
+    padding:20px 30px;
+    border-radius:14px;
+    font-weight:900;
+    font-size:14px;
+    letter-spacing:.1em;
+    text-align:center;
+    z-index:99999;
+    box-shadow:0 20px 60px rgba(255,80,80,.35);
+    display:none;
+    animation:rmVeicPop .18s ease-out;
+  }
+  #rmVeicSel-alert.is-open{display:block}
+  @keyframes rmVeicPop{
+    from{transform:translate(-50%,-50%) scale(.9);opacity:0}
+    to  {transform:translate(-50%,-50%) scale(1);opacity:1}
+  }
+</style>
+
+<div id="rmVeicSel-overlay">
+  <!-- Vista 1: confirmação do último veículo — folha branca no rodapé -->
+  <div id="rmVeicSel-confirm">
+    <div id="rmVeicSel-confirm-titulo">Continuar com este veículo?</div>
+    <div id="rmVeicSel-confirm-sub"></div>
+    <button id="rmVeicSel-confirm-btn" type="button">Confirmar</button>
+    <button id="rmVeicSel-mudar-btn" type="button">Mudar</button>
+  </div>
+
+  <!-- Vista 2: lista completa da frota — mostrada de origem se não
+       houver último veículo, ou depois de tocar em "Mudar" -->
+  <div id="rmVeicSel-box">
+    <div id="rmVeicSel-title">Escolha o veículo</div>
+    <div id="rmVeicSel-sub">Selecione um veículo livre da frota para ficar online</div>
+    <div id="rmVeicSel-list"><div id="rmVeicSel-empty">A carregar…</div></div>
+    <button id="rmVeicSel-cancel" type="button">Cancelar</button>
+  </div>
+</div>
+
+<div id="rmVeicSel-alert">🚫 VEÍCULO EM UTILIZAÇÃO!</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const overlay      = document.getElementById("rmVeicSel-overlay");
+  const box          = document.getElementById("rmVeicSel-box");
+  const confirmBox    = document.getElementById("rmVeicSel-confirm");
+  const confirmSub     = document.getElementById("rmVeicSel-confirm-sub");
+  const confirmBtn     = document.getElementById("rmVeicSel-confirm-btn");
+  const mudarBtn       = document.getElementById("rmVeicSel-mudar-btn");
+  const listBox      = document.getElementById("rmVeicSel-list");
+  const cancelBtn    = document.getElementById("rmVeicSel-cancel");
+  const alertBox     = document.getElementById("rmVeicSel-alert");
+  const toggleBtn    = document.getElementById("btnOnlineToggle");
+
+  if (!toggleBtn) {
+    console.warn("[veiculo-selector] btnOnlineToggle não encontrado — abortando.");
+    return;
+  }
+
+  let refreshTimer = null;
+  let pendingContinue = null;  // função para continuar o fluxo original depois de escolher
+
+  /* ─── Memória do último veículo usado — agora persistida no
+     backend (Motorista.ultimoVeiculo), associada ao motoristaId.
+     Sobrevive a troca de dispositivo e a limpeza de cache; protegida
+     pela mesma autenticação (authMotorista) que o resto da API. ─── */
+  async function getUltimoVeiculo(){
+    try {
+      const r = await fetch("/api/motorista/veiculo/ultimo", {credentials:"include"});
+      const d = await r.json();
+      return (d?.ok && d.veiculo) ? d.veiculo : null;
+    } catch(_){ return null; }
+  }
+
+  /* ─── UI helpers ─── */
+  function showAlert(){
+    alertBox.classList.add("is-open");
+    setTimeout(()=>alertBox.classList.remove("is-open"), 1800);
+  }
+  function closeModal(){
+    overlay.classList.remove("is-open");
+    confirmBox.classList.remove("is-open");
+    box.classList.remove("is-open");
+    if (refreshTimer){ clearInterval(refreshTimer); refreshTimer = null; }
+    pendingContinue = null;
+  }
+
+  let confirmVeiculoAtual = null;
+
+  function mostrarConfirm(veiculo){
+    confirmVeiculoAtual = veiculo;
+    const nome = `${veiculo.marca || ""} ${veiculo.modelo || ""}`.trim() || "Veículo";
+    confirmSub.textContent = `${nome} · ${veiculo.matricula || "—"}`;
+    box.classList.remove("is-open");
+    confirmBox.classList.add("is-open");
+  }
+
+  function mostrarLista(itemsJaCarregados){
+    confirmBox.classList.remove("is-open");
+    box.classList.add("is-open");
+    if (itemsJaCarregados) renderList(itemsJaCarregados);
+    else refreshList();
+  }
+
+  async function openModal(){
+    overlay.classList.add("is-open");
+    try {
+      const r = await fetch("/api/motorista/frota-disponivel", {credentials:"include"});
+      const d = await r.json();
+      const items  = (d?.ok && Array.isArray(d.items)) ? d.items : [];
+      const ultimo = await getUltimoVeiculo();
+      const match  = ultimo ? items.find(v => v.id === ultimo.id && v.estado === "livre") : null;
+      if (match) mostrarConfirm(match);
+      else mostrarLista(items);
+    } catch (err) {
+      console.error("[veiculo-selector] openModal:", err);
+      mostrarLista([]);
+    }
+    if (refreshTimer) clearInterval(refreshTimer);
+    // Só actualiza a lista em segundo plano enquanto essa vista
+    // estiver aberta — não faz sentido refrescar atrás da folha de
+    // confirmação, que o motorista pode estar a ver há um bocado.
+    refreshTimer = setInterval(() => {
+      if (box.classList.contains("is-open")) refreshList();
+    }, 8000);
+  }
+
+  cancelBtn.addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e)=>{
+    if (e.target === overlay) closeModal();
+  });
+
+  function escapeHTML(s){
+    return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  /* ─── Desenhar a lista (linha única: nome · matrícula · estado) ─── */
+  function renderList(items){
+    if (!items.length){
+      listBox.innerHTML = `<div id="rmVeicSel-empty">Nenhum veículo aprovado da frota disponível.<br><span style="font-size:11px;opacity:.7">Contacte o gestor.</span></div>`;
+      return;
+    }
+    listBox.innerHTML = items.map(v => {
+      const nome = `${v.marca || ""} ${v.modelo || ""}`.trim() || "Veículo";
+      const est  = v.estado;   // "livre" | "em_uso" | "meu"
+      const ocupado  = est === "em_uso" || est === "meu";
+      const estLabel = est === "livre" ? "Livre" : "Em uso";
+      const btnClass = est === "livre" ? "select" : "busy";
+      const btnTxt   = est === "livre" ? "SELECIONAR" : (est === "meu" ? "ATUAL" : "OCUPADO");
+      return `
+        <div class="rmVeicSel-card${ocupado ? " is-ocupado" : ""}">
+          <div class="rmVeicSel-info">
+            <span class="rmVeicSel-nome">${escapeHTML(nome)}</span>
+            <span class="rmVeicSel-matricula">${escapeHTML(v.matricula || "—")}</span>
+            <span class="rmVeicSel-estado">${estLabel}</span>
+          </div>
+          <button type="button" class="rmVeicSel-btn ${btnClass}" data-veic-id="${escapeHTML(v.id)}" data-estado="${est}">
+            ${btnTxt}
+          </button>
+        </div>
+      `;
+    }).join("");
+
+    listBox.querySelectorAll("button.rmVeicSel-btn").forEach(b => {
+      b.addEventListener("click", () => onSelect(b.dataset.veicId, b.dataset.estado));
+    });
+  }
+
+  /* ─── Carregar e desenhar a lista (usada no refresco periódico) ─── */
+  async function refreshList(){
+    try {
+      const r = await fetch("/api/motorista/frota-disponivel", {credentials:"include"});
+      const d = await r.json();
+      if (!d?.ok) {
+        listBox.innerHTML = `<div id="rmVeicSel-empty">${d?.message || "Erro ao carregar frota."}</div>`;
+        return;
+      }
+      renderList(Array.isArray(d.items) ? d.items : []);
+    } catch (err) {
+      console.error("[veiculo-selector] erro:", err);
+      listBox.innerHTML = `<div id="rmVeicSel-empty">Erro de rede. Tente novamente.</div>`;
+    }
+  }
+
+  /* ─── Selecionar veículo ─── */
+  async function onSelect(id, estado){
+    if (estado === "em_uso"){
+      showAlert();
+      return;
+    }
+    if (!id) return;
+    try {
+      const r = await fetch(`/api/motorista/veiculo/selecionar/${encodeURIComponent(id)}`, {
+        method: "POST",
+        credentials: "include"
+      });
+      const d = await r.json();
+      if (!r.ok || !d?.ok){
+        // 409 conflict = ficou ocupado entretanto
+        showAlert();
+        refreshList();
+        return;
+      }
+      // Escolheu com sucesso — o backend já memorizou este veículo
+      // como "ultimoVeiculo" do motorista (feito dentro de
+      // /veiculo/selecionar/:id). Não é preciso gravar nada aqui.
+
+      // IMPORTANTE: capturar pendingContinue ANTES de fechar o modal.
+      // closeModal() limpa pendingContinue (para o caso de "Cancelar"),
+      // por isso se chamássemos closeModal() primeiro, perderíamos a
+      // referência e o motorista ficaria com o veículo escolhido mas
+      // sem ficar online automaticamente — teria de clicar "Ficar
+      // Online" outra vez.
+      const continuar = pendingContinue;
+      closeModal();
+      if (typeof continuar === "function"){
+        setTimeout(continuar, 30);   // deixa a UI respirar
+      }
+    } catch (err) {
+      console.error("[veiculo-selector] onSelect:", err);
+      alert("Erro ao selecionar veículo. Tente novamente.");
+    }
+  }
+
+  /* ─── Libertar veículo ─── */
+  async function libertarVeiculo(){
+    try {
+      await fetch("/api/motorista/veiculo/libertar", {
+        method:"POST",
+        credentials:"include",
+      });
+    } catch(_){}
+  }
+
+  /* ─── Verificar se motorista já tem veículo ─── */
+  async function temVeiculoAtual(){
+    try {
+      const r = await fetch("/api/motorista/veiculo/atual", {credentials:"include"});
+      const d = await r.json();
+      return !!(d?.ok && d?.veiculo?.id);
+    } catch(_){ return false; }
+  }
+
+  /* ─── API pública para o motorista.html (alternarOnline) ─── */
+  window.RMVeicSel = {
+    temVeiculoAtual,
+    libertarVeiculo,
+    abrirModal(onSelected){
+      pendingContinue = typeof onSelected === "function" ? onSelected : null;
+      openModal();
+    }
+  };
+
+  confirmBtn.addEventListener("click", () => {
+    if (confirmVeiculoAtual) onSelect(confirmVeiculoAtual.id, "livre");
+  });
+  mudarBtn.addEventListener("click", () => mostrarLista());
+
+  console.log("[veiculo-selector] instalado com sucesso.");
+})();
+</script>
+<!-- END veiculo-selector -->
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     HORA DE PARTIR — abre-se SOZINHO (sem o motorista tocar em nada),
+     quando o servidor deteta que já é preciso sair AGORA para chegar
+     a tempo à próxima recolha (ver verificarProximidadeMotoristas.
+     service.js, socket "hora_de_partir"). Ecrã inteiro, igual ao de
+     Detalhe de Viagem (reutiliza as mesmas classes td-*), com um
+     contador de 16 segundos no botão "Iniciar Recolha" — se esgotar
+     sem resposta, cancela sozinho (mesmo efeito que carregar em
+     "Cancelar Recolha").
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style>
+  #hpBtnIniciar{position:relative;overflow:hidden}
+  #hpBtnIniciarFill{position:absolute;inset:0;background:#c4c9d4;transform-origin:left}
+  #hpBtnIniciarFill.is-animando{animation:hpEsvaziar 16s linear forwards}
+  @keyframes hpEsvaziar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+</style>
+
+<div id="horaPartirOverlay" class="td-overlay-full">
+  <div class="td-card-full">
+    <div class="toc-body" style="display:flex;flex-direction:column;justify-content:center">
+      <div style="text-align:center;margin-bottom:22px">
+        <div style="font-size:40px">🚗</div>
+        <div style="font-size:20px;font-weight:800;color:#fff;margin-top:10px">É hora de partir</div>
+        <div style="font-size:13px;color:#8b95a2;margin-top:6px">Esta viagem precisa que saia agora, para chegar a tempo.</div>
+      </div>
+
+      <div class="toc-locais">
+        <div class="toc-local">
+          <span class="toc-dot toc-dot-o"></span>
+          <span class="toc-local-txt" id="hpPartida">—</span>
+        </div>
+        <div class="toc-linha"></div>
+        <div class="toc-local">
+          <span class="toc-dot toc-dot-d"></span>
+          <span class="toc-local-txt" id="hpDestino">—</span>
+        </div>
+      </div>
+
+      <div class="toc-info">
+        <div class="toc-info-row">
+          <div>
+            <div class="toc-info-label">Categoria</div>
+            <div class="toc-info-valor" id="hpCategoria">—</div>
+          </div>
+          <div>
+            <div class="toc-info-label">Hora marcada</div>
+            <div class="toc-info-valor" id="hpHora">—</div>
+          </div>
+          <div>
+            <div class="toc-info-label">O seu ganho</div>
+            <div class="toc-info-valor toc-info-valor-prata" id="hpValor">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toc-btns">
+        <button type="button" class="toc-btn" id="hpBtnCancelar">Cancelar Recolha</button>
+        <button type="button" class="toc-btn" id="hpBtnIniciar">
+          <span id="hpBtnIniciarFill"></span>
+          <span style="position:relative;z-index:1;color:#0a0b0d">Iniciar Recolha</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let hpTripId = null;
+  let hpTimer = null;
+
+  const overlay = document.getElementById("horaPartirOverlay");
+  const btnIniciar = document.getElementById("hpBtnIniciar");
+  const btnCancelar = document.getElementById("hpBtnCancelar");
+  const fill = document.getElementById("hpBtnIniciarFill");
+
+  function formatarHora(iso){
+    if (!iso) return "—";
+    try { return new Date(iso).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }); }
+    catch { return "—"; }
+  }
+
+  function fecharSemAcao(){
+    overlay.classList.remove("is-open");
+    if (hpTimer) { clearTimeout(hpTimer); hpTimer = null; }
+    fill.classList.remove("is-animando");
+    hpTripId = null;
+  }
+
+  function emitirCancelamento(){
+    const driverId = motoInfo?._id || motoInfo?.id;
+    if (socket && hpTripId && driverId) {
+      socket.emit("cancelar_recolha", { tripId: hpTripId, driverId });
+    }
+    fecharSemAcao();
+  }
+
+  // ─── Chamado pelo socket.on("hora_de_partir", ...) ───
+  window.mostrarHoraDePartir = function(data){
+    if (!data?.tripId) return;
+    hpTripId = data.tripId;
+
+    const v = data.viagem || {};
+    document.getElementById("hpPartida").textContent = v.partida || "—";
+    document.getElementById("hpDestino").textContent = v.destino || "—";
+    document.getElementById("hpCategoria").textContent = (v.categoria || "—").toString().toUpperCase();
+    document.getElementById("hpHora").textContent = formatarHora(v.datahora);
+    document.getElementById("hpValor").textContent = v.valor != null
+      ? `€${Number(v.valor).toFixed(2).replace(".", ",")}`
+      : "—";
+
+    overlay.classList.add("is-open");
+
+    fill.classList.remove("is-animando");
+    void fill.offsetWidth;
+    fill.classList.add("is-animando");
+
+    if (hpTimer) clearTimeout(hpTimer);
+    // Ao fim dos 16s sem resposta, cancela sozinho — mesmo efeito
+    // que o motorista carregar em "Cancelar Recolha".
+    hpTimer = setTimeout(emitirCancelamento, 16000);
+  };
+
+  btnIniciar.addEventListener("click", () => {
+    if (!hpTripId) return;
+    const tripId = hpTripId;
+    fecharSemAcao();
+    if (typeof iniciarViagem === "function") iniciarViagem(tripId);
+  });
+
+  btnCancelar.addEventListener("click", emitirCancelamento);
+})();
+</script>
+
+</body>
+</html>

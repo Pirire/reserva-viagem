@@ -1,0 +1,7 @@
+export const OFFER_STATUS = {
+  SENT: "SENT",
+  ACKED: "ACKED",
+  TIMEOUT: "TIMEOUT",
+  REJECTED: "REJECTED",
+  ACCEPTED: "ACCEPTED"
+};

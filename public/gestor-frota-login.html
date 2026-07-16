@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>REALMETROPOLIS — Login Gestor de Frota</title>
+  <style>
+    :root{
+      --bg:#050505;--surface:#0d0f12;--surface-2:#111318;
+      --border:#2c323a;--border-2:#5f6874;
+      --text:#d9dde3;--text-dim:#8b95a2;
+      --ok:#1cd68e;--bad:#ef4444;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,system-ui,sans-serif}
+    html,body{height:100%;background:linear-gradient(135deg,var(--bg),#0d0f12,#000);color:var(--text)}
+    body{display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{
+      width:min(440px,96vw);
+      background:linear-gradient(180deg,var(--surface),#0a0b0d);
+      border:1px solid var(--border);border-radius:22px;
+      box-shadow:0 30px 80px rgba(0,0,0,.65);overflow:hidden;
+    }
+    .card-header{
+      padding:20px 24px;border-bottom:1px solid var(--border);
+      background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);
+      display:flex;align-items:center;gap:14px;
+    }
+    .rm{
+      width:48px;height:48px;border-radius:50%;
+      border:2px solid var(--border-2);
+      display:flex;align-items:center;justify-content:center;
+      color:var(--text);font-weight:900;font-size:14px;letter-spacing:.5px;
+      background:linear-gradient(180deg,#1e2229,#101217);flex:0 0 auto;
+    }
+    .card-title{font-size:16px;font-weight:900;letter-spacing:.8px;color:#eef2f7}
+    .card-sub{font-size:12px;color:var(--text-dim);margin-top:3px}
+    .card-body{padding:24px}
+    label{display:block;font-size:11px;font-weight:700;color:var(--text-dim);
+          letter-spacing:.5px;text-transform:uppercase;margin:0 0 6px}
+    input{
+      width:100%;padding:13px 16px;border-radius:14px;
+      border:1px solid var(--border);background:#0d1014;
+      color:#f7f8fb;font-size:15px;outline:none;
+      transition:.2s;margin-bottom:16px;
+    }
+    input:focus{border-color:var(--border-2);box-shadow:0 0 0 3px rgba(217,221,227,.06)}
+    .btn{
+      width:100%;padding:14px;border-radius:14px;border:none;
+      background:linear-gradient(180deg,#e3e8ef,#bfc7d2);
+      color:#000;font-weight:900;font-size:15px;cursor:pointer;
+      transition:all .2s;letter-spacing:.3px;
+    }
+    .btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.3)}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .toggle-link{
+      display:block;text-align:right;margin-top:-10px;margin-bottom:16px;
+      font-size:12px;color:var(--text-dim);cursor:pointer;transition:color .15s;
+    }
+    .toggle-link:hover{color:var(--text)}
+    .msg{
+      margin-top:14px;padding:12px 14px;border-radius:12px;
+      font-size:13px;font-weight:600;display:none;
+      border:1px solid var(--border);background:rgba(255,255,255,.03);
+    }
+    .msg.ok{display:block;border-color:rgba(28,214,142,.3);color:#7fffc4}
+    .msg.err{display:block;border-color:rgba(239,68,68,.3);color:#fca5a5}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="card-header">
+    <div class="rm">RM</div>
+    <div>
+      <div class="card-title">GESTOR DE FROTA</div>
+      <div class="card-sub">Acesso ao painel de gestão</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <label>Email</label>
+    <input id="email" type="email" placeholder="gestor@empresa.pt"/>
+    <label>Senha</label>
+    <input id="senha" type="password" placeholder="••••••••"/>
+    <span class="toggle-link" id="togglePwd">Mostrar senha</span>
+    <button class="btn" id="btnLogin">ENTRAR</button>
+    <div class="msg" id="msg"></div>
+  </div>
+</div>
+<script>
+(() => {
+  const emailEl = document.getElementById("email");
+  const senhaEl = document.getElementById("senha");
+  const btnLogin = document.getElementById("btnLogin");
+  const msgEl    = document.getElementById("msg");
+
+  document.getElementById("togglePwd").onclick = () => {
+    const show = senhaEl.type === "password";
+    senhaEl.type = show ? "text" : "password";
+    document.getElementById("togglePwd").textContent = show ? "Ocultar senha" : "Mostrar senha";
+  };
+
+  function showMsg(text, type) {
+    msgEl.textContent = text;
+    msgEl.className = "msg " + type;
+  }
+
+  async function login() {
+    const email = (emailEl.value || "").trim().toLowerCase();
+    const senha = (senhaEl.value || "");
+    if (!email || !senha) { showMsg("Preencha o email e a senha.", "err"); return; }
+
+    btnLogin.disabled = true;
+    btnLogin.textContent = "A entrar…";
+
+const endpoints = [
+  "/api/colaboradores/login",
+  "/api/auth/colaboradores/login",
+  "/api/gestor/login",
+  "/api/admin/parceiros/login",
+  "/api/parceiros/login",
+];
+
+    let ok = false;
+    let lastMsg = "Credenciais inválidas.";
+
+    try {
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, senha })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok) {
+            showMsg("Login efectuado!", "ok");
+            setTimeout(() => { window.location.href = "/gestor-frota.html"; }, 600);
+            ok = true;
+            break;
+          }
+          lastMsg = data?.message || lastMsg;
+        } catch { continue; }
+      }
+      if (!ok) showMsg(lastMsg, "err");
+    } catch {
+      showMsg("Erro de ligação ao servidor.", "err");
+    } finally {
+      btnLogin.disabled = false;
+      btnLogin.textContent = "ENTRAR";
+    }
+  }
+
+  btnLogin.addEventListener("click", login);
+  [emailEl, senhaEl].forEach(el => el.addEventListener("keydown", e => { if(e.key==="Enter") login(); }));
+})();
+</script>
+</body>
+</html>

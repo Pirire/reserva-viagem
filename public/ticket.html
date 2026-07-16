@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<!--
+  REALMETROPOLIS — Ticket de Viagem
+  Página pública enviada ao hóspede via link único.
+  Pagamentos: Stripe (Cartão + Google Pay + Apple Pay) | PayPal
+-->
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REALMETROPOLIS — Ticket de Viagem</title>
+  <!-- Stripe JS -->
+  <script src="https://js.stripe.com/v3/"></script>
+  <!-- PayPal SDK — carregado dinamicamente após obter clientId do backend -->
+  <style>
+    :root {
+      --green:   #19d68b;
+      --silver:  #d9dde3;
+      --silver-2:#aab3bd;
+      --red:     #ff6363;
+      --orange:  #ff9f43;
+      --shadow:  0 18px 50px rgba(0,0,0,.56);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      font-family: Inter, Arial, sans-serif;
+      background: linear-gradient(160deg, #050507 0%, #0a0b0f 100%);
+      color: var(--silver);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px 16px 48px;
+      gap: 20px;
+    }
+
+    /* ── LOGO ── */
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 8px;
+    }
+    .logo-mark {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,.04);
+      border: 2px solid rgba(217,221,227,.3);
+      display: grid; place-items: center;
+      font-weight: 900; font-size: 14px; letter-spacing: .06em;
+      color: var(--silver);
+    }
+    .logo-nome {
+      font-size: 16px; font-weight: 900;
+      letter-spacing: .18em; color: #fff;
+    }
+    .logo-sub {
+      font-size: 11px; color: var(--silver-2);
+      letter-spacing: .06em; margin-top: 2px;
+    }
+
+    /* ── CARD PRINCIPAL ── */
+    .ticket-card {
+      width: 100%;
+      max-width: 480px;
+      background: linear-gradient(180deg, #0e0f12, #090a0c);
+      border: 1px solid rgba(217,221,227,.18);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .ticket-header {
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .ticket-header h2 {
+      font-size: 13px; font-weight: 900;
+      letter-spacing: .16em; color: var(--silver-2);
+    }
+    .ticket-codigo {
+      font-size: 11px; font-weight: 900; letter-spacing: .08em;
+      color: var(--silver-2);
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      padding: 4px 10px; border-radius: 999px;
+    }
+
+    .ticket-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Rota */
+    .ticket-rota {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .rota-ponto {
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .rota-icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 14px; flex: 0 0 auto;
+    }
+    .rota-icon.origem  { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+    .rota-icon.destino { background: rgba(25,214,139,.12);  border: 1px solid rgba(25,214,139,.3); }
+    .rota-ponto-info label {
+      display: block; font-size: 10px; font-weight: 900;
+      letter-spacing: .1em; color: var(--silver-2);
+      text-transform: uppercase; margin-bottom: 3px;
+    }
+    .rota-ponto-info span {
+      font-size: 14px; font-weight: 800; color: #fff; line-height: 1.3;
+    }
+    .rota-linha {
+      width: 2px; height: 16px;
+      background: rgba(255,255,255,.1);
+      margin-left: 15px;
+    }
+
+    /* Detalhes */
+    .ticket-detalhes {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .detalhe-item {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 14px; padding: 12px 14px;
+    }
+    .detalhe-item label {
+      display: block; font-size: 10px; font-weight: 900;
+      letter-spacing: .1em; color: var(--silver-2);
+      text-transform: uppercase; margin-bottom: 4px;
+    }
+    .detalhe-item span { font-size: 13px; font-weight: 800; color: #fff; }
+
+    /* Valor */
+    .ticket-valor {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 18px;
+      background: rgba(25,214,139,.06);
+      border: 1px solid rgba(25,214,139,.2);
+      border-radius: 18px;
+    }
+    .ticket-valor-label {
+      font-size: 12px; font-weight: 900;
+      letter-spacing: .1em; color: var(--silver-2); text-transform: uppercase;
+    }
+    .ticket-valor-num {
+      font-size: 28px; font-weight: 900; color: var(--green);
+      letter-spacing: .02em;
+    }
+
+    /* Estado — pago */
+    .ticket-pago {
+      display: none;
+      flex-direction: column; align-items: center; gap: 10px;
+      padding: 24px;
+      background: rgba(25,214,139,.08);
+      border: 1px solid rgba(25,214,139,.3);
+      border-radius: 18px; text-align: center;
+    }
+    .ticket-pago.show { display: flex; }
+    .ticket-pago .icon { font-size: 36px; }
+    .ticket-pago h3 { font-size: 15px; font-weight: 900; color: var(--green); letter-spacing: .1em; }
+    .ticket-pago p  { font-size: 13px; color: var(--silver-2); line-height: 1.5; }
+
+    /* ── SECÇÃO DE PAGAMENTO ── */
+    .pagamento-card {
+      width: 100%; max-width: 480px;
+      background: linear-gradient(180deg, #0e0f12, #090a0c);
+      border: 1px solid rgba(217,221,227,.18);
+      border-radius: 28px; overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .pagamento-header {
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .pagamento-header h3 {
+      font-size: 13px; font-weight: 900;
+      letter-spacing: .14em; color: var(--silver-2);
+    }
+    .pagamento-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* Tabs de método */
+    .metodos-tabs {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .metodo-tab {
+      flex: 1; min-width: 80px; min-height: 46px;
+      border-radius: 14px; border: 1px solid rgba(217,221,227,.18);
+      background: rgba(255,255,255,.04); color: var(--silver);
+      font-size: 12px; font-weight: 900; letter-spacing: .04em;
+      cursor: pointer; transition: .2s ease; padding: 0 12px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .metodo-tab:hover  { border-color: rgba(217,221,227,.35); background: rgba(255,255,255,.07); }
+    .metodo-tab.active {
+      background: linear-gradient(180deg, #dfe4ea, #b6bec8);
+      color: #000; border-color: #eef2f7;
+    }
+
+    /* Painel de cada método */
+    .metodo-painel { display: none; flex-direction: column; gap: 12px; }
+    .metodo-painel.show { display: flex; }
+
+    /* Campo de input genérico */
+    .pay-field {
+      width: 100%; min-height: 50px;
+      border-radius: 16px; border: 1px solid rgba(217,221,227,.18);
+      background: #0a0b0d; color: var(--silver);
+      padding: 0 16px; outline: none; font-size: 14px; font-weight: 700;
+    }
+    .pay-field::placeholder { color: rgba(217,221,227,.35); }
+    .pay-field:focus { border-color: rgba(25,214,139,.4); box-shadow: 0 0 0 3px rgba(25,214,139,.08); }
+
+    /* Stripe element container */
+    #stripe-card-element {
+      padding: 14px 16px; border-radius: 16px;
+      border: 1px solid rgba(217,221,227,.18);
+      background: #0a0b0d; min-height: 50px;
+    }
+    #stripe-card-element:focus-within { border-color: rgba(25,214,139,.4); }
+
+    /* Botão de pagar */
+    .btn-pagar {
+      width: 100%; min-height: 54px;
+      border-radius: 18px; border: none;
+      background: linear-gradient(180deg, #19d68b, #12a869);
+      color: #000; font-size: 14px; font-weight: 900;
+      letter-spacing: .1em; cursor: pointer;
+      transition: .22s ease; box-shadow: 0 12px 28px rgba(25,214,139,.25);
+    }
+    .btn-pagar:hover { transform: translateY(-1px); box-shadow: 0 16px 36px rgba(25,214,139,.35); }
+    .btn-pagar:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    /* PayPal container */
+    #paypal-button-container { min-height: 50px; border-radius: 14px; overflow: hidden; }
+
+    /* Mensagem de estado */
+    .pay-msg {
+      padding: 12px 16px; border-radius: 14px;
+      font-size: 13px; font-weight: 800; text-align: center;
+      display: none;
+    }
+    .pay-msg.show { display: block; }
+    .pay-msg.ok   { background: rgba(25,214,139,.1); border: 1px solid rgba(25,214,139,.3); color: var(--green); }
+    .pay-msg.erro { background: rgba(255,99,99,.1);  border: 1px solid rgba(255,99,99,.3);  color: var(--red); }
+    .pay-msg.info { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); color: var(--silver); }
+
+    /* ── LOADING ── */
+    .loading {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 14px; padding: 48px 24px;
+      color: var(--silver-2); font-size: 13px; font-weight: 800;
+      text-align: center;
+    }
+    .loading-spin {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.1);
+      border-top-color: var(--green);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .erro-page {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 12px; padding: 48px 24px;
+      color: var(--red); font-weight: 800; text-align: center;
+    }
+    .erro-page .icon { font-size: 36px; }
+
+    /* Nota segurança */
+    .seguranca-nota {
+      max-width: 480px; width: 100%;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; color: var(--silver-2);
+      font-weight: 700; letter-spacing: .02em; text-align: center;
+      justify-content: center;
+    }
+
+    @media (max-width: 480px) {
+      .ticket-detalhes { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-mark">RM</div>
+    <div>
+      <div class="logo-nome">REALMETROPOLIS</div>
+      <div class="logo-sub">TICKET DE VIAGEM</div>
+    </div>
+  </div>
+
+  <!-- Ticket de viagem -->
+  <div class="ticket-card" id="ticketCard">
+    <div class="loading" id="loadingTicket">
+      <div class="loading-spin"></div>
+      A carregar o seu ticket...
+    </div>
+  </div>
+
+  <!-- Secção de pagamento -->
+  <div class="pagamento-card" id="pagamentoCard" style="display:none">
+    <div class="pagamento-header">
+      <h3>ESCOLHA O MÉTODO DE PAGAMENTO</h3>
+    </div>
+    <div class="pagamento-body">
+
+      <!-- Tabs -->
+      <div class="metodos-tabs">
+        <button class="metodo-tab active" data-metodo="cartao">💳 Cartão</button>
+        <button class="metodo-tab" data-metodo="paypal">🅿 PayPal</button>
+      </div>
+      <!-- Cartão (Stripe) -->
+      <div class="metodo-painel show" id="painel-cartao">
+        <div id="stripe-card-element"></div>
+        <button class="btn-pagar" id="btnCartao">PAGAR COM CARTÃO</button>
+        <div class="pay-msg" id="msgCartao"></div>
+      </div>
+
+      <!-- PayPal -->
+      <div class="metodo-painel" id="painel-paypal">
+        <div id="paypal-button-container"></div>
+        <div class="pay-msg" id="msgPaypal"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Nota de segurança -->
+  <div class="seguranca-nota">
+    🔒 Pagamento seguro · SSL · Os seus dados estão protegidos
+  </div>
+
+  <script>
+  'use strict';
+
+  /* ── CONFIGURAÇÃO ─────────────────────────────────────────── */
+  const API_BASE = location.origin.includes('10000') ? location.origin : location.origin;
+  const url = path => API_BASE + '/api' + path;
+
+  const params    = new URLSearchParams(location.search);
+  const TOKEN     = (params.get('t') || '').trim();
+
+  let ticketData  = null;
+  let stripe      = null;
+  let cardElement = null;
+
+  /* ── HELPERS ──────────────────────────────────────────────── */
+  function esc(s) {
+    return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  }
+
+  function formatData(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('pt-PT', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function formatCategoria(cat) {
+    const m = { economica:'ECONÓMICA', confort:'CONFORTO', executive:'EXECUTIVA', luxury:'LUXO' };
+    if (String(cat).startsWith('GRUPO')) return `GRUPO ${String(cat).replace('GRUPO','')} PAX`;
+    return m[cat] || String(cat || '').toUpperCase();
+  }
+
+  function showMsg(id, tipo, texto) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = `pay-msg show ${tipo}`;
+    el.textContent = texto;
+  }
+
+  function hideMsg(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  }
+
+  /* ── CARREGAR TICKET ──────────────────────────────────────── */
+  async function carregarTicket() {
+    if (!TOKEN) { mostrarErroPagina('Link inválido ou expirado.'); return; }
+
+    try {
+      const res  = await fetch(url(`/tickets/ticket/${TOKEN}`));
+      const data = await res.json();
+      if (!res.ok || !data?.ok) { mostrarErroPagina(data?.message || 'Ticket não encontrado.'); return; }
+
+      ticketData = data.ticket;
+      renderTicket(ticketData);
+
+      if (ticketData.pago) {
+        renderPago();
+      } else {
+        document.getElementById('pagamentoCard').style.display = '';
+        iniciarStripe();
+        iniciarPayPal();
+      }
+    } catch (_) {
+      mostrarErroPagina('Erro ao carregar o ticket. Tente novamente.');
+    }
+  }
+
+  function renderTicket(t) {
+    document.getElementById('ticketCard').innerHTML = `
+      <div class="ticket-header">
+        <div>
+          <h2>TICKET DE VIAGEM</h2>
+          <div style="margin-top:4px;font-size:13px;font-weight:800;color:#fff">${esc(t.nome)}</div>
+        </div>
+        <div class="ticket-codigo">${esc(t.codigo)}</div>
+      </div>
+      <div class="ticket-body">
+        <div class="ticket-rota">
+          <div class="rota-ponto">
+            <div class="rota-icon origem">🚗</div>
+            <div class="rota-ponto-info">
+              <label>Partida</label>
+              <span>${esc(t.partida)}</span>
+            </div>
+          </div>
+          <div class="rota-linha"></div>
+          <div class="rota-ponto">
+            <div class="rota-icon destino">📍</div>
+            <div class="rota-ponto-info">
+              <label>Destino</label>
+              <span>${esc(t.destino)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="ticket-detalhes">
+          <div class="detalhe-item">
+            <label>Data / Hora</label>
+            <span>${formatData(t.datahora)}</span>
+          </div>
+          <div class="detalhe-item">
+            <label>Categoria</label>
+            <span>${formatCategoria(t.categoria)}</span>
+          </div>
+        </div>
+        <div class="ticket-valor">
+          <div class="ticket-valor-label">Valor a pagar</div>
+          <div class="ticket-valor-num">${Number(t.valor).toFixed(2)} €</div>
+        </div>
+        <div class="ticket-pago ${t.pago ? 'show' : ''}" id="ticketPagoBadge">
+          <div class="icon">✅</div>
+          <h3>VIAGEM PAGA</h3>
+          <p>O seu pagamento foi confirmado.<br>Boa viagem com a REALMETROPOLIS!</p>
+        </div>
+      </div>`;
+  }
+
+  function renderPago() {
+    document.getElementById('pagamentoCard').style.display = 'none';
+    const badge = document.getElementById('ticketPagoBadge');
+    if (badge) badge.classList.add('show');
+  }
+
+  function mostrarErroPagina(msg) {
+    document.getElementById('ticketCard').innerHTML = `
+      <div class="erro-page">
+        <div class="icon">⚠️</div>
+        <div>${esc(msg)}</div>
+      </div>`;
+    document.getElementById('pagamentoCard').style.display = 'none';
+  }
+
+  /* ── TABS DE MÉTODO ───────────────────────────────────────── */
+  document.querySelectorAll('.metodo-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.metodo-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.metodo-painel').forEach(p => p.classList.remove('show'));
+      tab.classList.add('active');
+      document.getElementById(`painel-${tab.dataset.metodo}`)?.classList.add('show');
+    });
+  });
+
+  /* ── STRIPE (CARTÃO) ─────────────────────────────────────── */
+  async function iniciarStripe() {
+    try {
+      const res  = await fetch(url('/reservas/stripe/public-key'));
+      const data = await res.json();
+      const pk   = data?.publicKey || '';
+      if (!pk || !window.Stripe) return;
+
+      stripe      = Stripe(pk);
+      const elements = stripe.elements();
+      cardElement = elements.create('card', {
+        style: {
+          base: {
+            color: '#d9dde3', fontSize: '14px', fontFamily: 'Inter, Arial, sans-serif',
+            fontWeight: '700', '::placeholder': { color: 'rgba(217,221,227,.35)' }
+          }
+        }
+      });
+      cardElement.mount('#stripe-card-element');
+    } catch (_) {
+      document.getElementById('painel-cartao').innerHTML =
+        '<div class="pay-msg show info">Pagamento por cartão temporariamente indisponível.</div>';
+    }
+  }
+
+  document.getElementById('btnCartao').addEventListener('click', async () => {
+    if (!stripe || !cardElement) { showMsg('msgCartao','erro','Stripe não inicializado.'); return; }
+
+    const btn = document.getElementById('btnCartao');
+    btn.disabled = true; btn.textContent = 'A processar...';
+    hideMsg('msgCartao');
+
+    try {
+      // 1) Criar PaymentIntent no backend
+      const res  = await fetch(url(`/tickets/ticket/${TOKEN}/stripe/criar-intent`), { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data?.clientSecret) throw new Error(data?.message || 'Erro ao iniciar pagamento.');
+
+      // 2) Confirmar com o cartão
+      const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: { card: cardElement }
+      });
+
+      if (error) throw new Error(error.message);
+
+      // 3) Confirmar no backend
+      const conf = await fetch(url(`/tickets/ticket/${TOKEN}/stripe/confirmar`), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: paymentIntent.id })
+      });
+      const confData = await conf.json();
+      if (!conf.ok) throw new Error(confData?.message || 'Erro ao confirmar pagamento.');
+
+      showMsg('msgCartao', 'ok', 'Pagamento confirmado! Obrigado.');
+      document.getElementById('pagamentoCard').style.display = 'none';
+      renderPago();
+    } catch (err) {
+      showMsg('msgCartao', 'erro', err.message || 'Erro no pagamento.');
+      btn.disabled = false; btn.textContent = 'PAGAR COM CARTÃO';
+    }
+  });
+
+  /* ── PAYPAL ───────────────────────────────────────────────── */
+  async function iniciarPayPal() {
+    try {
+      const res  = await fetch(url('/reservas/paypal-client-id'));
+      const data = await res.json();
+      const cid  = data?.clientId || '';
+      if (!cid) {
+        document.getElementById('painel-paypal').innerHTML =
+          '<div class="pay-msg show info">PayPal temporariamente indisponível.</div>';
+        return;
+      }
+
+      // Carrega SDK PayPal dinamicamente
+      await new Promise((resolve, reject) => {
+        const s    = document.createElement('script');
+        s.src      = `https://www.paypal.com/sdk/js?client-id=${cid}&currency=EUR`;
+        s.onload   = resolve;
+        s.onerror  = reject;
+        document.head.appendChild(s);
+      });
+
+      window.paypal.Buttons({
+        style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'pay' },
+
+        createOrder: async () => {
+          const res  = await fetch(url(`/tickets/ticket/${TOKEN}/paypal/criar-ordem`), { method: 'POST' });
+          const data = await res.json();
+          if (!data?.orderId) throw new Error(data?.message || 'Erro PayPal.');
+          return data.orderId;
+        },
+
+        onApprove: async (data) => {
+          showMsg('msgPaypal', 'info', 'A confirmar pagamento...');
+          const res  = await fetch(url(`/tickets/ticket/${TOKEN}/paypal/capturar/${data.orderID}`), { method: 'POST' });
+          const conf = await res.json();
+          if (res.ok && conf?.ok) {
+            showMsg('msgPaypal', 'ok', 'Pagamento confirmado! Obrigado.');
+            document.getElementById('pagamentoCard').style.display = 'none';
+            renderPago();
+          } else {
+            showMsg('msgPaypal', 'erro', conf?.message || 'Erro ao confirmar.');
+          }
+        },
+
+        onError: (err) => {
+          showMsg('msgPaypal', 'erro', 'Erro no PayPal. Tente outro método.');
+          console.error('[PayPal]', err);
+        }
+      }).render('#paypal-button-container');
+    } catch (_) {
+      document.getElementById('painel-paypal').innerHTML =
+        '<div class="pay-msg show info">PayPal temporariamente indisponível.</div>';
+    }
+  }
+  /* ── ARRANQUE ─────────────────────────────────────────────── */
+  carregarTicket();
+  </script>
+</body>
+</html>

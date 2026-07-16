@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>REALMETROPOLIS — Reservar</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,900&display=swap');
+
+:root{
+  --ok:#1fc97d;--bad:#f05050;--warn:#f0a020;
+  --c0:#09090c;--c2:#0d0f12;--c3:#141619;
+  --silver:#cdd2da;--silver-2:#8a939f;--silver-3:#545d68;
+  --line:rgba(200,210,225,.10);--line2:rgba(200,210,225,.18);
+  --blur:blur(20px) saturate(1.1);
+  --gold:#b8965a;--gold-dim:rgba(184,150,90,.12);
+  --radius:14px;
+  --safe-b:calc(env(safe-area-inset-bottom,0px) + 12px);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'DM Sans',system-ui,sans-serif;background:var(--c0);color:var(--silver);-webkit-font-smoothing:antialiased}
+
+/* ── MAPA ── */
+#map{position:fixed;inset:0;z-index:0;filter:brightness(1.10) saturate(1.10) contrast(1.10)}
+
+/* ── BOTTOM SHEET ── */
+#sheet{
+  position:fixed;left:50%;bottom:0;z-index:100;
+  transform:translateX(-50%);
+  width:100%;max-width:480px;
+  background:#000;
+  border-top:1px solid var(--line2);
+  border-radius:22px 22px 0 0;
+  backdrop-filter:none;
+  transition:transform .38s cubic-bezier(.22,.68,0,1.1);
+  padding-bottom:var(--safe-b);
+}
+
+/* Desktop — sheet centrado, mapa visível em volta */
+@media(min-width:540px){
+  #sheet{
+    border-radius:22px 22px 0 0;
+    box-shadow:-40px 0 80px rgba(0,0,0,.5),40px 0 80px rgba(0,0,0,.5),0 -8px 40px rgba(0,0,0,.6);
+  }
+  #routeInfo{
+    left:50%;transform:translateX(-50%);
+  }
+}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);margin:10px auto 0}
+
+/* ── ECRÃ 1: INPUT ── */
+#step1{display:block}
+.step1-top{padding:14px 16px 10px;display:flex;align-items:center;gap:10px}
+.rm-mark{width:34px;height:34px;border-radius:50%;border:2px solid rgba(212,216,223,.6);background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.03));box-shadow:0 0 0 3px rgba(212,216,223,.07);display:grid;place-items:center;font-size:11px;font-weight:900;color:#fff;letter-spacing:.06em;flex-shrink:0}
+.step1-title{font-size:12px;font-weight:700;color:var(--silver);letter-spacing:.06em;text-transform:uppercase}
+.step1-sub{font-size:10px;color:var(--silver-3);margin-top:1px}
+
+/* campos de endereço */
+.addr-wrap{padding:0 16px 8px;display:flex;gap:10px;align-items:stretch}
+.addr-dots{display:flex;flex-direction:column;align-items:center;padding-top:12px;padding-bottom:12px;gap:2px}
+.addr-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.addr-dot.o{background:var(--ok)}
+.addr-dot.d{background:var(--bad)}
+.addr-connector{flex:1;width:1.5px;background:rgba(255,255,255,.1)}
+.addr-fields{flex:1;display:flex;flex-direction:column;gap:6px;position:relative}
+.addr-inp{position:relative}
+.inp{
+  width:100%;height:44px;border-radius:11px;
+  border:1px solid var(--line2);background:#000;
+  color:var(--silver);padding:0 40px 0 14px;
+  font-size:13px;font-weight:500;font-family:inherit;
+  outline:none;transition:border-color .14s,background .14s;
+}
+.inp:focus{border-color:rgba(205,210,218,.45);background:rgba(205,210,218,.05);box-shadow:0 0 0 3px rgba(205,210,218,.12)}
+.inp::placeholder{color:rgba(200,210,225,.3)}
+.geo-btn{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;
+  color:var(--silver);font-size:17px;line-height:1;padding:4px;
+  opacity:.8;transition:opacity .15s;
+}
+.geo-btn:hover{opacity:1}
+
+/* autocomplete */
+.ac-drop{
+  position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:999;
+  background:var(--c2);border:1px solid var(--line2);border-radius:var(--radius);
+  overflow:hidden;max-height:200px;overflow-y:auto;
+  display:none;box-shadow:0 16px 40px rgba(0,0,0,.7);
+}
+.ac-drop.open{display:block}
+.ac-item{padding:10px 14px;font-size:12px;color:var(--silver);cursor:pointer;border-top:1px solid rgba(255,255,255,.04)}
+.ac-item:first-child{border-top:none}
+.ac-item:hover{background:rgba(255,255,255,.06)}
+.ac-load{padding:10px 14px;font-size:12px;color:var(--silver-3)}
+
+/* data/hora */
+.dt-row{padding:4px 16px 14px;display:flex;gap:8px;align-items:center}
+.dt-inp-wrap{flex:1;position:relative}
+.dt-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--silver-3);font-size:15px;pointer-events:none}
+.inp-dt{
+  width:100%;height:40px;border-radius:10px;
+  border:1px solid var(--line2);background:#000;
+  color:var(--silver);padding:0 12px 0 36px;
+  font-size:12px;font-family:inherit;outline:none;
+  transition:border-color .14s;
+}
+.inp-dt:focus{border-color:rgba(205,210,218,.45);box-shadow:0 0 0 3px rgba(205,210,218,.12)}
+.inp-dt{cursor:pointer}
+.inp-dt::-webkit-calendar-picker-indicator{
+  filter:invert(.4);cursor:pointer;
+  position:absolute;right:0;top:0;width:100%;height:100%;opacity:0;
+}
+.ok-btn{
+  height:40px;padding:0 18px;border-radius:10px;
+  background:var(--silver);border:none;
+  font-size:12px;font-weight:800;color:#000;
+  letter-spacing:.06em;cursor:pointer;
+  transition:.15s ease;font-family:inherit;flex-shrink:0;
+}
+.ok-btn:hover{background:#22e08a;transform:translateY(-1px)}
+.ok-btn:active{transform:scale(.97)}
+.ok-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+/* ── ECRÃ 2: CATEGORIAS ── */
+#step2{display:none}
+.step2-head{padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between}
+.step2-title{font-size:12px;font-weight:700;color:var(--silver);letter-spacing:.06em;text-transform:uppercase}
+.step2-meta{font-size:11px;color:var(--silver-3)}
+.back-btn{background:none;border:none;color:var(--silver-3);font-size:18px;cursor:pointer;line-height:1;padding:4px;transition:.14s}
+.back-btn:hover{color:var(--silver)}
+.cats{padding:0 16px 14px;display:flex;flex-direction:column;gap:7px}
+.cat-card{
+  border-radius:var(--radius);border:1px solid var(--line2);
+  background:#000;
+  padding:12px 14px;display:flex;align-items:center;gap:12px;
+  cursor:pointer;transition:.15s ease;
+}
+.cat-card:hover{border-color:rgba(205,210,218,.3);background:rgba(205,210,218,.06)}
+.cat-card.sel{border-color:rgba(205,210,218,.5);background:rgba(205,210,218,.10)}
+.cat-ico-wrap{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+.cat-info{flex:1;min-width:0}
+.cat-name{font-size:13px;font-weight:700;color:#e8eaed;margin-bottom:4px}
+.cat-metas{display:flex;gap:10px;flex-wrap:wrap}
+.cat-meta{font-size:10px;color:var(--silver-3);display:flex;align-items:center;gap:3px}
+.cat-meta svg{width:11px;height:11px;opacity:.6}
+.cat-price-col{text-align:right;flex-shrink:0}
+.cat-price{font-size:17px;font-weight:800;color:#e8eaed;line-height:1}
+.cat-price-sub{font-size:9px;color:var(--silver-3);margin-top:2px}
+
+/* Grupo — cartão igual às outras categorias, com sub-opções 6/8/17 */
+.grupo-wrap{padding:0 16px 14px;display:flex;flex-direction:column;gap:6px}
+.cat-card.grupo-sel-card.sel{border-color:rgba(205,210,218,.5);background:rgba(205,210,218,.10)}
+.grupo-opts{display:none;grid-template-columns:repeat(3,1fr);gap:6px;overflow:visible}
+.grupo-opts.open{display:grid}
+.grupo-opt{
+  overflow:visible;position:relative;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:10px 8px;border-radius:var(--radius);
+  border:1px solid var(--line2);background:#000;
+  cursor:pointer;font-family:inherit;transition:.15s ease;
+  font-size:9px;color:var(--silver);
+}
+.grupo-opt:hover{border-color:rgba(205,210,218,.4);background:rgba(205,210,218,.07)}
+.grupo-opt.selected{border-color:rgba(205,210,218,.55);background:rgba(205,210,218,.12)}
+.grupo-opt.req-esp-btn.selected,.grupo-opt.req-esp-btn.sel{background:#000!important;border-color:rgba(205,210,218,.5)!important;box-shadow:0 0 0 2px rgba(205,210,218,.22)!important}
+.grupo-opt.req-esp-btn.selected svg,.grupo-opt.req-esp-btn.sel svg{color:var(--silver)!important}
+.grupo-opt.req-esp-btn.selected .opt-lbl,.grupo-opt.req-esp-btn.sel .opt-lbl{color:var(--silver)!important}
+.grupo-opt>span:first-child{font-size:18px}
+.grupo-opt .opt-lbl{font-size:9.5px;font-weight:800;letter-spacing:.04em;color:var(--silver)}
+.grupo-opt .opt-price{font-size:11px;font-weight:700;color:var(--silver)}
+
+/* Popup de quantidade dos requisitos especiais */
+#reqQtyOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center}
+#reqQtyOverlay.open{display:flex}
+#reqQtyBox{background:#0e1014;border:1px solid var(--line2);border-radius:18px;padding:22px;width:260px;text-align:center}
+#reqQtyBox h4{color:#fff;font-size:14px;margin-bottom:14px}
+#reqQtyStepper{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:18px}
+#reqQtyStepper button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);background:rgba(255,255,255,.05);color:var(--silver);font-size:18px;cursor:pointer}
+#reqQtyStepper span{font-size:18px;font-weight:800;color:#fff;min-width:24px}
+#reqQtyBox .req-qty-actions{display:flex;gap:8px}
+#reqQtyBox .req-qty-actions button{flex:1;height:38px;border-radius:10px;border:none;cursor:pointer;font-weight:800;font-size:12px;font-family:inherit}
+#reqQtyCancel{background:rgba(255,255,255,.06);color:var(--silver)}
+#reqQtyOk{background:var(--silver);color:#000}
+.req-esp-qty{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--silver);color:#000;font-size:10px;font-weight:900;display:none;align-items:center;justify-content:center}
+.grupo-opt.selected .req-esp-qty,.grupo-opt.sel .req-esp-qty{display:flex}
+
+/* ── ECRÃ 3: DETALHE + RESERVAR ── */
+#step3{display:none}
+.step3-head{padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.step3-title{font-size:13px;font-weight:700;color:#e8eaed}
+.step3-badge{background:rgba(205,210,218,.10);border:1px solid rgba(205,210,218,.25);border-radius:999px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--silver);letter-spacing:.06em}
+.trip-line{padding:0 16px 12px;display:flex;align-items:flex-start;gap:12px}
+.trip-dots{display:flex;flex-direction:column;align-items:center;padding-top:4px}
+.t-dot{width:8px;height:8px;border-radius:50%}
+.t-vline{flex:1;width:1.5px;background:rgba(255,255,255,.1);min-height:18px;margin:3px 0}
+.trip-addrs{flex:1;display:flex;flex-direction:column;gap:10px}
+.trip-addr-lbl{font-size:9px;font-weight:700;color:var(--silver-3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.trip-addr-val{font-size:12px;color:var(--silver);font-weight:500;line-height:1.35}
+.stats-row{padding:0 16px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.stat-box{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:11px;padding:9px 10px;text-align:center}
+.stat-val{font-size:15px;font-weight:800;color:#e8eaed;line-height:1;margin-bottom:2px}
+.stat-lbl{font-size:8px;color:var(--silver-3);letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+.pass-fields{padding:0 16px 12px;display:flex;flex-direction:column;gap:7px}
+.pass-fields .inp{height:40px;font-size:12px}
+.pass-row-2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.btn-reservar{
+  margin:0 16px;height:50px;border-radius:14px;border:none;
+  background:var(--silver);
+  font-size:13px;font-weight:800;color:#000;
+  letter-spacing:.07em;cursor:pointer;
+  transition:.15s ease;font-family:inherit;width:calc(100% - 32px);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-reservar:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-reservar:active{transform:scale(.97)}
+.btn-reservar:disabled{opacity:.35;cursor:not-allowed;transform:none;filter:none}
+.step3-obs{padding:0 16px 10px}
+.obs-inp{width:100%;height:56px;border-radius:11px;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--silver);padding:10px 14px;font-size:12px;font-family:inherit;resize:none;outline:none;transition:border-color .14s}
+.obs-inp:focus{border-color:rgba(31,201,125,.3)}
+.obs-inp::placeholder{color:rgba(200,210,225,.3)}
+.status-msg{padding:0 16px 10px;font-size:11px;color:var(--silver-3);text-align:center;min-height:18px}
+
+/* ── ROTA (mini badge no mapa) ── */
+#routeInfo{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:50;
+  background:rgba(9,9,12,.9);border:1px solid var(--line2);border-radius:999px;
+  padding:7px 16px;display:none;align-items:center;gap:10px;
+  backdrop-filter:blur(12px);font-size:11px;color:var(--silver);font-weight:600;
+}
+#routeInfo.show{display:flex}
+.ri-sep{color:var(--silver-3)}
+
+/* ── PAYMENT OVERLAY ── */
+#ovPag{
+  display:none;position:fixed;inset:0;z-index:800;
+  background:rgba(0,0,0,.82);backdrop-filter:blur(18px);
+  align-items:flex-end;justify-content:center;
+}
+#ovPag.open{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+.pag-card{
+  width:100%;max-width:480px;max-height:90vh;overflow-y:auto;
+  background:#000;border:1px solid var(--line2);
+  border-radius:22px 22px 0 0;padding:20px;
+  display:flex;flex-direction:column;gap:12px;
+  animation:slideUp .25s ease;
+}
+.pag-header{display:flex;align-items:center;justify-content:space-between}
+.pag-title{font-size:14px;font-weight:800;color:#fff;letter-spacing:.06em}
+.pag-close{width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--silver-2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.14s}
+.pag-close:hover{background:rgba(255,255,255,.10);color:#fff}
+.codigo-box{background:rgba(205,210,218,.05);border:1px solid rgba(205,210,218,.18);border-radius:11px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.codigo-box small{font-size:8px;letter-spacing:.18em;color:rgba(205,210,218,.55);font-weight:700;text-transform:uppercase}
+.codigo-box span{font-size:12px;font-weight:800;color:var(--silver);letter-spacing:.12em}
+.resumo-rows{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:11px;padding:12px}
+.resumo-row{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;color:var(--silver-3);border-bottom:1px solid rgba(255,255,255,.04)}
+.resumo-row:last-child{border-bottom:none;padding-top:8px;margin-top:4px;font-size:13px;color:#fff;font-weight:700}
+.resumo-row b{color:var(--silver);font-weight:600}
+.resumo-row:last-child b{color:var(--silver);font-size:16px;font-weight:900}
+.pay-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:rgba(255,255,255,.035);border-radius:11px;border:1px solid var(--line);padding:4px}
+.pay-tab{height:34px;border-radius:8px;border:none;background:transparent;color:var(--silver-3);font-size:11px;font-weight:700;cursor:pointer;transition:.14s;font-family:inherit;letter-spacing:.05em}
+.pay-tab.active{background:rgba(255,255,255,.10);color:#fff}
+#stripeEl{background:#000;border:1px solid var(--line2);border-radius:11px;padding:14px;margin-bottom:6px}
+#stripeErr{font-size:10px;color:var(--bad);min-height:14px;margin-bottom:6px}
+.btn-stripe{width:100%;height:46px;border-radius:12px;border:none;background:var(--silver);color:#000;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer;transition:.15s;letter-spacing:.06em}
+.btn-stripe:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-stripe:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-fechar{width:100%;height:38px;border-radius:10px;border:1px solid rgba(255,80,80,.2);background:rgba(70,8,8,.08);color:var(--bad);font-size:11px;font-family:inherit;cursor:pointer;letter-spacing:.06em;font-weight:700;transition:.14s}
+.btn-fechar:hover{background:rgba(255,80,80,.12)}
+
+/* pronto overlay — aparece depois do pagamento, antes de despachar.
+   A reserva fica retida até este clique (ver /reservas/estou-pronto
+   no backend) — sem isto, nenhuma reserva feita por este ficheiro
+   seria alguma vez despachada. */
+#ovPronto{
+  display:none;position:fixed;inset:0;z-index:850;
+  background:rgba(0,0,0,.82);backdrop-filter:blur(18px);
+  align-items:flex-end;justify-content:center;
+}
+#ovPronto.open{display:flex;animation:fadeIn .2s ease}
+.pronto-card{
+  width:100%;max-width:480px;background:#000;border:1px solid var(--line2);
+  border-radius:22px 22px 0 0;padding:24px 20px;animation:slideUp .25s ease;
+  display:flex;flex-direction:column;gap:14px;text-align:center;
+}
+.pronto-icon{font-size:34px}
+.pronto-title{font-size:16px;font-weight:800;color:#fff}
+.pronto-sub{font-size:12px;color:var(--silver-3);line-height:1.5}
+.btn-pronto{
+  width:100%;height:48px;border-radius:12px;border:none;
+  background:var(--silver);color:#000;font-weight:800;font-size:12px;
+  font-family:inherit;cursor:pointer;transition:.15s;letter-spacing:.06em;
+}
+.btn-pronto:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-pronto:disabled{opacity:.5;cursor:not-allowed;transform:none}
+#prontoMsg{font-size:11px;min-height:15px}
+
+/* motorista overlay */
+#motoristaOverlay{
+  display:none;position:fixed;inset:0;z-index:900;
+  background:rgba(0,0,0,.8);backdrop-filter:blur(16px);
+  align-items:flex-end;justify-content:center;
+}
+#motoristaOverlay.open{display:flex;animation:fadeIn .2s ease}
+#motoristaCard{
+  width:100%;max-width:480px;background:#000;border:1px solid var(--line2);
+  border-radius:22px 22px 0 0;padding:20px;animation:slideUp .25s ease;
+}
+.mc-header{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.mc-foto{width:54px;height:54px;border-radius:50%;background:var(--c3);border:1px solid var(--line2);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.mc-info strong{display:block;font-size:15px;font-weight:800;color:#fff;margin-bottom:3px}
+.mc-stars{color:#f5c518;font-size:13px}
+.mc-rating{font-size:11px;color:var(--silver-3);margin-top:2px}
+.mc-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+.mc-row span{color:var(--silver-3)}
+.mc-row b{color:var(--silver);font-weight:600}
+.mc-eta{margin-top:12px;padding:12px;background:rgba(205,210,218,.05);border:1px solid rgba(205,210,218,.15);border-radius:11px;text-align:center}
+.mc-eta small{display:block;font-size:8px;letter-spacing:.16em;color:rgba(205,210,218,.55);font-weight:700;text-transform:uppercase;margin-bottom:4px}
+.mc-eta strong{font-size:20px;font-weight:900;color:var(--silver)}
+.mc-footer{margin-top:12px}
+
+/* cancel overlay */
+#ovCancel{
+  display:none;position:fixed;inset:0;z-index:700;
+  background:rgba(0,0,0,.8);backdrop-filter:blur(16px);
+  align-items:flex-end;justify-content:center;
+}
+#ovCancel.open{display:flex;animation:fadeIn .2s ease}
+.cancel-card{width:100%;max-width:480px;background:#000;border:1px solid var(--line2);border-radius:22px 22px 0 0;padding:20px;display:flex;flex-direction:column;gap:10px;animation:slideUp .25s ease}
+
+/* ── VER ROTA BTN ── */
+#btnVerRota{
+  position:fixed;bottom:calc(var(--safe-b) + 14px);right:16px;z-index:200;
+  display:none;
+  height:46px;padding:0 22px;border-radius:999px;
+  background:var(--silver);
+  border:none;
+  color:#000;font-size:12px;font-weight:800;letter-spacing:.08em;
+  cursor:pointer;transition:.18s ease;font-family:inherit;
+  align-items:center;gap:8px;
+  box-shadow:0 4px 24px rgba(205,210,218,.35),0 2px 8px rgba(0,0,0,.5);
+  animation:routeBtnPulse 2.2s ease-in-out infinite;
+}
+@keyframes routeBtnPulse{
+  0%,100%{box-shadow:0 4px 24px rgba(205,210,218,.35),0 2px 8px rgba(0,0,0,.5)}
+  50%{box-shadow:0 4px 32px rgba(205,210,218,.55),0 0 0 6px rgba(205,210,218,.12),0 2px 8px rgba(0,0,0,.5)}
+}
+#btnVerRota.show{display:flex}
+#btnVerRota:hover{background:#fff;transform:translateY(-2px);box-shadow:0 8px 32px rgba(205,210,218,.5)}
+#btnVerRota:active{transform:scale(.97);animation:none}
+
+#btnMostrarSheet{
+  position:fixed;bottom:calc(var(--safe-b) + 14px);left:50%;transform:translateX(-50%);z-index:200;
+  display:none;
+  height:42px;padding:0 20px;border-radius:999px;
+  background:rgba(9,9,12,.95);border:1px solid var(--line2);
+  color:var(--silver);font-size:11px;font-weight:700;letter-spacing:.07em;
+  cursor:pointer;transition:.18s ease;font-family:inherit;
+  align-items:center;gap:7px;
+  backdrop-filter:var(--blur);
+  box-shadow:0 4px 20px rgba(0,0,0,.6);
+}
+#btnMostrarSheet.show{display:flex}
+#btnMostrarSheet:hover{border-color:rgba(205,210,218,.4);color:var(--silver)}
+
+/* sheet oculto */
+#sheet.hidden{transform:translateX(-50%) translateY(110%)}
+
+/* Leaflet controls */
+.leaflet-control-zoom a{background:rgba(9,9,12,.92)!important;color:var(--silver-2)!important;border:1px solid var(--line2)!important;border-radius:8px!important;width:34px!important;height:34px!important;line-height:34px!important}
+.leaflet-control-zoom a:hover{color:#fff!important}
+
+@media(max-width:480px){
+  .stats-row{grid-template-columns:1fr 1fr}
+  .stats-row .stat-box:last-child{grid-column:span 2}
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<!-- Rota info badge -->
+<div id="routeInfo">
+  <span id="riKm">—</span>
+  <span class="ri-sep">·</span>
+  <span id="riMin">—</span>
+</div>
+
+<!-- BOTTOM SHEET -->
+<div id="sheet">
+  <div class="sheet-handle"></div>
+
+  <!-- STEP 1: Destino + Data/Hora -->
+  <div id="step1">
+    <div class="step1-top">
+      <div class="rm-mark">RM</div>
+      <div>
+        <div class="step1-title">Para onde vai?</div>
+        <div class="step1-sub">Serviço premium de transporte</div>
+      </div>
+    </div>
+    <div class="addr-wrap">
+      <div class="addr-dots">
+        <div class="addr-dot o"></div>
+        <div class="addr-connector"></div>
+        <div class="addr-dot d"></div>
+      </div>
+      <div class="addr-fields">
+        <div class="addr-inp">
+          <input class="inp" id="origem" type="text" placeholder="A sua localização" autocomplete="off"/>
+          <button class="geo-btn" id="geoBtn" title="Usar localização actual">📍</button>
+          <div class="ac-drop" id="dropOrigem"></div>
+        </div>
+        <div class="addr-inp">
+          <input class="inp" id="destino" type="text" placeholder="Destino" autocomplete="off"/>
+          <div class="ac-drop" id="dropDestino"></div>
+        </div>
+      </div>
+    </div>
+    <div class="dt-row">
+      <div class="dt-inp-wrap">
+        <span class="dt-ico">🕐</span>
+        <input class="inp-dt" id="datahora" type="datetime-local"/>
+      </div>
+      <button class="ok-btn" id="btnOk" disabled>OK</button>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <!-- STEP 2: Categorias -->
+  <div id="step2">
+    <div class="step2-head">
+      <button class="back-btn" id="btnBack2">←</button>
+      <div>
+        <div class="step2-title">Escolha a categoria</div>
+        <div class="step2-meta" id="step2Meta">—</div>
+      </div>
+      <div style="width:28px"></div>
+    </div>
+    <div class="cats" id="catGrid"></div>
+    <div class="grupo-wrap" id="grupoWrap">
+      <div class="cat-card grupo-sel-card" id="catCardGrupo" data-cat="grupo">
+        <div class="cat-ico-wrap" style="background:rgba(205,210,218,.08);border:1px solid rgba(205,210,218,.20)">
+          <span style="font-size:18px">👥</span>
+        </div>
+        <div class="cat-info">
+          <div class="cat-name" id="grpNome">GRUPO</div>
+          <div class="cat-metas">
+            <div class="cat-meta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span id="grpDur">—</span>
+            </div>
+            <div class="cat-meta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span id="grpKm">—</span>
+            </div>
+            <div class="cat-meta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span id="grpPass">6–17</span>
+            </div>
+          </div>
+        </div>
+        <div class="cat-price-col">
+          <div class="cat-price" id="grpPreco">—</div>
+          <div class="cat-price-sub">por viagem</div>
+        </div>
+      </div>
+      <div class="grupo-opts" id="grupoOpts">
+        <button class="grupo-opt" data-n="6" type="button">
+          <span>👥</span><span class="opt-lbl">ATÉ 6</span>
+          <span class="opt-price" id="optPreco6">—</span>
+        </button>
+        <button class="grupo-opt" data-n="8" type="button">
+          <span>👨‍👩‍👧‍👦</span><span class="opt-lbl">ATÉ 8</span>
+          <span class="opt-price" id="optPreco8">—</span>
+        </button>
+        <button class="grupo-opt" data-n="17" type="button">
+          <span>🚌</span><span class="opt-lbl">ATÉ 17</span>
+          <span class="opt-price" id="optPreco17">—</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Requisitos especiais — mesma dimensão dos botões do grupo, lado a lado -->
+    <div class="req-esp-label" style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8a939f;margin:10px 16px 6px">Requisitos especiais</div>
+    <div class="grupo-opts" id="reqEspRow" style="display:grid;padding:0 16px 4px">
+      <button class="grupo-opt req-esp-btn" id="reqOvo" data-req="ovo" data-label="Ovo para bebé" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--silver-2)"><path d="M5 14a7 7 0 0 1 14 0v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3Z"/><path d="M7 8c0-2 2-4 5-4s5 2 5 4"/></svg>
+        <span class="opt-lbl">OVO</span>
+        <span class="req-esp-qty">1</span>
+      </button>
+      <button class="grupo-opt req-esp-btn" id="reqCadeirinha" data-req="cadeirinha" data-label="Cadeirinha para bebé" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--silver-2)"><rect x="9" y="3" width="6" height="7" rx="2"/><path d="M8 21v-6a4 4 0 0 1 4-4h0a4 4 0 0 1 4 4v6"/><path d="M7 21h10"/></svg>
+        <span class="opt-lbl">CADEIRINHA</span>
+        <span class="req-esp-qty">1</span>
+      </button>
+      <button class="grupo-opt req-esp-btn" id="reqElevacao" data-req="elevacao" data-label="Assento de elevação" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--silver-2)"><rect x="4" y="13" width="16" height="6" rx="2.5"/><path d="M7 13v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>
+        <span class="opt-lbl">ELEVAÇÃO</span>
+        <span class="req-esp-qty">1</span>
+      </button>
+    </div>
+
+    <!-- Popup de quantidade — comportamento tratado por js/rm-requisitos.js -->
+    <div id="reqQtyOverlay">
+      <div id="reqQtyBox">
+        <h4 id="reqQtyTitle">Quantidade</h4>
+        <div id="reqQtyStepper">
+          <button type="button" id="reqQtyMinus">−</button>
+          <span id="reqQtyVal">1</span>
+          <button type="button" id="reqQtyPlus">+</button>
+        </div>
+        <div class="req-qty-actions">
+          <button type="button" id="reqQtyCancel" style="background:#0c0d10!important;color:#cdd2da!important;border:1px solid rgba(205,210,218,.25)!important">Cancelar</button>
+          <button type="button" id="reqQtyOk" style="background:#0c0d10!important;color:#cdd2da!important;border:1px solid rgba(205,210,218,.25)!important">Confirmar</button>
+        </div>
+      </div>
+    </div>
+    <div class="status-msg" id="statusMsg2"></div>
+    <div style="padding:0 16px 18px">
+      <button class="ok-btn" id="btnContinuarCat" disabled style="width:100%">CONTINUAR</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Detalhe + Dados + Reservar -->
+  <div id="step3">
+    <div class="step3-head">
+      <button class="back-btn" id="btnBack3">←</button>
+      <div class="step3-title" id="s3title">Detalhes da Viagem</div>
+      <div class="step3-badge" id="s3badge">—</div>
+    </div>
+    <div class="trip-line">
+      <div class="trip-dots">
+        <div class="t-dot" style="background:var(--ok)"></div>
+        <div class="t-vline"></div>
+        <div class="t-dot" style="background:var(--bad)"></div>
+      </div>
+      <div class="trip-addrs">
+        <div>
+          <div class="trip-addr-lbl">Partida</div>
+          <div class="trip-addr-val" id="s3partida">—</div>
+        </div>
+        <div>
+          <div class="trip-addr-lbl">Destino</div>
+          <div class="trip-addr-val" id="s3destino">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val" id="s3dur">—</div>
+        <div class="stat-lbl">Duração</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="s3km">—</div>
+        <div class="stat-lbl">Distância</div>
+      </div>
+      <div class="stat-box" style="border-color:rgba(31,201,125,.2);background:rgba(31,201,125,.04)">
+        <div class="stat-val" id="s3total" style="color:var(--silver)">—</div>
+        <div class="stat-lbl">Total</div>
+      </div>
+    </div>
+    <div class="pass-fields">
+      <input class="inp" id="nome" type="text" placeholder="Nome completo *" autocomplete="name"/>
+      <div class="pass-row-2">
+        <input class="inp" id="email" type="email" placeholder="Email *" autocomplete="email"/>
+        <input class="inp" id="contacto" type="tel" placeholder="Contacto *" autocomplete="tel"/>
+      </div>
+    </div>
+    <div class="step3-obs">
+      <textarea class="obs-inp" id="obs" placeholder="Observações (opcional)" rows="2"></textarea>
+    </div>
+    <button class="btn-reservar" id="btnReservar" disabled>
+      <span>RESERVAR</span>
+      <span id="s3btnValor"></span>
+    </button>
+    <div style="height:10px"></div>
+  </div>
+</div>
+
+<!-- PAYMENT OVERLAY -->
+<div id="ovPag">
+  <div class="pag-card">
+    <div class="pag-header">
+      <div class="pag-title">PAGAMENTO</div>
+      <button class="pag-close" id="btnFecharPag">✕</button>
+    </div>
+    <div class="codigo-box">
+      <small>Código de Reserva</small>
+      <span id="outCodigo">—</span>
+    </div>
+    <div class="resumo-rows" id="outResumo"></div>
+    <div class="pay-tabs">
+      <button class="pay-tab active" id="tabCard" onclick="switchTab('card')">💳 Cartão</button>
+      <button class="pay-tab" id="tabPP" onclick="switchTab('pp')">🅿 PayPal</button>
+    </div>
+    <div id="paneCard">
+      <div id="stripeEl"></div>
+      <div id="stripeErr"></div>
+      <button class="btn-stripe" id="btnStripe">Pagar com Cartão</button>
+    </div>
+    <div id="panePP" style="display:none"><div id="ppBtns"></div></div>
+    <button class="btn-fechar" id="btnFecharPag2">Fechar sem Pagar</button>
+  </div>
+</div>
+
+<!-- PRONTO OVERLAY — só confirmação. O "Estou Pronto" acontece
+     SEMPRE pelo link no SMS/email, nunca aqui no ecrã (mesma decisão
+     já aplicada ao hotel-dashboard.html) — evita ter dois caminhos
+     paralelos para a mesma ação, um dos quais nem sempre chega a
+     quem devia decidir. -->
+<div id="ovPronto">
+  <div class="pronto-card">
+    <div class="pronto-icon">✅</div>
+    <div class="pronto-title">Pagamento confirmado</div>
+    <div class="pronto-sub">Vai receber um SMS/email — toque no link lá quando estiver pronto para chamarmos o seu motorista.</div>
+    <button type="button" id="btnConcluirPronto">CONCLUIR</button>
+  </div>
+</div>
+
+<!-- MOTORISTA OVERLAY -->
+<div id="motoristaOverlay">
+  <div id="motoristaCard">
+    <div class="mc-header">
+      <div class="mc-foto" id="mcFoto">👤</div>
+      <div class="mc-info">
+        <strong id="mcNome">—</strong>
+        <div class="mc-stars" id="mcStars">★★★★★</div>
+        <div class="mc-rating" id="mcRating">5.0 · Verificado</div>
+      </div>
+    </div>
+    <div class="mc-row"><span>Matrícula</span><b id="mcMatricula">—</b></div>
+    <div class="mc-row"><span>Veículo</span><b id="mcVeiculo">—</b></div>
+    <div class="mc-eta">
+      <small>Tempo Estimado de Chegada</small>
+      <strong id="mcEta">A calcular…</strong>
+    </div>
+    <div id="mcMapaWrap" style="width:100%;height:170px;margin-top:12px;border-radius:11px;overflow:hidden;background:#1a1c20">
+      <div id="mcMapa" style="width:100%;height:100%"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <a id="mcBtnMensagem" href="#" style="display:none;text-align:center;background:transparent;border:1px solid var(--line2);color:#fff;text-decoration:none;padding:12px;border-radius:10px;font-weight:700;font-size:12px">
+        💬 Enviar mensagem ao motorista
+      </a>
+      <button type="button" id="mcBtnCamera" style="background:transparent;border:1px solid var(--line2);color:#fff;padding:12px;border-radius:10px;font-weight:700;font-size:12px;font-family:inherit;cursor:pointer">
+        📷 Enviar foto do local
+      </button>
+      <input type="file" id="mcCameraInput" accept="image/*" capture="environment" style="display:none">
+    </div>
+    <div class="mc-footer">
+      <button class="btn-fechar" id="btnFecharMotorista">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CANCEL OVERLAY -->
+<div id="ovCancel">
+  <div class="cancel-card">
+    <div class="pag-header">
+      <div class="pag-title">CANCELAR RESERVA</div>
+      <button class="pag-close" id="btnFecharCancel">✕</button>
+    </div>
+    <input class="inp" id="cEmail" type="email" placeholder="Email da reserva" style="height:40px;font-size:12px"/>
+    <input class="inp" id="cCodigo" type="text" placeholder="Código (RM-…)" style="height:40px;font-size:12px"/>
+    <input class="inp" id="cContact" type="tel" placeholder="Contacto (opcional)" style="height:40px;font-size:12px"/>
+    <button class="btn-reservar" id="btnConfCancel" style="margin:0;width:100%">Confirmar Cancelamento</button>
+  </div>
+</div>
+
+<button id="btnVerRota">🗺 VER ROTA</button>
+<button id="btnMostrarSheet">↑ VOLTAR AO FORMULÁRIO</button>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+'use strict';
+const API = location.origin;
+const $ = id => document.getElementById(id);
+
+/* ── ESTADO ── */
+let map, routeLayer, mO, mD;
+let placaO=null, placaD=null;
+let osrmRoute=null;
+let quote={categoria:'',km:0,dur:'',total:0,base:0,portagens:0,tolls:[]};
+let selectedCat='', selectedGrupo='';
+let stripeInst=null,stripeEls=null,stripeCard=null,ppReady=false;
+let _pagCodigo='',_pagValor=0;
+let acTimers={};
+let currentStep=1;
+
+/* ── MAPA ── */
+map = L.map('map',{zoomControl:false}).setView([38.7169,-9.139],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap',maxZoom:19
+}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+
+function mkPin(color,border='rgba(255,255,255,.6)'){
+  return L.divIcon({
+    html:`<div style="width:13px;height:13px;border-radius:50%;background:${color};border:2.5px solid ${border};box-shadow:0 0 0 4px ${color}33,0 2px 8px rgba(0,0,0,.5)"></div>`,
+    className:'',iconSize:[13,13],iconAnchor:[6,6]
+  });
+}
+const pinO=mkPin('#1fc97d'), pinD=mkPin('#f05050');
+
+/* ── STEPS ── */
+function showStep(n){
+  currentStep=n;
+  $('step1').style.display=n===1?'block':'none';
+  $('step2').style.display=n===2?'block':'none';
+  $('step3').style.display=n===3?'block':'none';
+}
+
+/* ── STATUS ── */
+function setStatus(msg,el='statusMsg'){const e=$(el);if(e)e.innerHTML=msg;}
+
+/* ── NOMINATIM ── */
+async function nmSearch(q){
+  if(!q||q.length<3) return [];
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&accept-language=pt`);
+    return await r.json();
+  }catch{return[];}
+}
+async function nmReverse(lat,lng){
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt&zoom=18`);
+    return await r.json();
+  }catch{return null;}
+}
+
+function bindAC(inputId,dropId,onSelect){
+  const inp=$(inputId),drop=$(dropId);
+  inp.addEventListener('input',()=>{
+    clearTimeout(acTimers[inputId]);
+    const q=inp.value.trim();
+    if(q.length<3){drop.classList.remove('open');return;}
+    drop.innerHTML='<div class="ac-load">A pesquisar…</div>';
+    drop.classList.add('open');
+    acTimers[inputId]=setTimeout(async()=>{
+      const res=await nmSearch(q);
+      if(!res.length){drop.classList.remove('open');return;}
+      drop.innerHTML=res.map(r=>`<div class="ac-item" data-lat="${r.lat}" data-lon="${r.lon}" data-lbl="${encodeURIComponent(r.display_name)}">${r.display_name.split(',').slice(0,3).join(', ')}</div>`).join('');
+      drop.querySelectorAll('.ac-item').forEach(it=>{
+        it.addEventListener('mousedown',e=>{
+          e.preventDefault();
+          const p={lat:parseFloat(it.dataset.lat),lng:parseFloat(it.dataset.lon),label:decodeURIComponent(it.dataset.lbl)};
+          inp.value=p.label.split(',').slice(0,2).join(', ');
+          drop.classList.remove('open');
+          onSelect(p);
+        });
+      });
+    },350);
+  });
+  inp.addEventListener('blur',()=>setTimeout(()=>drop.classList.remove('open'),220));
+}
+
+bindAC('origem','dropOrigem',p=>{
+  placaO=p;
+  if(mO)map.removeLayer(mO);
+  mO=L.marker([p.lat,p.lng],{icon:pinO}).addTo(map).bindPopup('Partida');
+  map.setView([p.lat,p.lng],14);
+  checkOkBtn();
+  if(placaO&&placaD) calcRoute();
+});
+bindAC('destino','dropDestino',p=>{
+  placaD=p;
+  if(mD)map.removeLayer(mD);
+  mD=L.marker([p.lat,p.lng],{icon:pinD}).addTo(map).bindPopup('Destino');
+  checkOkBtn();
+  if(placaO&&placaD) calcRoute();
+});
+
+/* ── GEO ── */
+$('geoBtn').onclick=()=>{
+  if(!navigator.geolocation){setStatus('Geolocalização não suportada.');return;}
+  setStatus('A detetar localização…');
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const{latitude:lat,longitude:lng}=pos.coords;
+    const d=await nmReverse(lat,lng);
+    const a=d?.address||{};
+    const rua=a.road||a.pedestrian||a.suburb||'';
+    const num=a.house_number?` ${a.house_number}`:'';
+    const loc=a.city||a.town||a.village||'';
+    const label=rua?`${rua}${num}${loc?', '+loc:''}`:(d?.display_name?.split(',').slice(0,2).join(', ')||`${lat.toFixed(5)},${lng.toFixed(5)}`);
+    $('origem').value=label;
+    placaO={lat,lng,label};
+    if(mO)map.removeLayer(mO);
+    mO=L.marker([lat,lng],{icon:pinO}).addTo(map).bindPopup('A sua localização');
+    map.setView([lat,lng],15);
+    setStatus('');
+    checkOkBtn();
+    if(placaD) calcRoute();
+  },()=>setStatus('Não foi possível obter a localização.'),{enableHighAccuracy:true,timeout:8000});
+};
+
+/* ── ROUTE CALC (OSRM) ── */
+async function calcRoute(){
+  if(!placaO||!placaD) return;
+  setStatus('<span style="color:var(--silver-3)">A calcular rota…</span>');
+  try{
+    const url=`https://router.project-osrm.org/route/v1/driving/${placaO.lng},${placaO.lat};${placaD.lng},${placaD.lat}?overview=full&geometries=geojson`;
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data.code!=='Ok'||!data.routes?.length) throw new Error('Rota não encontrada');
+    osrmRoute=data.routes[0];
+    const km=(osrmRoute.distance/1000).toFixed(1);
+    const durSeg=osrmRoute.duration;
+    const h=Math.floor(durSeg/3600),m=Math.round((durSeg%3600)/60);
+    const dur=h>0?`${h}h ${m}min`:`${m} min`;
+    // Desenhar rota
+    if(routeLayer) map.removeLayer(routeLayer);
+    const coords=osrmRoute.geometry.coordinates.map(c=>[c[1],c[0]]);
+    routeLayer=L.polyline(coords,{color:'#cdd2da',weight:4,opacity:.85,lineCap:'round',lineJoin:'round'}).addTo(map);
+    map.fitBounds(routeLayer.getBounds(),{padding:[80,80]});
+    updateRotaBtn();
+    // Badge info
+    $('riKm').textContent=`${km} km`;
+    $('riMin').textContent=dur;
+    $('routeInfo').classList.add('show');
+    setStatus('');
+    checkOkBtn();
+    // Guardar para step 3
+    osrmRoute._km=km; osrmRoute._dur=dur;
+  }catch(err){
+    setStatus(`<span style="color:var(--bad)">Não foi possível calcular a rota. Verifique os endereços.</span>`);
+  }
+}
+
+/* ── OK BTN ── */
+function checkOkBtn(){
+  const ready=!!(placaO&&placaD&&$('datahora').value);
+  $('btnOk').disabled=!ready;
+}
+$('datahora').addEventListener('change',checkOkBtn);
+$('btnOk').onclick=async()=>{
+  if(!placaO||!placaD){setStatus('Indique partida e destino.');return;}
+  if(!$('datahora').value){setStatus('Indique a data e hora.');return;}
+  if(!osrmRoute) await calcRoute();
+  if(!osrmRoute){return;}
+  buildCategories();
+  showStep(2);
+};
+
+/* ── CATEGORIAS ── */
+const CATS=[
+  {id:'economica',label:'Económica',icon:'🚗',color:'#cdd2da',bg:'rgba(205,210,218,.08)',border:'rgba(205,210,218,.20)',pass:'1–4'},
+  {id:'confort',label:'Conforto',icon:'🚙',color:'#cdd2da',bg:'rgba(205,210,218,.08)',border:'rgba(205,210,218,.20)',pass:'1–4'},
+  {id:'executive',label:'Executiva',icon:'🏎',color:'#cdd2da',bg:'rgba(205,210,218,.08)',border:'rgba(205,210,218,.20)',pass:'1–4'},
+  {id:'luxury',label:'Luxo',icon:'✦',color:'#cdd2da',bg:'rgba(205,210,218,.08)',border:'rgba(205,210,218,.20)',pass:'1–4'},
+];
+
+function buildCategories(){
+  _pendenteAvancoStep3 = null;
+  _activarContinuarCat();
+  const km=osrmRoute?osrmRoute.distance/1000:0;
+  const durSeg=osrmRoute?osrmRoute.duration:0;
+  const h=Math.floor(durSeg/3600),m=Math.round((durSeg%3600)/60);
+  const dur=h>0?`${h}h ${m}min`:`${m} min`;
+  $('step2Meta').textContent=`${(km).toFixed(1)} km · ${dur}`;
+  const grpDurEl=$('grpDur'), grpKmEl=$('grpKm');
+  if(grpDurEl) grpDurEl.textContent=dur;
+  if(grpKmEl)  grpKmEl.textContent=`${(km).toFixed(1)} km`;
+  fetchGrupoPrices(km);
+  const grid=$('catGrid');
+  grid.innerHTML='';
+  CATS.forEach(cat=>{
+    const card=document.createElement('div');
+    card.className='cat-card';
+    card.dataset.cat=cat.id;
+    card.innerHTML=`
+      <div class="cat-ico-wrap" style="background:${cat.bg};border:1px solid ${cat.border}">
+        <span style="font-size:18px">${cat.icon}</span>
+      </div>
+      <div class="cat-info">
+        <div class="cat-name">${cat.label}</div>
+        <div class="cat-metas">
+          <div class="cat-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${dur}
+          </div>
+          <div class="cat-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            ${(km).toFixed(1)} km
+          </div>
+          <div class="cat-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            ${cat.pass}
+          </div>
+        </div>
+      </div>
+      <div class="cat-price-col">
+        <div class="cat-price" id="cp_${cat.id}" style="color:${cat.color}">A calcular…</div>
+        <div class="cat-price-sub">por viagem</div>
+      </div>
+    `;
+    card.onclick=()=>selectCat(cat.id);
+    grid.appendChild(card);
+    // Calcular preço desta categoria
+    fetchCatPrice(cat.id,km);
+  });
+}
+
+async function fetchCatPrice(catId,km){
+  try{
+    const res=await fetch(`${API}/api/quotes/quote`,{
+      method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        categoria:catId,distanciaKm:km,
+        contexto:{
+          origemTexto:  $('origem')?.value    || '',
+          destinoTexto: $('destino')?.value   || '',
+          datahora:     $('datahora')?.value  || null,
+        },
+      })
+    });
+    const d=await res.json();
+    const el=$(`cp_${catId}`);
+    if(el&&d?.total){el.textContent=`€${Number(d.total).toFixed(2)}`;}
+    else if(el){el.textContent='Indisponível';}
+  }catch{
+    const el=$(`cp_${catId}`);
+    if(el) el.textContent='—';
+  }
+}
+
+async function fetchGrupoPrice(n,km){
+  try{
+    const catId=n>=17?'grupo17':n>=8?'grupo8':'grupo6';
+    const res=await fetch(`${API}/api/quotes/quote`,{
+      method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        categoria:catId,distanciaKm:km,
+        contexto:{
+          origemTexto:  $('origem')?.value    || '',
+          destinoTexto: $('destino')?.value   || '',
+          datahora:     $('datahora')?.value  || null,
+        },
+      })
+    });
+    const d=await res.json();
+    return d?.total?Number(d.total):0;
+  }catch{return 0;}
+}
+
+let _pendenteAvancoStep3 = null; // { label, priceStr, total }
+
+function _activarContinuarCat(){
+  const btn = $('btnContinuarCat');
+  if (btn) btn.disabled = !_pendenteAvancoStep3;
+}
+
+function selectCat(catId){
+  selectedCat=catId;
+  selectedGrupo='';
+  document.querySelectorAll('.cat-card').forEach(c=>c.classList.toggle('sel',c.dataset.cat===catId));
+  $('grupoOpts')?.classList.remove('open');
+  $('grupoOpts')?.querySelectorAll('.grupo-opt').forEach(o=>o.classList.remove('selected'));
+  const priceEl=$(`cp_${catId}`);
+  const priceStr=priceEl?priceEl.textContent:'—';
+  _pendenteAvancoStep3 = { label: catId.toUpperCase(), priceStr, total: null };
+  _activarContinuarCat();
+}
+
+async function fetchGrupoPrices(km){
+  const sizes=[{n:6,id:'grupo6'},{n:8,id:'grupo8'},{n:17,id:'grupo17'}];
+  const precos={};
+  await Promise.all(sizes.map(async({n,id})=>{
+    const total=await fetchGrupoPrice(n,km);
+    precos[n]=total;
+    const el=$(`optPreco${n}`);
+    if(el) el.textContent=total>0?`€${total.toFixed(2)}`:'—';
+  }));
+  _grupoPrecos=precos;
+  // Mostrar no cartão principal o preço mínimo como referência, se nada seleccionado
+  if(!selectedGrupo){
+    const vals=[6,8,17].map(n=>precos[n]).filter(v=>v>0);
+    const grpPrecoEl=$('grpPreco');
+    if(grpPrecoEl) grpPrecoEl.textContent=vals.length?`€${Math.min(...vals).toFixed(2)}+`:'—';
+  }
+}
+let _grupoPrecos={};
+
+$('catCardGrupo').addEventListener('click',()=>{
+  $('grupoOpts')?.classList.toggle('open');
+});
+
+document.addEventListener('click',(e)=>{
+  if(!e.target.closest('#grupoWrap')){
+    $('grupoOpts')?.classList.remove('open');
+  }
+}, {capture:true});
+
+$('grupoOpts').querySelectorAll('.grupo-opt').forEach(opt=>{
+  opt.addEventListener('click',async()=>{
+    const n=parseInt(opt.dataset.n);
+    selectedGrupo=n>=17?'grupo17':n>=8?'grupo8':'grupo6';
+    selectedCat='';
+    document.querySelectorAll('.cat-card').forEach(c=>c.classList.remove('sel'));
+    $('catCardGrupo').classList.add('sel');
+    $('grupoOpts').querySelectorAll('.grupo-opt').forEach(o=>o.classList.toggle('selected',o===opt));
+    const label=`GRUPO — ATÉ ${n}`;
+    $('grpNome').textContent=label;
+    let total=_grupoPrecos[n];
+    if(total==null){
+      const km=osrmRoute?osrmRoute.distance/1000:0;
+      total=await fetchGrupoPrice(n,km);
+    }
+    const price=total>0?`€${total.toFixed(2)}`:'—';
+    $('grpPreco').textContent=price;
+    $('grupoOpts').classList.remove('open');
+    _pendenteAvancoStep3 = { label, priceStr: price, total };
+    _activarContinuarCat();
+  });
+});
+
+$('btnContinuarCat').addEventListener('click', () => {
+  if (!_pendenteAvancoStep3) return;
+  const { label, priceStr, total } = _pendenteAvancoStep3;
+  goToStep3(label, priceStr, total);
+});
+
+// ── Requisitos especiais (ovo / cadeirinha / elevação) ──────────
+// Comportamento (popup de quantidade) tratado por js/rm-requisitos.js,
+// carregado no fim da página — aqui só garantimos o estado inicial.
+window.requisitosEspeciais = window.requisitosEspeciais || {};
+
+async function goToStep3(catLabel,priceStr,totalOverride=null){
+  const km=osrmRoute?osrmRoute._km||'—':'—';
+  const dur=osrmRoute?osrmRoute._dur||'—':'—';
+  // Try to get total from price string
+  let total=totalOverride;
+  if(total===null){
+    const m=priceStr.replace(',','.').match(/[\d.]+/);
+    total=m?parseFloat(m[0]):0;
+  }
+  quote.km=km; quote.dur=dur; quote.total=total;
+  quote.categoria=selectedCat||selectedGrupo;
+  // Fill step 3
+  $('s3badge').textContent=catLabel;
+  $('s3partida').textContent=placaO?.label?.split(',').slice(0,2).join(', ')||'—';
+  $('s3destino').textContent=placaD?.label?.split(',').slice(0,2).join(', ')||'—';
+  $('s3km').textContent=km+(typeof km==='string'&&km!=='—'?' km':'');
+  $('s3dur').textContent=dur;
+  $('s3total').textContent=total>0?`€${total.toFixed(2)}`:'—';
+  $('s3btnValor').textContent=total>0?`· €${total.toFixed(2)}`:'';
+  $('btnReservar').disabled=false;
+  showStep(3);
+}
+
+/* ── BACK ── */
+$('btnBack2').onclick=()=>showStep(1);
+$('btnBack3').onclick=()=>showStep(2);
+
+/* ── RESERVAR ── */
+$('btnReservar').onclick=async()=>{
+  const nome=$('nome').value.trim();
+  const email=$('email').value.trim();
+  const contacto=$('contacto').value.trim();
+  const dt=$('datahora').value;
+  if(!nome||!email||!contacto){
+    alert('Preencha Nome, Email e Contacto.');return;
+  }
+  if(!placaO||!placaD){alert('Origem e destino obrigatórios.');return;}
+  const btn=$('btnReservar');
+  btn.disabled=true;
+  btn.querySelector('span:first-child').textContent='A criar reserva…';
+  const codigo='RM-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
+  try{
+    const cat=quote.categoria;
+    const resp=await fetch(`${API}/api/reservas/reserva`,{
+      method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        nome,email,contacto,categoria:cat,
+        partida:placaO.label,destino:placaD.label,
+        datahora:dt?new Date(dt).toISOString():new Date().toISOString(),
+        valor:quote.total,codigo,
+        observacoes:$('obs').value||'',
+        km:parseFloat(quote.km)||0,
+        portagens:quote.portagens||0,
+        origemGeo:placaO.lat?{lat:placaO.lat,lng:placaO.lng,address:placaO.label}:null,
+        destinoGeo:placaD.lat?{lat:placaD.lat,lng:placaD.lng,address:placaD.label}:null,
+        requisitosEspeciais:(window.requisitosEspeciais&&Object.keys(window.requisitosEspeciais).length)?window.requisitosEspeciais:null,
+      })
+    }).then(r=>r.json());
+    if(!resp.success&&!resp.ok) throw new Error(resp.message||'Erro ao criar reserva.');
+    _pagCodigo=codigo;_pagValor=quote.total;
+    $('outCodigo').textContent=codigo;
+    const labelsReq={ovo:'Ovo',cadeirinha:'Cadeirinha',elevacao:'Elevação'};
+    const _reqLido={};
+    document.querySelectorAll('.req-esp-btn').forEach(btn=>{
+      const sel=btn.classList.contains('sel')||btn.classList.contains('selected');
+      if(!sel) return;
+      const key=btn.dataset.req; if(!key) return;
+      const qtyEl=btn.querySelector('.req-esp-qty');
+      _reqLido[key]=qtyEl?(parseInt(qtyEl.textContent,10)||1):1;
+    });
+    window.requisitosEspeciais=_reqLido;
+    const reqAtivos=Object.entries(_reqLido).filter(([,q])=>Number(q)>0);
+    const reqRow=reqAtivos.length
+      ? `<div class="resumo-row"><span>Requisitos especiais</span><b>${reqAtivos.map(([k,q])=>`${labelsReq[k]||k} ×${q}`).join(', ')}</b></div>`
+      : '';
+    $('outResumo').innerHTML=`
+      <div class="resumo-row"><span>Nome</span><b>${nome}</b></div>
+      <div class="resumo-row"><span>Email</span><b>${email}</b></div>
+      <div class="resumo-row"><span>Partida</span><b>${placaO.label.split(',')[0]}</b></div>
+      <div class="resumo-row"><span>Destino</span><b>${placaD.label.split(',')[0]}</b></div>
+      <div class="resumo-row"><span>Distância</span><b>${quote.km} km</b></div>
+      ${reqRow}
+      <div class="resumo-row total"><span>TOTAL</span><b>€${Number(quote.total).toFixed(2)}</b></div>
+    `;
+    $('ovPag').classList.add('open');
+    switchTab('card');
+    await _initStripe();
+  }catch(err){alert('Erro: '+err.message);}
+  finally{
+    btn.disabled=false;
+    btn.querySelector('span:first-child').textContent='RESERVAR';
+  }
+};
+
+/* ── TABS PAG ── */
+function switchTab(t){
+  $('tabCard').classList.toggle('active',t==='card');
+  $('tabPP').classList.toggle('active',t==='pp');
+  $('paneCard').style.display=t==='card'?'':'none';
+  $('panePP').style.display=t==='pp'?'':'none';
+  if(t==='pp') _initPaypal();
+}
+
+/* ── STRIPE ── */
+async function _initStripe(){
+  if(stripeInst) return;
+  try{
+    const{publicKey}=await fetch(`${API}/api/reservas/stripe/public-key`,{credentials:'include'}).then(r=>r.json());
+    if(!publicKey) throw new Error('Chave indisponível');
+    stripeInst=Stripe(publicKey);
+    stripeEls=stripeInst.elements();
+    stripeCard=stripeEls.create('card',{style:{base:{color:'#cdd2da',fontSize:'13px','::placeholder':{color:'#545d68'},iconColor:'#8a939f'},invalid:{color:'#f05050'}}});
+    stripeCard.mount('#stripeEl');
+    stripeCard.on('change',e=>{$('stripeErr').textContent=e.error?.message||'';});
+  }catch(err){$('stripeErr').textContent='Stripe: '+err.message;}
+}
+$('btnStripe').onclick=async()=>{
+  const btn=$('btnStripe');btn.disabled=true;btn.textContent='A processar…';$('stripeErr').textContent='';
+  try{
+    const{clientSecret}=await fetch(`${API}/api/reservas/stripe/criar-intent`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:_pagValor,descricao:`Reserva ${_pagCodigo}`})}).then(r=>r.json());
+    const{error,paymentIntent}=await stripeInst.confirmCardPayment(clientSecret,{payment_method:{card:stripeCard}});
+    if(error){$('stripeErr').textContent=error.message;return;}
+    if(paymentIntent.status==='succeeded') _onPayOk('stripe',paymentIntent.id);
+  }catch(err){$('stripeErr').textContent=err.message;}
+  finally{btn.disabled=false;btn.textContent='Pagar com Cartão';}
+};
+
+/* ── PAYPAL ── */
+async function _initPaypal(){
+  if(ppReady||$('ppBtns').innerHTML) return;
+  try{
+    const{clientId}=await fetch(`${API}/api/reservas/paypal-client-id`,{credentials:'include'}).then(r=>r.json());
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src=`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=EUR`;s.onload=()=>{ppReady=true;res();};s.onerror=()=>rej();document.head.appendChild(s);});
+    paypal.Buttons({createOrder:(d,a)=>a.order.create({purchase_units:[{amount:{value:_pagValor.toFixed(2)},description:`Reserva ${_pagCodigo}`}]}),onApprove:(d,a)=>a.order.capture().then((details)=>_onPayOk('paypal',details?.id||d?.orderID||'')),onError:()=>alert('Erro PayPal.')}).render('#ppBtns');
+  }catch(err){$('ppBtns').innerHTML=`<p style="color:var(--bad);font-size:12px;text-align:center;padding:12px">Erro PayPal: ${err.message}</p>`;}
+}
+
+/* ── PÓS PAGAMENTO ── */
+function _onPayOk(provider,ref){
+  $('ovPag').classList.remove('open');
+  $('ppBtns').innerHTML='';ppReady=false;
+  if(stripeCard)stripeCard.clear();
+  // Confirma o pagamento no backend — marca a reserva como paga e
+  // envia a confirmação por SMS/email, com o link "Estou Pronto". A
+  // viagem NÃO é despachada aqui — só quando o hóspede tocar nesse
+  // link (fora deste site), tal como já acontece na Reserva
+  // Flexível e no ambiente do hotel. Este ecrã mostra só a
+  // confirmação; o polling abaixo continua em segundo plano, para
+  // mostrar o motorista assim que for atribuído, sempre que isso
+  // vier a acontecer.
+  fetch(`${API}/api/reservas/reservas/confirmar-pagamento`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:_pagCodigo,provider,paymentIntentId:ref})}).catch(()=>{});
+  fetch(`${API}/api/reservas/reservas/enviar-confirmacao`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:_pagCodigo})}).catch(()=>{});
+
+  $('ovPronto').classList.add('open');
+  _pollDriver(_pagCodigo,0);
+}
+
+let _pollCancelado = false;
+async function _pollDriver(codigo,n){
+  if(_pollCancelado||n>12)return;
+  try{const d=await fetch(`${API}/api/reservas/reservas/motorista-atribuido?codigo=${encodeURIComponent(codigo)}`,{credentials:'include'}).then(r=>r.json());if(d?.atribuido&&d.motorista){showDriver(d.motorista);return;}}catch(_){}
+  setTimeout(()=>_pollDriver(codigo,n+1),5000);
+}
+
+/* ── CONCLUIR — fecha a confirmação e limpa TUDO, para o site nunca
+   ficar com dados de uma reserva anterior visíveis. Também pára o
+   polling do motorista — a partir daqui, tudo acontece pelo
+   SMS/email (estou-pronto.html), não neste site. ── */
+$('btnConcluirPronto').addEventListener('click', () => {
+  _pollCancelado = true;
+  $('ovPronto').classList.remove('open');
+
+  $('nome').value = '';
+  $('email').value = '';
+  $('contacto').value = '';
+  $('obs').value = '';
+  $('origem').value = '';
+  $('destino').value = '';
+  $('datahora').value = '';
+  placaO = null;
+  placaD = null;
+  window.requisitosEspeciais = {};
+  document.querySelectorAll('.req-esp-btn').forEach(b => {
+    b.classList.remove('sel','selected');
+    const q = b.querySelector('.req-esp-qty');
+    if (q) q.textContent = '1';
+  });
+});
+
+let mcMap = null, mcMarker = null;
+function garantirMapaMotorista(){
+  if (mcMap || typeof L === 'undefined') return;
+  mcMap = L.map('mcMapa', { zoomControl:false, attributionControl:false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(mcMap);
+}
+function atualizarMapaMotorista(lat, lng){
+  garantirMapaMotorista();
+  if (!mcMap || lat == null || lng == null) return;
+  if (mcMarker) { mcMap.removeLayer(mcMarker); mcMarker = null; }
+  const pin = L.divIcon({
+    html: '<div style="width:16px;height:16px;border-radius:50%;background:#c4c9d4;border:3px solid rgba(255,255,255,.8);box-shadow:0 0 0 5px rgba(196,201,212,.25)"></div>',
+    className: '', iconSize: [16,16], iconAnchor: [8,8],
+  });
+  mcMarker = L.marker([lat, lng], { icon: pin }).addTo(mcMap);
+  mcMap.setView([lat, lng], 14);
+}
+
+function showDriver(m){
+  $('ovPronto').classList.remove('open');
+  $('mcNome').textContent=m.motoristaNome||m.nome||'—';
+  $('mcMatricula').textContent=m.matricula||'—';
+  $('mcVeiculo').textContent=(m.veiculo||'')+(m.cor?' · '+m.cor:'');
+  $('mcEta').textContent=m.eta?('~'+m.eta+' minutos'):'A calcular…';
+  const r=Number(m.rating||5).toFixed(1),s=Math.round(Number(r));
+  $('mcStars').textContent='★'.repeat(s)+'☆'.repeat(5-s);
+  $('mcRating').textContent=r+' · Verificado';
+  const numeroLimpo = m.contacto ? String(m.contacto).replace(/[^\d+]/g,'') : '';
+  $('mcBtnCamera').dataset.numero = numeroLimpo;
+  if (numeroLimpo) { $('mcBtnMensagem').href='sms:'+numeroLimpo; $('mcBtnMensagem').style.display='block'; }
+  else { $('mcBtnMensagem').style.display='none'; }
+  $('motoristaOverlay').classList.add('open');
+  if (m.lat != null && m.lng != null) {
+    setTimeout(() => atualizarMapaMotorista(m.lat, m.lng), 50);
+  }
+}
+$('btnFecharMotorista').onclick=()=>$('motoristaOverlay').classList.remove('open');
+
+$('mcBtnCamera').addEventListener('click',()=>$('mcCameraInput').click());
+$('mcCameraInput').addEventListener('change',async(e)=>{
+  const file=e.target.files?.[0];
+  e.target.value='';
+  if(!file)return;
+  const numero=$('mcBtnCamera').dataset.numero||'';
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Foto para o motorista',text:'Referência para a recolha'});return;}
+    catch(err){if(err?.name==='AbortError')return;}
+  }
+  const tmpUrl=URL.createObjectURL(file);
+  const a=document.createElement('a');
+  a.href=tmpUrl;a.download='foto-recolha.jpg';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(tmpUrl),4000);
+  if(numero)setTimeout(()=>{window.location.href='sms:'+numero;},600);
+});
+
+
+/* ── FECHAR MODAIS ── */
+[$('btnFecharPag'),$('btnFecharPag2')].forEach(b=>b&&(b.onclick=()=>{$('ovPag').classList.remove('open');if(stripeCard)stripeCard.clear();$('stripeErr').textContent='';$('ppBtns').innerHTML='';ppReady=false;}));
+$('btnFecharCancel').onclick=()=>$('ovCancel').classList.remove('open');
+$('ovCancel').onclick=e=>{if(e.target===$('ovCancel'))$('ovCancel').classList.remove('open');};
+/* ovPag: fecha apenas pelo X ou botão Fechar */
+
+/* ── CANCELAR RESERVA ── */
+$('btnConfCancel').onclick=async()=>{
+  const email=$('cEmail').value.trim(),codigo=$('cCodigo').value.trim(),contacto=$('cContact').value.trim();
+  if(!email||!codigo){alert('Email e código são obrigatórios.');return;}
+  try{
+    const r=await fetch(`${API}/api/reservas/reserva/cancelar`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,codigo,contacto})}).then(r=>r.json());
+    alert(r.message||'Reserva cancelada com sucesso.');
+    $('ovCancel').classList.remove('open');
+  }catch(err){alert('Erro: '+err.message);}
+};
+
+/* ── VER ROTA / OCULTAR SHEET ── */
+function updateRotaBtn(){
+  const show=!!(placaO&&placaD&&osrmRoute);
+  const btn=document.getElementById('btnVerRota');
+  if(btn) btn.classList.toggle('show',show);
+}
+
+document.getElementById('btnVerRota').onclick=()=>{
+  const sheet=document.getElementById('sheet');
+  const btnVer=document.getElementById('btnVerRota');
+  const btnVolt=document.getElementById('btnMostrarSheet');
+  sheet.classList.add('hidden');
+  btnVer.classList.remove('show');
+  btnVolt.classList.add('show');
+  // Refit map to route
+  if(routeLayer) map.fitBounds(routeLayer.getBounds(),{padding:[60,60]});
+};
+
+document.getElementById('btnMostrarSheet').onclick=()=>{
+  const sheet=document.getElementById('sheet');
+  const btnVer=document.getElementById('btnVerRota');
+  const btnVolt=document.getElementById('btnMostrarSheet');
+  sheet.classList.remove('hidden');
+  btnVolt.classList.remove('show');
+  updateRotaBtn();
+};
+
+/* ── INIT: geolocalização automática ── */
+(async()=>{
+  if(!navigator.geolocation) return;
+  setStatus('<span style="color:var(--silver-3);font-size:11px">A detetar localização…</span>');
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const{latitude:lat,longitude:lng}=pos.coords;
+    map.setView([lat,lng],14);
+    const d=await nmReverse(lat,lng);
+    const a=d?.address||{};
+    const rua=a.road||a.pedestrian||a.suburb||'';
+    const num=a.house_number?` ${a.house_number}`:'';
+    const loc=a.city||a.town||a.village||'';
+    const label=rua?`${rua}${num}${loc?', '+loc:''}`:(d?.display_name?.split(',').slice(0,2).join(', ')||`${lat.toFixed(5)},${lng.toFixed(5)}`);
+    $('origem').value=label;
+    placaO={lat,lng,label};
+    if(mO)map.removeLayer(mO);
+    mO=L.marker([lat,lng],{icon:pinO}).addTo(map);
+    setStatus('');
+    checkOkBtn();
+  },()=>setStatus(''),{enableHighAccuracy:true,timeout:6000,maximumAge:60000});
+})();
+</script>
+
+
+
+
+<!-- ── PWA Install Button ─────────────────────────────────── -->
+<div id="pwaInstallBtn" style="
+  display:none;
+  position:fixed;bottom:24px;right:20px;z-index:9999;
+  align-items:center;gap:10px;
+  background:linear-gradient(145deg,#111318,#0d0f15);
+  border:1px solid rgba(200,210,230,.22);
+  border-radius:50px;
+  padding:10px 18px 10px 12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.04);
+  cursor:pointer;
+  animation:slideUpBtn .4s cubic-bezier(.22,1,.36,1);
+  user-select:none;">
+  <div style="
+    width:36px;height:36px;border-radius:50%;flex-shrink:0;
+    border:1.5px solid rgba(200,210,230,.45);
+    background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.02));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.15);
+    display:grid;place-items:center;
+    font-family:'Playfair Display',Georgia,serif;
+    font-size:12px;font-weight:900;color:#fff;letter-spacing:.04em;">RM</div>
+  <div>
+    <div style="font-size:12px;font-weight:700;color:#fff;line-height:1.3">Instalar app</div>
+    <div style="font-size:10px;color:#6b7280;line-height:1.3">Adicionar ao ecrã inicial</div>
+  </div>
+  <div style="
+    width:28px;height:28px;border-radius:50%;
+    background:linear-gradient(135deg,#e2e6ee,#b8c0cc);
+    display:grid;place-items:center;
+    font-size:14px;flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);">⬇</div>
+</div>
+
+<style>
+@keyframes slideUpBtn {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+#pwaInstallBtn:hover {
+  border-color:rgba(200,210,230,.45);
+  box-shadow:0 12px 40px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.07);
+  transform:translateY(-2px);
+  transition:.2s;
+}
+</style>
+
+<script>
+(function () {
+  var btn    = document.getElementById("pwaInstallBtn");
+  var prompt = null;
+
+  function isInstalled() {
+    return window.matchMedia("(display-mode: standalone)").matches ||
+           window.navigator.standalone === true;
+  }
+
+  function dismissed() {
+    var t = localStorage.getItem("rm_pwa_dismissed");
+    return t && (Date.now() - Number(t)) < 3 * 24 * 60 * 60 * 1000;
+  }
+
+  function show() {
+    if (!isInstalled() && !dismissed()) {
+      setTimeout(function () { btn.style.display = "flex"; }, 1500);
+    }
+  }
+
+  // Android / Chrome — espera pelo evento nativo
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    prompt = e;
+    show();
+  });
+
+  // iOS Safari — sem evento, mostrar sempre se não instalado
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !isInstalled()) {
+    show();
+  }
+
+  // Clique no botão
+  btn.addEventListener("click", function () {
+    if (prompt) {
+      prompt.prompt();
+      prompt.userChoice.then(function (r) {
+        btn.style.display = "none";
+        if (r.outcome !== "accepted") {
+          localStorage.setItem("rm_pwa_dismissed", Date.now());
+        }
+        prompt = null;
+      });
+    } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      alert("No Safari:\n1. Toque em ↑ (Partilhar)\n2. Toque em 'Adicionar ao ecrã principal'");
+      btn.style.display = "none";
+      localStorage.setItem("rm_pwa_dismissed", Date.now());
+    } else {
+      // Chrome sem evento — abrir menu de instalação manualmente
+      btn.style.display = "none";
+      localStorage.setItem("rm_pwa_dismissed", Date.now());
+    }
+  });
+
+  // Se já instalado, esconde
+  window.addEventListener("appinstalled", function () {
+    btn.style.display = "none";
+  });
+})();
+</script>
+
+<script>
+  // Clicar em QUALQUER parte de um campo de data/hora abre o
+  // seletor nativo — por padrão, alguns browsers só abrem o
+  // seletor se o clique acertar exactamente no ícone do
+  // calendário (área muito pequena). showPicker() é chamado
+  // sempre que o campo recebe foco ou é clicado, garantindo
+  // acesso a partir de qualquer ponto do campo.
+  document.querySelectorAll('input[type="datetime-local"], input[type="date"], input[type="time"]').forEach(dtInput => {
+    if (typeof dtInput.showPicker !== 'function') return;
+    const abrirSeletor = () => {
+      try { dtInput.showPicker(); } catch (_) {}
+    };
+    dtInput.addEventListener('click', abrirSeletor);
+    dtInput.addEventListener('focus', abrirSeletor);
+  });
+</script>
+
+<div style="position:fixed;right:14px;bottom:14px;z-index:400">
+  <div style="font-size:12px;font-family:Inter,Arial,system-ui,sans-serif;color:#9aa1ab;background:rgba(8,10,13,.72);backdrop-filter:blur(10px);padding:9px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px">
+    <span style="opacity:.7">&copy; REALMETROPOLIS</span>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('privacidade');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Privacidade</a>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('cookies');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Cookies</a>
+  </div>
+</div>
+
+<!-- Overlay translúcido — Privacidade / Cookies -->
+<div id="legalOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(4,5,7,.72);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:24px">
+  <div style="width:min(720px,94vw);max-height:86vh;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(22,25,31,.92),rgba(10,11,14,.96));border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:0 40px 100px rgba(0,0,0,.6);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;text-transform:uppercase">REALMETROPOLIS</div>
+      <button onclick="fecharLegalOverlay()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#cdd2da;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;line-height:1">&times;</button>
+    </div>
+    <iframe id="legalOverlayFrame" src="" style="flex:1;border:none;width:100%;background:transparent;min-height:60vh"></iframe>
+  </div>
+</div>
+<script>
+function abrirLegalOverlay(tipo){
+  var url = tipo === 'cookies' ? '/cookies.html' : '/privacidade.html';
+  document.getElementById('legalOverlayFrame').src = url;
+  document.getElementById('legalOverlay').style.display = 'flex';
+}
+function fecharLegalOverlay(){
+  document.getElementById('legalOverlay').style.display = 'none';
+  document.getElementById('legalOverlayFrame').src = '';
+}
+document.getElementById('legalOverlay')?.addEventListener('click', function(e){
+  if (e.target.id === 'legalOverlay') fecharLegalOverlay();
+});
+</script>
+
+<script src="js/rm-requisitos.js"></script>
+</body>
+</html>

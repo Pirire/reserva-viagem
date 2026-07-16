@@ -1,0 +1,3303 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>REALMETROPOLIS — Gestãor</title>
+
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Arial,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  html,body{width:100%;height:100%;background:#060606;color:#f2f4f7;overflow:hidden}
+
+  :root{
+    --bg:#060606;
+    --panel:#0c0c0f;
+    --panel-2:#121317;
+    --panel-3:#17191e;
+    --silver:#d9dde3;
+    --silver-2:#aeb6c1;
+    --silver-3:#88919d;
+    --line:#2d323a;
+    --line-2:#4b5563;
+    --ok:#19d68b;
+    --bad:#ff6b6b;
+    --warn:#f4c56b;
+    --shadow:0 16px 34px rgba(0,0,0,.40);
+  }
+
+  header{
+    position:fixed;top:0;left:0;right:0;height:74px;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding:14px 18px;
+    background:linear-gradient(180deg, rgba(12,12,15,.96), rgba(12,12,15,.78));
+    border-bottom:1px solid var(--line-2);
+    backdrop-filter:blur(10px);
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .rm{
+    width:46px;height:46px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    border:2px solid rgba(212,216,223,.65);
+    background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
+    box-shadow:0 0 0 4px rgba(212,216,223,.08),inset 0 1px 0 rgba(255,255,255,.16);
+    color:#e8eaed;
+    font-weight:900;font-size:13px;letter-spacing:.06em;flex:0 0 auto;
+  }
+  .title{font-weight:900;letter-spacing:.6px;color:#fff;font-size:15px}
+  .sub{color:var(--silver-2);font-size:12px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .hdr-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+  .btn{
+    min-height:42px;padding:0 14px;border-radius:14px;border:1px solid var(--line-2);
+    background:linear-gradient(180deg,#17191d,#101216);color:var(--silver);
+    font-weight:800;font-size:13px;cursor:pointer;transition:all .15s ease;white-space:nowrap;
+  }
+  .btn:hover{border-color:#808a96;background:linear-gradient(180deg,#dfe4ea,#bfc7d2);color:#000;transform:translateY(-1px);}
+  .btn.active{border-color:#808a96;background:linear-gradient(180deg,#dfe4ea,#bfc7d2);color:#000;}
+  .btn.danger{border-color:#5a2b2b;color:#ffe1e1;background:linear-gradient(180deg,#2a1212,#180c0c);}
+  .btn.danger:hover{border-color:#a05050;background:linear-gradient(180deg,#3a1818,#280f0f);color:#fff;transform:translateY(-1px);}
+
+  .wrap{
+    position:fixed;top:74px;left:0;right:0;bottom:0;
+    display:flex;flex-direction:column;padding:14px;overflow:hidden;
+  }
+  .panel{
+    background:linear-gradient(180deg,#0d0f13,#090a0d);
+    border:1px solid var(--line-2);border-radius:22px;overflow:hidden;box-shadow:var(--shadow);min-height:0;
+  }
+  .phead{padding:14px 16px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--line)}
+  .phead h3{color:#fff;font-size:14px;letter-spacing:.5px}
+  .phead .muted{color:var(--silver-2);font-size:12px;margin-top:6px;line-height:1.4}
+  .nav{padding:12px;overflow:auto;height:calc(100% - 74px)}
+  .nav .item{
+    padding:14px;border-radius:16px;border:1px solid var(--line);
+    background:linear-gradient(180deg,#16181d,#101216);cursor:pointer;transition:.15s ease;margin-bottom:10px;
+  }
+  .nav .item:hover{transform:translateY(-1px)}
+  .nav .item.active{border-color:#808a96;background:linear-gradient(180deg,#242831,#151820)}
+  .nav .item b{color:#fff;font-size:14px;font-weight:800}
+  .nav .item .muted{color:var(--silver-2);font-size:12px;margin-top:6px;line-height:1.35}
+
+  .panel.main{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--line)}
+  .tab{
+    min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line);
+    background:linear-gradient(180deg,#16181d,#101216);color:var(--silver);font-weight:800;font-size:12px;cursor:pointer;
+    transition:all .15s ease;
+  }
+  .tab:hover{border-color:#808a96;background:linear-gradient(180deg,#dfe4ea,#bfc7d2);color:#000;}
+  .tab.active{border-color:#808a96;background:linear-gradient(180deg,#dfe4ea,#bfc7d2);color:#000;}
+  .content{padding:14px;overflow:auto;flex:1;min-height:0}
+  .card{
+    border-radius:22px;border:1px solid var(--line-2);
+    background:linear-gradient(180deg,#14171c,#0f1115);
+    padding:16px;margin-bottom:14px;box-shadow:var(--shadow);
+  }
+  .card h4{color:#fff;font-size:15px;font-weight:900;letter-spacing:.3px;margin-bottom:8px}
+  .muted{color:var(--silver-2);font-size:12px;line-height:1.45}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .input,.select,textarea{
+    padding:11px 12px;border-radius:14px;border:1px solid var(--line-2);
+    background:#0c0e12;color:#fff;outline:none;font-size:13px;
+  }
+  .input{min-width:220px}
+  .input.tiny{min-width:120px;width:120px}
+  .input.small{min-width:150px;width:150px}
+  textarea{width:100%;min-height:120px;resize:vertical}
+
+  .kms-grid{display:flex;gap:10px;overflow:auto;padding-bottom:6px;margin-top:10px}
+  .km-box{
+    min-width:250px;flex:0 0 auto;background:linear-gradient(180deg,#181b20,#111318);
+    border:1px solid var(--line);border-radius:18px;padding:14px;
+  }
+  .km-title{font-weight:900;color:#fff;letter-spacing:.6px;font-size:14px}
+
+  .quote-grid{display:grid;grid-template-columns:repeat(3,minmax(260px,1fr));gap:14px;margin-top:12px}
+  .quote-box{
+    background:linear-gradient(180deg,#181b20,#111318);
+    border:1px solid var(--line);border-radius:18px;padding:14px;
+  }
+  .quote-box h5{color:#fff;font-size:13px;letter-spacing:.4px;margin-bottom:12px}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .field label{font-size:12px;color:var(--silver-2)}
+
+  .mini-stats{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(150px,1fr));
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .mini-stat{
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:rgba(255,255,255,.03);
+  }
+  .mini-stat b{
+    display:block;
+    color:#fff;
+    font-size:12px;
+    margin-bottom:6px;
+  }
+  .mini-stat span{
+    color:var(--silver-2);
+    font-size:14px;
+    font-weight:800;
+  }
+
+  table{width:100%;border-collapse:separate;border-spacing:0 10px;margin-top:10px}
+  th{font-size:12px;color:var(--silver-2);text-align:left;padding:0 8px;white-space:nowrap}
+  td{
+    background:linear-gradient(180deg,#181b20,#111318);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:11px 8px;vertical-align:middle;font-size:13px;
+  }
+  td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}
+  td:last-child{border-right:1px solid var(--line);border-radius:0 14px 14px 0}
+
+  .status{
+    display:inline-block;padding:5px 10px;border-radius:999px;font-weight:900;font-size:11px;border:1px solid transparent;
+  }
+  .s-ativo{color:#dffff1;border-color:rgba(25,214,139,.35);background:rgba(25,214,139,.12)}
+  .s-pendente{color:#fff4d9;border-color:rgba(244,197,107,.30);background:rgba(244,197,107,.12)}
+  .s-recusado{color:#ffe6e6;border-color:rgba(255,107,107,.35);background:rgba(255,107,107,.12)}
+  .s-expirado{color:#dce3ea;border-color:rgba(136,145,157,.35);background:rgba(136,145,157,.12)}
+
+  .msg{
+    margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);
+    background:linear-gradient(180deg,#181b20,#111318);color:var(--silver);font-size:13px;white-space:pre-wrap;
+  }
+  .code-badge{
+    display:inline-block;padding:5px 10px;border-radius:999px;border:1px solid var(--line-2);
+    color:#fff;background:rgba(255,255,255,.04);font-weight:800;font-size:11px;
+  }
+
+  .colab-block{margin-top:14px;border:1px solid var(--line-2);border-radius:18px;background:linear-gradient(180deg,#171a1f,#101216);overflow:hidden}
+  .colab-top{padding:14px;border-bottom:1px solid var(--line)}
+  .colab-title{color:#fff;font-size:15px;font-weight:900;margin-bottom:8px}
+  .colab-meta{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:10px}
+  .meta-box{padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.03)}
+  .meta-box b{display:block;color:#fff;font-size:12px;margin-bottom:5px}
+  .meta-box span{color:var(--silver-2);font-size:13px}
+  .drivers-list{padding:12px;display:flex;flex-direction:column;gap:10px}
+  .driver-line{
+    display:grid;grid-template-columns:1.3fr 1.1fr 1.1fr .8fr .8fr 1fr 1fr;
+    gap:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.03);align-items:center;
+  }
+  .driver-line .head{color:#fff;font-weight:800;font-size:13px}
+  .driver-line .val{color:var(--silver-2);font-size:13px;line-height:1.3}
+
+  @media(max-width:1400px){
+    .quote-grid{grid-template-columns:1fr 1fr}
+    .driver-line{grid-template-columns:1fr 1fr 1fr 1fr}
+  }
+  @media(max-width:1180px){
+    html,body{overflow:auto}
+    .wrap{position:static;grid-template-columns:1fr;min-height:calc(100vh - 74px)}
+  }
+  @media(max-width:900px){
+    .quote-grid{grid-template-columns:1fr}
+    .colab-meta{grid-template-columns:1fr}
+    .driver-line{grid-template-columns:1fr}
+    .mini-stats{grid-template-columns:1fr 1fr}
+  }
+
+
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="rm">RM</div>
+    <div>
+      <div class="title">REALMETROPOLIS — ADMIN MASTER</div>
+      <div class="sub">Gestão • KMS • Quote • Parceiros • Colaboradores • Convites • Viagens</div>
+    </div>
+  </div>
+
+  <div class="hdr-actions">
+    <button class="btn" id="btnPainelViagens">PAINEL VIAGENS</button>
+    <button class="btn" id="btnCategorias" style="border-color:rgba(25,214,139,.35);color:var(--ok)">&#9776; CATEGORIAS VEÍ­CULOS</button>
+    <button class="btn" id="btnOpenRegMotorista">+ MOTORISTA</button>
+    <button class="btn" id="btnOpenRegVeiculo">+ VEÍCULO</button>
+    <button class="btn danger" id="btnSair">SAIR</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="panel main">
+    <div class="tabs">
+      <button class="tab active" data-view="kms">KMS</button>
+      <button class="tab" data-view="quote">QUOTE</button>
+      <button class="tab" data-view="parceiros">PARCEIROS</button>
+      <button class="tab" data-view="colaboradores">COLABORADORES</button>
+      <button class="tab" data-view="motoristas">MOTORISTAS</button>
+      <button class="tab" data-view="veiculos">VEÍCULOS</button>
+      <button class="tab" data-view="viagens">VIAGENS</button>
+      <button class="tab" data-view="audit">AUDIT</button>
+      <button class="tab" data-view="invite-colab">CONVITE</button>
+      <button class="tab" data-view="validadores">VALIDADORES</button>
+      <button class="tab" data-view="api-keys">API KEYS</button>
+    </div>
+
+    <div class="content">
+      <section id="view-kms">
+        <div class="card">
+          <h4>KMS + Preços por Categoria</h4>
+          <div class="muted">Mantém a gestão de categorias e aproveita o espaço superior para resumo de faturação.</div>
+
+
+          <div class="quote-grid" style="grid-template-columns: 1.4fr 1fr;">
+            <div class="quote-box">
+              <h5>Faturação — Resumo e Últimas Faturas</h5>
+
+              <div class="mini-stats" id="faturacaoResumo">
+                <div class="mini-stat"><b>Total Faturas</b><span>0</span></div>
+                <div class="mini-stat"><b>Emitidas</b><span>0</span></div>
+                <div class="mini-stat"><b>Pagas</b><span>0</span></div>
+                <div class="mini-stat"><b>Total (€)</b><span>0,00 €</span></div>
+              </div>
+
+              <div style="overflow:auto">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nº</th>
+                      <th>Estado</th>
+                      <th>Valor (€)</th>
+                      <th>Emitida</th>
+                      <th>Paga</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyFaturasMini"></tbody>
+                </table>
+              </div>
+
+              <div class="row" style="margin-top:10px;justify-content:flex-end">
+                <button class="btn" id="btnReloadFaturasMini">ATUALIZAR FATURAÇÃO</button>
+              </div>
+            </div>
+
+            <div class="quote-box">
+              <h5>Preços por Categoria</h5>
+              <div class="field"><label>Económica (€ / km)</label><input class="input small" type="number" step="0.01" id="kpc_economica"></div>
+              <div class="field"><label>Confort (€ / km)</label><input class="input small" type="number" step="0.01" id="kpc_confort"></div>
+              <div class="field"><label>Executive (€ / km)</label><input class="input small" type="number" step="0.01" id="kpc_executive"></div>
+              <div class="field"><label>Luxury (€ / km)</label><input class="input small" type="number" step="0.01" id="kpc_luxury"></div>
+              <div class="field"><label>Grupo 6 (€ / km)</label><input class="input small" type="number" step="0.01" id="kpc_g6"></div>
+              <div class="field"><label>Grupo 8 (€ / km)</label><input class="input small" type="number" step="0.01" id="kpc_g8"></div>
+              <div class="field"><label>Grupo 17 (€ / km)</label><input class="input small" type="number" step="0.01" id="kpc_g17"></div>
+            </div>
+          </div>
+
+          <div class="quote-box" style="margin-top:14px">
+            <h5>Categorias / Estado / €/km</h5>
+            <div class="kms-grid" id="kmsGrid"></div>
+          </div>
+
+          <div class="row" style="margin-top:10px;justify-content:flex-end">
+            <button class="btn" id="btnSeedKms">CRIAR BASE</button>
+            <button class="btn" id="btnReloadKms">RECARREGAR</button>
+            <button class="btn" id="btnSaveKms">GUARDAR</button>
+          </div>
+
+          <div class="msg" id="msgKms">Pronto.</div>
+        </div>
+      </section>
+
+      <section id="view-quote" style="display:none">
+        <div class="card">
+          <h4>Quote / Tarifário Dinâmico</h4>
+          <div class="muted">Configuração dinâmica de mínimos, espera, portagem, trânsito, procura, desconto para colaboradores e percentagem retida pelo sistema.</div>
+
+          <div class="quote-grid">
+            <div class="quote-box">
+              <h5>Mínimos e Espera</h5>
+              <div class="field"><label>Mínimo saídas aeroporto (€)</label><input class="input small" type="number" step="0.01" id="qc_minAeroporto"></div>
+              <div class="field"><label>Mínimo fora aeroporto (€)</label><input class="input small" type="number" step="0.01" id="qc_minNormal"></div>
+              <div class="field"><label>Minutos grátis de espera</label><input class="input small" type="number" step="1" id="qc_esperaGratis"></div>
+              <div class="field"><label>Valor por minuto extra de espera (€)</label><input class="input small" type="number" step="0.01" id="qc_esperaMinuto"></div>
+            </div>
+
+            <div class="quote-box">
+              <h5>Portagens e Trânsito</h5>
+              <div class="field"><label>Valor fixo de portagem (€)</label><input class="input small" type="number" step="0.01" id="qc_portagem"></div>
+              <div class="field"><label>Fator máximo de trânsito</label><input class="input small" type="number" step="0.01" id="qc_maxTransito"></div>
+              <div class="field"><label>Fator hora de ponta</label><input class="input small" type="number" step="0.01" id="qc_fatorHoraPonta"></div>
+              <div class="field"><label>Hora ponta manhã início</label><input class="input small" type="number" step="1" min="0" max="23" id="qc_rushMorningStart"></div>
+              <div class="field"><label>Hora ponta manhã fim</label><input class="input small" type="number" step="1" min="0" max="23" id="qc_rushMorningEnd"></div>
+              <div class="field"><label>Hora ponta tarde início</label><input class="input small" type="number" step="1" min="0" max="23" id="qc_rushEveningStart"></div>
+              <div class="field"><label>Hora ponta tarde fim</label><input class="input small" type="number" step="1" min="0" max="23" id="qc_rushEveningEnd"></div>
+            </div>
+
+            <div class="quote-box">
+              <h5>Procura / Sistema / Colaboradores</h5>
+              <div class="field"><label>Incremento por excesso de pedidos</label><input class="input small" type="number" step="0.01" id="qc_demandaStep"></div>
+              <div class="field"><label>Fator máximo de procura</label><input class="input small" type="number" step="0.01" id="qc_demandaMax"></div>
+              <div class="field"><label>Percentagem retida pelo sistema</label><input class="input small" type="number" step="0.01" id="qc_plataformaPercent"></div>
+              <div class="field"><label>Desconto padrão para colaboradores (%)</label><input class="input small" type="number" step="0.01" id="qc_descontoColaborador"></div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px;justify-content:flex-end">
+            <button class="btn" id="btnReloadQuote">RECARREGAR</button>
+            <button class="btn" id="btnSaveQuote">GUARDAR</button>
+          </div>
+          <div class="msg" id="msgQuote">Pronto.</div>
+        </div>
+
+        <!-- ── PERCENTAGEM DA PLATAFORMA — GESTÃO DINÂMICA ── -->
+        <div class="card" style="margin-top:14px">
+          <h4>💰 Percentagem da Plataforma</h4>
+          <div class="muted">Defina a percentagem retida pela plataforma no saldo disponível dos motoristas. Pode aplicar descontos ou prémios temporários por motorista ou globalmente. Esta percentagem é lida em tempo real pelo sistema de pagamentos.</div>
+
+          <!-- Taxa global actual -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px;margin-bottom:18px">
+            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px">
+              <div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:var(--silver-2);margin-bottom:6px">TAXA GLOBAL ACTUAL</div>
+              <div style="font-size:28px;font-weight:900;color:#fff" id="taxaGlobalActual">—</div>
+              <div style="font-size:11px;color:var(--silver-2);margin-top:3px">retida pela plataforma</div>
+            </div>
+            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px">
+              <div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:var(--silver-2);margin-bottom:6px">MOTORISTA RECEBE</div>
+              <div style="font-size:28px;font-weight:900;color:var(--ok)" id="taxaMotoristaRecebe">—</div>
+              <div style="font-size:11px;color:var(--silver-2);margin-top:3px">por cada euro faturado</div>
+            </div>
+          </div>
+
+          <!-- Alterar taxa global -->
+          <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--silver-2);margin-bottom:12px">ALTERAR TAXA GLOBAL</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:flex-end">
+              <div class="field">
+                <label>Nova taxa de retenção (%)</label>
+                <input class="input small" type="number" id="novaTaxa" step="0.01" min="0" max="100" placeholder="Ex: 15">
+              </div>
+              <div class="field">
+                <label>Motivo / Nota interna</label>
+                <input class="input small" type="text" id="taxaMotivo" placeholder="Ex: Promoção mês de julho">
+              </div>
+              <div>
+                <button class="btn active" id="btnGuardarTaxa" style="width:100%">GUARDAR TAXA</button>
+              </div>
+            </div>
+            <div class="msg" id="msgTaxa" style="margin-top:8px"></div>
+          </div>
+
+          <!-- Prémios / Descontos por país -->
+          <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--silver-2);margin-bottom:6px">🌍 PRÉMIO / DESCONTO POR PAÍS</div>
+            <div class="muted" style="margin-bottom:12px;font-size:12px">Aplique uma taxa especial para todos os gestores de frota de um país (ex: promoção regional). A taxa fica activa até à data definida.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;align-items:flex-end">
+              <div class="field">
+                <label>País (gestores registados)</label>
+                <select class="input small" id="premioPaisId">
+                  <option value="">A carregar...</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Taxa especial (%)</label>
+                <input class="input small" type="number" id="premioTaxa" step="0.1" min="0" max="100" placeholder="Ex: 8">
+              </div>
+              <div class="field">
+                <label>Válido até</label>
+                <input class="input small" type="date" id="premioExpira">
+              </div>
+              <div>
+                <button class="btn active" id="btnGuardarPremio" style="width:100%">APLICAR</button>
+              </div>
+            </div>
+            <div class="msg" id="msgPremio" style="margin-top:8px"></div>
+          </div>
+
+          <!-- Histórico de alterações -->
+          <div style="font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--silver-2);margin-bottom:10px">HISTÓRICO DE ALTERAÇÕES</div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>DATA</th>
+                  <th>TAXA</th>
+                  <th>TIPO</th>
+                  <th>MOTORISTA</th>
+                  <th>MOTIVO</th>
+                  <th>ALTERADO POR</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyTaxas">
+                <tr><td colspan="6" style="text-align:center;padding:18px;color:var(--silver-2)">A carregar...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="row" style="margin-top:10px;justify-content:flex-end">
+            <button class="btn" id="btnReloadTaxas">↻ ATUALIZAR HISTÓRICO</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-parceiros" style="display:none">
+        <div class="card">
+          <h4>Parceiros Registados</h4>
+          <div class="muted">Hotéis, alojamentos e gestores de frota que completaram o registo.</div>
+          <div class="row" style="margin-top:12px">
+            <input class="input" id="qParceiros" placeholder="Filtrar por empresa, email ou tipo..." style="flex:1">
+            <button class="btn" id="btnReloadParceiros">↻ ATUALIZAR</button>
+          </div>
+          <div style="overflow-x:auto;margin-top:12px">
+            <table>
+              <thead>
+                <tr>
+                  <th>EMPRESA</th>
+                  <th>EMAIL</th>
+                  <th>TIPO</th>
+                  <th>ESTADO</th>
+                  <th>REGISTADO</th>
+                  <th>AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyParceiros"></tbody>
+            </table>
+          </div>
+          <div class="msg" id="msgParceiros">Pronto.</div>
+        </div>
+      </section>
+
+      <section id="view-colaboradores" style="display:none">
+        <div class="card">
+          <h4>Validações de Colaboradores</h4>
+          <div class="muted">O bloco do colaborador inclui, por baixo, os motoristas associados e as métricas operacionais/financeiras.</div>
+
+          <div class="row" style="margin-top:10px">
+            <select class="select" id="fColaboradores">
+              <option value="pendente">Pendentes</option>
+              <option value="aprovado">Aprovados</option>
+              <option value="all">Todos</option>
+            </select>
+            <button class="btn" id="btnReloadColaboradores">ATUALIZAR</button>
+          </div>
+
+          <div id="colaboradoresBlocks" style="margin-top:14px"></div>
+          <div class="msg" id="msgColaboradores">Pronto.</div>
+        </div>
+      </section>
+
+      <section id="view-motoristas" style="display:none">
+        <div class="card">
+          <h4>Motoristas por Parceiro</h4>
+          <div class="muted">Listagem de motoristas agrupados por parceiro.</div>
+          <div class="row" style="margin-top:10px">
+            <input class="input" id="filterMotoristas" placeholder="Filtrar por nome, email ou parceiro..." style="flex:1;min-width:200px">
+            <button class="btn" id="btnReloadMotoristas">ATUALIZAR</button>
+          </div>
+          <div id="motoristasBlocks" style="margin-top:14px;display:flex;flex-direction:column;gap:14px"></div>
+          <div class="msg" id="msgMotoristas">Pronto.</div>
+        </div>
+      </section>
+
+      <section id="view-veiculos" style="display:none">
+        <div class="card">
+          <h4>Validações de Veículos</h4>
+          <div class="muted">Ligado ao endpoint <span class="code-badge">GET /admin/validacoes/veiculos</span>.</div>
+          <div class="row" style="margin-top:10px">
+            <select class="select" id="fVeiculos">
+              <option value="pendente">Pendentes</option>
+              <option value="aprovado">Aprovados</option>
+              <option value="rejeitado">Rejeitados</option>
+              <option value="all">Todos</option>
+            </select>
+            <button class="btn" id="btnReloadVeiculos">ATUALIZAR</button>
+          </div>
+          <div style="overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Matrícula</th>
+                  <th>Marca</th>
+                  <th>Modelo</th>
+                  <th>Status</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyVeiculos"></tbody>
+            </table>
+          </div>
+          <div class="msg" id="msgVeiculos">Pronto.</div>
+        </div>
+      </section>
+
+      <section id="view-viagens" style="display:none">
+        <div class="card">
+          <h4>Viagens por Parceiro</h4>
+          <div class="muted">Mostra parceiro, quem fez, data e valor.</div>
+          <div class="row" style="margin-top:10px"><button class="btn" id="btnReloadViagens">ATUALIZAR</button></div>
+          <div style="overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Parceiro</th>
+                  <th>Quem fez</th>
+                  <th>Data</th>
+                  <th>Valor (€)</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyViagens"></tbody>
+            </table>
+          </div>
+          <div class="msg" id="msgViagens">Pronto.</div>
+        </div>
+      </section>
+
+      <section id="view-audit" style="display:none">
+        <div class="card">
+          <h4>Audit</h4>
+          <div class="muted">Ligado ao endpoint <span class="code-badge">GET /admin/audit</span>.</div>
+          <div class="row" style="margin-top:10px"><button class="btn" id="btnReloadAudit">ATUALIZAR</button></div>
+          <div style="overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ação</th>
+                  <th>Admin</th>
+                  <th>Alvo</th>
+                  <th>ID Alvo</th>
+                  <th>Data</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAudit"></tbody>
+            </table>
+          </div>
+          <div class="msg" id="msgAudit">Pronto.</div>
+        </div>
+      </section>
+
+      <section id="view-invite-colab" style="display:none">
+        <div class="card" style="padding:0;overflow:hidden">
+          <!-- Sub-tabs -->
+          <div style="display:flex;border-bottom:1px solid var(--line)">
+            <button id="tabBtnParceiro" style="flex:1;min-height:44px;border:none;border-right:1px solid var(--line);font-weight:900;font-size:12px;letter-spacing:.06em;cursor:pointer;background:linear-gradient(180deg,#dfe4ea,#b6bec8);color:#000">HOTEL / ALOJAMENTO</button>
+            <button id="tabBtnColab"    style="flex:1;min-height:44px;border:none;border-right:1px solid var(--line);font-weight:900;font-size:12px;letter-spacing:.06em;cursor:pointer;background:linear-gradient(180deg,#17191d,#101216);color:var(--silver)">GESTOR DE FROTA</button>
+            <button id="tabBtnValid"    style="flex:1;min-height:44px;border:none;border-right:1px solid var(--line);font-weight:900;font-size:12px;letter-spacing:.06em;cursor:pointer;background:linear-gradient(180deg,#17191d,#101216);color:var(--silver)">VALIDADORES</button>
+            <button id="tabBtnSegOp"   style="flex:1;min-height:44px;border:none;font-weight:900;font-size:12px;letter-spacing:.06em;cursor:pointer;background:linear-gradient(180deg,#17191d,#101216);color:var(--silver)">🛡️ SEGURANÇA</button>
+          </div>
+
+          <!-- TAB PARCEIROS -->
+          <div id="tabParceiro" style="padding:16px;display:flex;flex-direction:column;gap:14px">
+            <div class="muted">Após ouvir o cliente, preencha os dados e envie o convite. O parceiro recebe um email com link para completar o registo e definir a sua senha de acesso.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+              <div class="field"><label>Empresa *</label><input class="input" id="pc_empresa" placeholder="Nome da empresa ou hotel"></div>
+              <div class="field"><label>NIF *</label><input class="input" id="pc_nif" placeholder="Ex: 501234567"></div>
+              <div class="field"><label>Email *</label><input class="input" id="pc_email" type="email" placeholder="email@hotel.pt"></div>
+              <div class="field"><label>Contacto *</label><input class="input" id="pc_contacto" placeholder="+351 912 345 678"></div>
+              <div class="field" style="grid-column:1/-1">
+                <label>Tipo de parceiro *</label>
+                <select class="select" id="pc_tipo">
+                  <option value="hotel">Hotel</option>
+                  <option value="alojamento">Alojamento Local</option>
+                  <option value="seguradora">Seguradora</option>
+                  <option value="reboques">Reboques de Portugal</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button class="btn active" id="btnEnviarParceiro">ENVIAR CONVITE</button>
+            </div>
+            <div class="msg" id="msgParceiro">Pronto.</div>
+            <!-- Lista convites enviados -->
+            <div style="border-top:1px solid var(--line);padding-top:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <span style="font-size:12px;font-weight:900;color:#fff;letter-spacing:.06em">CONVITES ENVIADOS</span>
+                <button class="btn" id="btnRefreshConvites" style="min-height:30px;padding:0 10px;font-size:11px">↻ ATUALIZAR</button>
+              </div>
+              <div style="overflow-x:auto">
+                <table style="width:100%;border-collapse:collapse;font-size:12px">
+                  <thead>
+                    <tr style="border-bottom:1px solid var(--line)">
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">EMPRESA</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">EMAIL</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">TIPO</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">ESTADO</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">ENVIADO</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">AÇÕES</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyConvites">
+                    <tr><td colspan="6" style="padding:18px;text-align:center;color:var(--silver-3)">Clique em ATUALIZAR.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB COLABORADORES / GESTOR DE FROTA -->
+          <div id="tabColab" style="padding:16px;display:none;flex-direction:column;gap:14px">
+            <div class="muted">Envia um link de activação ao Gestor de Frota para completar o registo e aceder ao portal.</div>
+            <input type="hidden" id="ic_tipo" value="frota">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="field"><label>Empresa</label><input class="input" id="ic_empresa" placeholder="Empresa"></div>
+              <div class="field"><label>Nome</label><input class="input" id="ic_nome" placeholder="Nome do gestor"></div>
+              <div class="field"><label>Email *</label><input class="input" id="ic_email" placeholder="email@dominio.com"></div>
+              <div class="field"><label>Contacto</label><input class="input" id="ic_contacto" placeholder="+351..."></div>
+              <div class="field"><label>País</label>
+                <select class="input" id="ic_pais">
+                  <option value="">Seleccione...</option>
+                  <option value="PT">🇵🇹 Portugal</option>
+                  <option value="BR">🇧🇷 Brasil</option>
+                  <option value="AO">🇦🇴 Angola</option>
+                  <option value="MZ">🇲🇿 Moçambique</option>
+                  <option value="CV">🇨🇻 Cabo Verde</option>
+                  <option value="GW">🇬🇼 Guiné-Bissau</option>
+                  <option value="ST">🇸🇹 São Tomé e Príncipe</option>
+                  <option value="ES">🇪🇸 Espanha</option>
+                  <option value="FR">🇫🇷 França</option>
+                  <option value="DE">🇩🇪 Alemanha</option>
+                  <option value="GB">🇬🇧 Reino Unido</option>
+                  <option value="IT">🇮🇹 Itália</option>
+                </select>
+              </div>
+              <div class="field"><label>Concelho</label><input class="input" id="ic_concelho" placeholder="Concelho"></div>
+              <div class="field"><label>Cidade</label><input class="input" id="ic_cidade" placeholder="Cidade"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button class="btn active" id="btnInviteColab">ENVIAR CONVITE</button>
+            </div>
+            <div class="msg" id="msgInviteColab">Pronto.</div>
+          </div>
+
+          <!-- TAB VALIDADORES -->
+          <div id="tabValid" style="padding:16px;display:none;flex-direction:column;gap:14px">
+            <div class="muted">Envia convites a validadores operacionais.</div>
+            <div class="field"><label>Emails (um por linha ou separados por vírgula)</label>
+              <textarea id="iv_emails" placeholder="email1@dominio.com&#10;email2@dominio.com"></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="field"><label>Escopo</label>
+                <select class="select" id="iv_scope">
+                  <option value="motoristas">Motoristas</option>
+                  <option value="veiculos">Veículos</option>
+                  <option value="empresa">Empresa</option>
+                  <option value="global">Global</option>
+                </select>
+              </div>
+              <div class="field"><label>Canal</label>
+                <select class="select" id="iv_channel">
+                  <option value="email">Email</option>
+                  <option value="email_sms">Email + SMS</option>
+                  <option value="interno">Interno</option>
+                </select>
+              </div>
+            </div>
+            <div class="field"><label>Observação interna</label><textarea id="iv_note" placeholder="Observação opcional"></textarea></div>
+            <div style="display:flex;justify-content:flex-end">
+              <button class="btn active" id="btnInviteValidador">ENVIAR CONVITES</button>
+            </div>
+            <div class="msg" id="msgInviteValidador">Pronto.</div>
+            <div style="border-top:1px solid var(--line);padding-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn" id="btnAbrirRegistoMotorista">ABRIR PAINEL MOTORISTAS</button>
+              <button class="btn" id="btnAbrirRegistoVeiculo">ABRIR PAINEL VEÍCULOS</button>
+            </div>
+          </div>
+
+          <!-- TAB OPERADORES SEGURANÇA -->
+          <div id="tabSegOp" style="padding:16px;display:none;flex-direction:column;gap:14px">
+            <div class="muted">Preencha os dados do gestor de segurança. O acesso ao dashboard será restrito ao país indicado — o operador apenas verá o mapa e eventos do seu país. O país fica bloqueado após o envio do convite.</div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="field"><label>Nome Completo *</label><input class="input" id="so_nome" placeholder="Nome e apelido"></div>
+              <div class="field"><label>Email *</label><input class="input" id="so_email" type="email" placeholder="operador@email.com"></div>
+              <div class="field"><label>NIF / CPF *</label><input class="input" id="so_nif" placeholder="NIF (9 dígitos) ou CPF (11 dígitos)" maxlength="14"></div>
+              <div class="field"><label>Nº Cartão de Cidadão (CC) *</label><input class="input" id="so_cc" placeholder="00000000 0 ZZ0"></div>
+              <div class="field"><label>Contacto / Telemóvel *</label><input class="input" id="so_contacto" placeholder="+351 900 000 000" type="tel"></div>
+              <div class="field">
+                <label>País de Actuação *</label>
+                <select class="select" id="so_pais">
+                  <option value="PT">🇵🇹 Portugal</option>
+                  <option value="BR">🇧🇷 Brasil</option>
+                  <option value="AO">🇦🇴 Angola</option>
+                  <option value="MZ">🇲🇿 Moçambique</option>
+                  <option value="CV">🇨🇻 Cabo Verde</option>
+                  <option value="ST">🇸🇹 São Tomé e Príncipe</option>
+                  <option value="GW">🇬🇼 Guiné-Bissau</option>
+                  <option value="GQ">🇬🇶 Guiné Equatorial</option>
+                  <option value="TL">🇹🇱 Timor-Leste</option>
+                </select>
+              </div>
+              <div class="field" style="grid-column:1/-1"><label>Endereço Completo *</label><input class="input" id="so_endereco" placeholder="Rua, nº, código postal, localidade"></div>
+            </div>
+
+            <div style="background:rgba(255,160,60,.07);border:1px solid rgba(255,160,60,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#ffc87a">
+              🔒 O país indicado será incorporado no link de convite e não pode ser alterado pelo operador. O dashboard de segurança apenas apresentará dados e eventos do país atribuído.
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+              <button class="btn" id="btnLimparSegOp">LIMPAR</button>
+              <button class="btn active" id="btnInviteSegOp">✉️ ENVIAR CONVITE</button>
+            </div>
+            <div class="msg" id="msgInviteSegOp">Pronto.</div>
+
+            <div style="border-top:1px solid var(--line);padding-top:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <span style="font-size:12px;font-weight:900;color:#fff;letter-spacing:.06em">GESTORES REGISTADOS</span>
+                <button class="btn" id="btnRefreshSegOp" style="min-height:30px;padding:0 10px;font-size:11px">↻ ATUALIZAR</button>
+              </div>
+              <div style="overflow-x:auto">
+                <table style="width:100%;border-collapse:collapse;font-size:12px">
+                  <thead>
+                    <tr style="border-bottom:1px solid var(--line)">
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">NOME</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">EMAIL</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">CONTACTO</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">PAÍS</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">ESTADO</th>
+                      <th style="text-align:left;padding:7px 10px;color:var(--silver-2);font-weight:800">AÇÕES</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodySegOp">
+                    <tr><td colspan="6" style="padding:18px;text-align:center;color:var(--silver-3)">Clique em ATUALIZAR.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ VALIDADORES ══ -->
+      <section id="view-validadores" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#fff;letter-spacing:.04em">Validadores</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:2px">Registo, estado e histórico de acesso</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="vldFiltroEstado" onchange="loadValidadores()" style="height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#e8eaed;font-size:11px;font-weight:600;padding:0 10px;font-family:inherit;cursor:pointer">
+              <option value="todos">Todos</option>
+              <option value="pendente">Aguarda Confirmação</option>
+              <option value="aprovado">Activos</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px">
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Total</div>
+            <div style="font-size:22px;font-weight:900;color:#fff" id="vldKpiTotal">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Activos</div>
+            <div style="font-size:22px;font-weight:900;color:#1fc97d" id="vldKpiAtivos">—</div>
+          </div>
+          <div id="vldKpiPendentesCard" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;transition:.15s;cursor:default" onclick="vldAbrirPendentes()">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Pendentes</div>
+            <div style="font-size:22px;font-weight:900;color:#f0a020" id="vldKpiPendentes">—</div>
+          </div>
+        </div>
+
+        <!-- Pendentes de validação — cards clicáveis -->
+        <div id="vldPendentesWrap" style="margin-bottom:20px;display:none">
+          <div style="font-size:11px;font-weight:700;color:#f0a020;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">⚠️ Pendentes de Validação</div>
+          <div id="vldPendentesCards" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+        <!-- Tabela completa -->
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:separate;border-spacing:0 6px">
+            <thead>
+              <tr style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase">
+                <th style="padding:8px 12px;text-align:left">Nome</th>
+                <th style="padding:8px 12px;text-align:left">Email</th>
+                <th style="padding:8px 12px;text-align:left">Scope</th>
+                <th style="padding:8px 12px;text-align:left">Estado</th>
+                <th style="padding:8px 12px;text-align:left">Data Registo</th>
+                <th style="padding:8px 12px;text-align:left">Último Login</th>
+                <th style="padding:8px 12px;text-align:left">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="vldTbody">
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:#6b7280;font-size:12px">A carregar…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="view-api-keys" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#fff;letter-spacing:.04em">API Keys — Empresas Parceiras</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:2px">Chaves de acesso para submissão externa de documentos ao sistema de validação</div>
+          </div>
+          <button onclick="pkOpenCreate()" style="height:38px;padding:0 18px;border-radius:12px;border:none;background:linear-gradient(180deg,#e2e7ee,#bec7d2);color:#000;font-weight:900;font-size:11px;letter-spacing:.06em;cursor:pointer">+ NOVA API KEY</button>
+        </div>
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px">
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Total</div>
+            <div style="font-size:22px;font-weight:900;color:#fff" id="pkKpiTotal">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Activas</div>
+            <div style="font-size:22px;font-weight:900;color:#1fc97d" id="pkKpiAtivas">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Live</div>
+            <div style="font-size:22px;font-weight:900;color:#f0a020" id="pkKpiLive">—</div>
+          </div>
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Sandbox</div>
+            <div style="font-size:22px;font-weight:900;color:#9ec5fe" id="pkKpiSandbox">—</div>
+          </div>
+        </div>
+
+        <!-- Portal link info -->
+        <div style="background:rgba(25,214,139,.05);border:1px solid rgba(25,214,139,.15);border-radius:14px;padding:14px 18px;margin-bottom:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:20px">📋</span>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:#e8eaed;margin-bottom:3px">Portal de submissão para empresas</div>
+            <div style="font-size:11px;color:#6b7280">As empresas parceiras acedem a <b style="color:#1fc97d">/parceiro-submit.html</b> para submeter motoristas e veículos directamente para validação.</div>
+          </div>
+          <button onclick="window.open('/Parceiro-submit.html','_blank')" style="height:32px;padding:0 14px;border-radius:8px;border:1px solid rgba(25,214,139,.3);background:rgba(25,214,139,.08);color:#1fc97d;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">ABRIR PORTAL ↗</button>
+        </div>
+
+        <!-- Lista de chaves -->
+        <div id="pkList" style="display:flex;flex-direction:column;gap:10px">
+          <div style="text-align:center;padding:40px;color:#6b7280;font-size:13px">A carregar…</div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#6b7280;text-align:center" id="pkMsg"></div>
+
+        <!-- MODAL CRIAR -->
+        <div id="pkModalCreate" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:20px">
+          <div style="background:#13161c;border:1px solid rgba(255,255,255,.12);border-radius:20px;width:min(500px,100%);padding:28px;box-shadow:0 40px 100px rgba(0,0,0,.7)">
+            <div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:6px">Nova API Key</div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:20px">A chave é exibida <b>uma única vez</b>. Envie à empresa por canal seguro.</div>
+
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#9ca3af;margin-bottom:5px">Empresa *</label><input id="pk_empresa" style="width:100%;height:42px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0a0c10;color:#f7f9fc;font-size:13px;outline:none" placeholder="Nome da empresa"></div>
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#9ca3af;margin-bottom:5px">Email *</label><input id="pk_email" type="email" style="width:100%;height:42px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0a0c10;color:#f7f9fc;font-size:13px;outline:none" placeholder="tech@empresa.pt"></div>
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#9ca3af;margin-bottom:5px">Ambiente</label>
+              <select id="pk_ambiente" style="width:100%;height:42px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0a0c10;color:#f7f9fc;font-size:13px;outline:none">
+                <option value="sandbox">Sandbox — testes</option>
+                <option value="live">Live — produção</option>
+              </select>
+            </div>
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#9ca3af;margin-bottom:5px">Webhook URL (opcional)</label><input id="pk_webhook" style="width:100%;height:42px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0a0c10;color:#f7f9fc;font-size:13px;outline:none" placeholder="https://empresa.pt/webhook"></div>
+
+            <!-- Resultado da criação -->
+            <div id="pkReveal" style="display:none;background:rgba(25,214,139,.07);border:1px solid rgba(25,214,139,.2);border-radius:12px;padding:16px;margin-bottom:14px">
+              <div style="font-size:11px;font-weight:700;color:#1fc97d;margin-bottom:8px">✅ Chave gerada — copie agora</div>
+              <div id="pkRevealVal" style="font-family:monospace;font-size:12px;color:#f7f9fc;word-break:break-all;background:rgba(0,0,0,.3);border-radius:8px;padding:10px;margin-bottom:8px"></div>
+              <div style="font-size:10px;color:rgba(255,200,0,.7)">⚠️ Não será exibida novamente.</div>
+              <div style="display:flex;gap:8px;margin-top:10px;">
+                <button onclick="pkCopyKey()" style="flex:1;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#e2e7ee;font-weight:700;font-size:11px;cursor:pointer">📋 COPIAR</button>
+                <button id="pkBtnSendEmail" onclick="pkSendEmail()" style="flex:1;height:36px;border-radius:8px;border:none;background:linear-gradient(180deg,#e2e7ee,#bec7d2);color:#000;font-weight:900;font-size:11px;cursor:pointer">📧 ENVIAR POR EMAIL</button>
+              </div>
+              <div id="pkEmailStatus" style="display:none;margin-top:8px;font-size:11px;text-align:center;border-radius:8px;padding:7px 10px;"></div>
+            </div>
+
+            <div id="pkCreateMsg" style="font-size:12px;margin-bottom:12px;display:none"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button onclick="pkCloseCreate()" style="height:38px;padding:0 16px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e8eaed;font-size:12px;font-weight:700;cursor:pointer">FECHAR</button>
+              <button id="pkBtnCreate" onclick="pkCreate()" style="height:38px;padding:0 18px;border-radius:10px;border:none;background:linear-gradient(180deg,#e2e7ee,#bec7d2);color:#000;font-size:12px;font-weight:900;cursor:pointer">CRIAR CHAVE</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api-client.js"></script>
+<script src="/js/auth-session.js"></script>
+
+
+<div id="overlay-motorista" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:#fff; width:90%; max-width:600px; border-radius:12px; padding:20px;">
+    <h2 style="color:#000; margin-bottom:12px;">Registar Motorista</h2>
+    <input type="text" id="motorista-nome" placeholder="Nome" style="width:100%; margin-bottom:10px; padding:10px;" />
+    <input type="email" id="motorista-email" placeholder="Email" style="width:100%; margin-bottom:10px; padding:10px;" />
+    <input type="text" id="motorista-contacto" placeholder="Contacto" style="width:100%; margin-bottom:10px; padding:10px;" />
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button id="fechar-overlay-motorista">Fechar</button>
+      <button id="guardar-overlay-motorista">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL REGISTAR MOTORISTA ═══════════════════════════ -->
+<div id="modalRegMotorista" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0e1016;border:1px solid rgba(217,221,227,.2);border-radius:22px;width:min(600px,96vw);max-height:90vh;overflow-y:auto;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h3 style="color:#fff;font-size:16px;font-weight:900;letter-spacing:.06em">REGISTAR MOTORISTA</h3>
+      <button id="closeRegMotorista" style="background:none;border:none;color:var(--silver-2);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field" style="grid-column:1/-1"><label>Nome completo *</label><input class="input" id="rm_nome" placeholder="Nome do motorista" style="width:100%"></div>
+      <div class="field"><label>Email *</label><input class="input" id="rm_email" type="email" placeholder="email@dominio.com" style="width:100%"></div>
+      <div class="field"><label>Telefone *</label><input class="input" id="rm_telefone" placeholder="+351 9XX XXX XXX" style="width:100%"></div>
+      <div class="field"><label>Categoria</label>
+        <select class="select" id="rm_categoria" style="width:100%">
+          <option value="economica">Económica</option>
+          <option value="confort">Conforto</option>
+          <option value="executive">Executiva</option>
+          <option value="luxury">Luxo</option>
+          <option value="grupo6">Grupo 6</option>
+        </select>
+      </div>
+      <div class="field"><label>Idioma</label>
+        <select class="select" id="rm_idioma" style="width:100%">
+          <option value="PT">Português</option>
+          <option value="EN">Inglês</option>
+          <option value="ES">Espanhol</option>
+          <option value="FR">Francês</option>
+        </select>
+      </div>
+      <div class="field"><label>BI / Passaporte (PDF ou imagem)</label><input type="file" id="rm_bi" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;color:var(--silver-2)"></div>
+      <div class="field"><label>Carta de Condução</label><input type="file" id="rm_carta" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;color:var(--silver-2)"></div>
+      <div class="field" style="grid-column:1/-1"><label>Foto de Perfil</label><input type="file" id="rm_foto" accept=".jpg,.jpeg,.png,.webp" style="width:100%;color:var(--silver-2)"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+      <button class="btn" id="closeRegMotorista2">CANCELAR</button>
+      <button class="btn active" id="btnSubmitMotorista">REGISTAR</button>
+    </div>
+    <div class="msg" id="msgRegMotorista" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL REGISTAR VEÍCULO ══════════════════════════════ -->
+<div id="modalRegVeiculo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0e1016;border:1px solid rgba(217,221,227,.2);border-radius:22px;width:min(620px,96vw);max-height:90vh;overflow-y:auto;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h3 style="color:#fff;font-size:16px;font-weight:900;letter-spacing:.06em">REGISTAR VEÍCULO</h3>
+      <button id="closeRegVeiculo" style="background:none;border:none;color:var(--silver-2);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Matrícula *</label><input class="input" id="rv_matricula" placeholder="XX-XX-XX" style="width:100%"></div>
+      <div class="field"><label>Marca *</label><input class="input" id="rv_marca" placeholder="Toyota, BMW..." style="width:100%"></div>
+      <div class="field"><label>Modelo *</label><input class="input" id="rv_modelo" placeholder="Camry, 5 Series..." style="width:100%"></div>
+      <div class="field"><label>Ano</label><input class="input" id="rv_ano" type="number" placeholder="2024" style="width:100%"></div>
+      <div class="field"><label>Cor</label><input class="input" id="rv_cor" placeholder="Preto, Branco..." style="width:100%"></div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Categoria</label>
+        <div style="padding:10px 12px;border-radius:10px;border:1px dashed rgba(217,221,227,.25);color:var(--silver-3);font-size:11px">
+          ℹ️ Atribuída automaticamente a partir da Marca/Modelo, conforme configurado em <strong>"Categorias Veículos"</strong>. Se o registo falhar com "modelo não configurado", adicione esta Marca/Modelo nesse painel primeiro.
+        </div>
+      </div>
+      <div class="field"><label>Lugares</label><input class="input" id="rv_lugares" type="number" placeholder="4" style="width:100%"></div>
+      <div class="field"><label>Seguro (PDF)</label><input type="file" id="rv_seguro" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;color:var(--silver-2)"></div>
+      <div class="field"><label>Inspeção (PDF)</label><input type="file" id="rv_inspecao" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;color:var(--silver-2)"></div>
+      <div class="field"><label>Registo/DUA (PDF)</label><input type="file" id="rv_registo" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;color:var(--silver-2)"></div>
+      <div class="field"><label>Foto do Veículo</label><input type="file" id="rv_foto" accept=".jpg,.jpeg,.png,.webp" style="width:100%;color:var(--silver-2)"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+      <button class="btn" id="closeRegVeiculo2">CANCELAR</button>
+      <button class="btn active" id="btnSubmitVeiculo">REGISTAR</button>
+    </div>
+    <div class="msg" id="msgRegVeiculo" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+
+(() => {
+  const API_BASE = "";
+
+  const joinUrl = (base, path) =>
+    String(base || "").replace(/\/$/, "") + "/" + String(path || "").replace(/^\//, "");
+
+  async function request(path, opts = {}) {
+    const res = await fetch(joinUrl(API_BASE, path), {
+      credentials: "include",
+      ...opts
+    }).catch(() => null);
+
+    if (!res) throw new Error("Sem ligação ao servidor.");
+
+    const txt = await res.text().catch(() => "");
+    let data = {};
+    try { data = txt ? JSON.parse(txt) : {}; }
+    catch { data = { message: txt }; }
+
+    if (!res.ok) throw new Error(data?.message || ("HTTP " + res.status));
+    return data;
+  }
+
+  async function ensureAdminMasterOrRedirect() {
+    try {
+      const me = await request("/api/admin/me");
+      const tipo = String(me?.admin?.tipo || "").toLowerCase();
+      if (tipo !== "adminmaster") throw new Error("Sem permissão.");
+      return true;
+    } catch {
+      const next = encodeURIComponent(location.pathname + location.search);
+      location.replace(`/admin-login.html?next=${next}`);
+      return false;
+    }
+  }
+
+  const ROUTES = {
+    logout:              "/api/admin/logout",
+    // KMS e Quote — via adminRoutes montado em /admin
+    kmsGet:              "/api/admin/kms",
+    kmsPut:              "/api/admin/kms",
+    quoteGet:         "/api/admin/quote-config",
+    quotePut:         "/api/admin/quote-config",
+    // Faturação
+    faturasGet:          "/api/faturacao",
+    // Parceiros — parceiroInviteRoutes montado em /api/admin/parceiros
+    parceiroConvites:    "/api/admin/parceiros/convites",
+    parceiroConvitePatch: (id) => `/api/admin/parceiros/convites/${id}`,
+    parceiroConviteDelete:(id) => `/api/admin/parceiros/convites/${id}`,
+    // Categorias de veículos
+    vcGet:    "/api/admin/vehicle-categories",
+    vcPost:   "/api/admin/vehicle-categories",
+    vcDelete: (id) => `/api/admin/vehicle-categories/${id}`,
+    // Motoristas — admin.routes.js /api/admin → /validacoes/motoristas
+    motoristasGet:       "/api/admin/validacoes/motoristas",
+    bloquearMotorista:   (id) => `/api/admin/validacoes/motoristas/${id}`,
+    // Colaboradores — admin.routes.js /api/admin → /validacoes/colaboradores
+    colaboradoresGet:    (s) => `/api/admin/validacoes/colaboradores?status=${encodeURIComponent(s)}`,
+    // Veículos — admin.routes.js /api/admin → /veiculos
+    veiculosGet:         (s) => `/api/admin/veiculos?status=${encodeURIComponent(s)}`,
+    // Viagens e Audit
+    viagensGet:          "/api/admin/viagens",
+    auditGet:            "/api/admin/audit",
+    // Convites de colaborador e validador
+    inviteColab:         "/api/admin/colaboradores/invite",
+    inviteValidador:     "/api/admin/validadores/invite",
+    // Registo de motorista e veículo (via formulários modais)
+    registarMotorista:   "/api/admin/motoristas/registo",
+    registarVeiculo:     "/api/veiculos/registo",
+  };
+
+  const overlayMotorista = document.getElementById("overlay-motorista");
+  const btnAbrirOverlayMotorista = document.getElementById("btnAbrirRegistoMotorista");
+  const btnFecharOverlayMotorista = document.getElementById("fechar-overlay-motorista");
+  const btnGuardarOverlayMotorista = document.getElementById("guardar-overlay-motorista");
+
+  function abrirOverlayMotorista() {
+    overlayMotorista.style.display = "flex";
+  }
+
+  function fecharOverlayMotorista() {
+    if (overlayMotorista) overlayMotorista.style.display = "none";
+    ["motorista-nome","motorista-email","motorista-contacto"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = "";
+    });
+  }
+
+  if (btnAbrirOverlayMotorista)  btnAbrirOverlayMotorista.onclick  = abrirOverlayMotorista;
+  if (btnFecharOverlayMotorista) btnFecharOverlayMotorista.onclick = fecharOverlayMotorista;
+
+  if (btnGuardarOverlayMotorista) {
+    btnGuardarOverlayMotorista.onclick = async () => {
+      const msgEl    = document.getElementById("msgInviteColab");
+      const setMsg   = t => { if (msgEl) msgEl.textContent = t; };
+      const nome     = document.getElementById("motorista-nome")?.value?.trim();
+      const email    = document.getElementById("motorista-email")?.value?.trim();
+      const contacto = document.getElementById("motorista-contacto")?.value?.trim();
+
+      if (!nome || !email || !contacto) { setMsg("❌ Nome, email e contacto são obrigatórios."); return; }
+
+      try {
+        btnGuardarOverlayMotorista.disabled = true;
+        setMsg("A criar motorista...");
+        const data = await request(ROUTES.criarMotorista, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, email, contacto })
+        });
+        setMsg("✅ " + (data?.message || "Motorista criado com sucesso."));
+        fecharOverlayMotorista();
+        await loadMotoristas();
+      } catch (e) {
+        setMsg("❌ " + (e?.message || e));
+      } finally {
+        btnGuardarOverlayMotorista.disabled = false;
+      }
+    };
+  }
+
+  if (overlayMotorista) {
+    overlayMotorista.addEventListener("click", (e) => {
+      if (e.target === overlayMotorista) fecharOverlayMotorista();
+    });
+  }
+
+  const tabs = document.querySelectorAll(".tab");
+  const views = ["kms","quote","parceiros","colaboradores","motoristas","veiculos","viagens","audit","invite-colab","validadores","api-keys"];
+
+  function show(view){
+    tabs.forEach(t => t.classList.toggle("active", t.dataset.view === view));
+    views.forEach(v => {
+      const sec = document.getElementById("view-" + v);
+      if (sec) sec.style.display = (v === view) ? "" : "none";
+    });
+    // carregar dados automaticamente ao seleccionar tab
+    if (view === "kms")   { loadKms(); }
+    if (view === "quote")      { setTimeout(function(){ loadQuote(); }, 50); }
+    if (view === "validadores") { loadValidadores(); }
+    if (view === "api-keys")     { pkLoad(); }
+  }
+
+
+  /* ════════════════════════════════════════════════════════
+     API KEYS — GESTÃO DE PARCEIROS EXTERNOS
+  ════════════════════════════════════════════════════════ */
+  let _pkCurrentKey = "";
+
+  async function pkLoad() {
+    const list = document.getElementById("pkList");
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:#6b7280;font-size:12px">A carregar…</div>';
+    try {
+      const data = await request("/api/admin/partner-keys");
+      const keys = Array.isArray(data?.keys) ? data.keys : [];
+
+      // KPIs
+      document.getElementById("pkKpiTotal").textContent   = keys.length;
+      document.getElementById("pkKpiAtivas").textContent  = keys.filter(k => k.ativo).length;
+      document.getElementById("pkKpiLive").textContent    = keys.filter(k => k.ambiente === "live" && k.ativo).length;
+      document.getElementById("pkKpiSandbox").textContent = keys.filter(k => k.ambiente === "sandbox" && k.ativo).length;
+
+      if (!keys.length) {
+        list.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280;font-size:13px">Nenhuma API Key criada ainda.<br>Clique em <b style=\"color:#e8eaed\">+ NOVA API KEY</b> para começar.</div>';
+        return;
+      }
+
+      list.innerHTML = keys.map(k => {
+        const badgeColor = k.ativo
+          ? (k.ambiente === "live" ? "rgba(25,214,139,.12)" : "rgba(158,197,254,.1)")
+          : "rgba(255,90,90,.1)";
+        const badgeText  = k.ativo
+          ? (k.ambiente === "live" ? "● LIVE" : "● SANDBOX")
+          : "● REVOGADA";
+        const badgeFg    = k.ativo
+          ? (k.ambiente === "live" ? "#1fc97d" : "#9ec5fe")
+          : "#ff9090";
+        const lastUsed   = k.lastUsedAt
+          ? new Date(k.lastUsedAt).toLocaleDateString("pt-PT")
+          : "Nunca usada";
+        const perms = (k.permissoes || []).map(p =>
+          `<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#9ca3af;font-family:monospace">${p}</span>`
+        ).join(" ");
+
+        const actions = k.ativo
+          ? `<button onclick="pkRotate('${k._id}')" style="height:28px;padding:0 10px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e8eaed;font-size:10px;font-weight:700;cursor:pointer">↻ RODAR</button>
+             <button onclick="pkRevoke('${k._id}')" style="height:28px;padding:0 10px;border-radius:7px;border:1px solid rgba(255,90,90,.3);background:rgba(255,90,90,.07);color:#ff9090;font-size:10px;font-weight:700;cursor:pointer">✕ REVOGAR</button>`
+          : `<button onclick="pkReactivate('${k._id}')" style="height:28px;padding:0 10px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e8eaed;font-size:10px;font-weight:700;cursor:pointer">↩ REACTIVAR</button>`;
+
+        return `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;position:relative">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff">${k.empresa}</div>
+              <div style="font-size:11px;color:#6b7280;margin-top:2px">${k.email}</div>
+            </div>
+            <span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;background:${badgeColor};color:${badgeFg}">${badgeText}</span>
+          </div>
+          <div style="font-family:monospace;font-size:11px;color:#9ca3af;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:7px 10px;margin-bottom:10px">${k.keyPreview || "rm_...ocultada"}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">${perms}</div>
+          <div style="font-size:10px;color:#6b7280;margin-bottom:10px">
+            Criada: ${new Date(k.createdAt).toLocaleDateString("pt-PT")} &nbsp;·&nbsp;
+            ${lastUsed}
+            ${k.totalUsos ? ` &nbsp;·&nbsp; ${k.totalUsos} usos` : ""}
+            ${k.webhookUrl ? `<br>Webhook: <span style="color:#9ca3af">${k.webhookUrl}</span>` : ""}
+            ${k.notas ? `<br>Nota: ${k.notas}` : ""}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">${actions}</div>
+        </div>`;
+      }).join("");
+    } catch (err) {
+      list.innerHTML = `<div style="text-align:center;padding:30px;color:#ff9090;font-size:12px">❌ ${err.message}</div>`;
+    }
+  }
+
+  function pkOpenCreate() {
+    _pkCurrentKey = "";
+    document.getElementById("pkReveal").style.display   = "none";
+    document.getElementById("pkCreateMsg").style.display= "none";
+    document.getElementById("pkBtnCreate").style.display= "";
+    document.getElementById("pk_empresa").value = "";
+    document.getElementById("pk_email").value   = "";
+    document.getElementById("pk_webhook").value = "";
+    document.getElementById("pk_ambiente").value= "sandbox";
+    document.getElementById("pkModalCreate").style.display = "flex";
+  }
+
+  function pkCloseCreate() {
+    document.getElementById("pkModalCreate").style.display = "none";
+    pkLoad();
+  }
+
+  async function pkCreate() {
+    const btn = document.getElementById("pkBtnCreate");
+    const msg = document.getElementById("pkCreateMsg");
+    const empresa  = document.getElementById("pk_empresa").value.trim();
+    const email    = document.getElementById("pk_email").value.trim();
+    const ambiente = document.getElementById("pk_ambiente").value;
+    const webhook  = document.getElementById("pk_webhook").value.trim();
+
+    if (!empresa || !email) {
+      msg.style.display = "block"; msg.style.color = "#ff9090";
+      msg.textContent = "Empresa e email são obrigatórios."; return;
+    }
+
+    btn.disabled = true; btn.textContent = "A criar...";
+    try {
+      const data = await request("/api/admin/partner-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empresa, email, ambiente,
+          permissoes: ["submit:driver","submit:vehicle","read:status"],
+          webhookUrl: webhook,
+        }),
+      });
+
+      _pkCurrentKey = data.apiKey || "";
+      document.getElementById("pkRevealVal").textContent = _pkCurrentKey;
+      document.getElementById("pkReveal").style.display = "block";
+      document.getElementById("pkBtnCreate").style.display = "none";
+
+      // Mostrar estado do envio de email automático
+      const statusEl = document.getElementById("pkEmailStatus");
+      if (data.emailSent === true) {
+        statusEl.style.display    = "block";
+        statusEl.style.background = "rgba(25,214,139,.08)";
+        statusEl.style.color      = "#1fc97d";
+        statusEl.style.border     = "1px solid rgba(25,214,139,.2)";
+        statusEl.textContent      = "✅ Email enviado automaticamente para " + email;
+        msg.style.display = "block"; msg.style.color = "#1fc97d";
+        msg.textContent = "✅ Chave criada com sucesso.";
+      } else {
+        statusEl.style.display    = "block";
+        statusEl.style.background = "rgba(255,160,0,.07)";
+        statusEl.style.color      = "#f0a020";
+        statusEl.style.border     = "1px solid rgba(255,160,0,.2)";
+        statusEl.textContent      = "⚠️ Chave criada mas email não enviado. Clique em 📧 ENVIAR POR EMAIL.";
+        msg.style.display = "block"; msg.style.color = "#1fc97d";
+        msg.textContent = "✅ Chave criada. Use o botão abaixo para enviar por email.";
+      }
+    } catch (err) {
+      msg.style.display = "block"; msg.style.color = "#ff9090";
+      msg.textContent = "❌ " + err.message;
+    } finally {
+      btn.disabled = false;
+      if (btn.style.display !== "none") btn.textContent = "CRIAR CHAVE";
+    }
+  }
+
+  function pkCopyKey() {
+    if (!_pkCurrentKey) return;
+    navigator.clipboard.writeText(_pkCurrentKey).then(() => {
+      const b = document.getElementById("pkBtnSendEmail")?.previousElementSibling;
+      if (b) { const orig = b.textContent; b.textContent = "✅ COPIADO!"; setTimeout(() => b.textContent = orig, 2000); }
+    });
+  }
+
+  async function pkSendEmail() {
+    if (!_pkCurrentKey) return;
+    const btn      = document.getElementById("pkBtnSendEmail");
+    const statusEl = document.getElementById("pkEmailStatus");
+    const email    = document.getElementById("pk_email").value.trim();
+    const empresa  = document.getElementById("pk_empresa").value.trim();
+    const ambiente = document.getElementById("pk_ambiente").value;
+
+    if (!email) {
+      statusEl.style.display     = "block";
+      statusEl.style.background  = "rgba(255,90,90,.1)";
+      statusEl.style.color       = "#ff9090";
+      statusEl.style.border      = "1px solid rgba(255,90,90,.25)";
+      statusEl.textContent       = "❌ Email em falta. Preencha o campo Email.";
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = "A enviar...";
+    statusEl.style.display = "none";
+
+    try {
+      await request("/api/admin/partner-keys/send-email", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to:      email,
+          empresa,
+          apiKey:  _pkCurrentKey,
+          ambiente,
+        }),
+      });
+      statusEl.style.display    = "block";
+      statusEl.style.background = "rgba(25,214,139,.08)";
+      statusEl.style.color      = "#1fc97d";
+      statusEl.style.border     = "1px solid rgba(25,214,139,.25)";
+      statusEl.textContent      = "✅ Email enviado para " + email;
+      btn.textContent           = "✅ ENVIADO";
+      setTimeout(() => { btn.disabled = false; btn.textContent = "📧 ENVIAR POR EMAIL"; }, 3000);
+    } catch (err) {
+      statusEl.style.display    = "block";
+      statusEl.style.background = "rgba(255,90,90,.08)";
+      statusEl.style.color      = "#ff9090";
+      statusEl.style.border     = "1px solid rgba(255,90,90,.2)";
+      statusEl.textContent      = "❌ " + (err.message || "Erro ao enviar email.");
+      btn.disabled              = false;
+      btn.textContent           = "📧 ENVIAR POR EMAIL";
+    }
+  }
+
+  async function pkRevoke(id) {
+    if (!confirm("Revogar esta API Key? A empresa deixará de conseguir submeter documentos.")) return;
+    try {
+      await request("/api/admin/partner-keys/" + id, { method: "DELETE" });
+      pkLoad();
+    } catch(err) { alert("Erro: " + err.message); }
+  }
+
+  async function pkReactivate(id) {
+    if (!confirm("Reactivar esta API Key?")) return;
+    try {
+      await request("/api/admin/partner-keys/" + id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ativo: true }),
+      });
+      pkLoad();
+    } catch(err) { alert("Erro: " + err.message); }
+  }
+
+  async function pkRotate(id) {
+    if (!confirm("Gerar nova chave? A chave actual ficará inválida imediatamente.")) return;
+    try {
+      const data = await request("/api/admin/partner-keys/" + id + "/rotate", { method: "POST" });
+      const newKey = data.apiKey || "";
+      alert("Nova chave gerada:\n\n" + newKey + "\n\nEnvie esta chave à empresa. Não será exibida novamente.");
+      pkLoad();
+    } catch(err) { alert("Erro: " + err.message); }
+  }
+
+  tabs.forEach(t => t.onclick = () => show(t.dataset.view));
+
+  document.getElementById("btnSair").onclick = async () => {
+    try { await request(ROUTES.logout, { method: "POST" }); } catch {}
+    location.replace("/admin-login.html");
+  };
+
+  document.getElementById("btnPainelViagens").onclick = () => {
+    location.href = "admin-master.html";
+  };
+
+  /* ── VALIDADORES ─────────────────────────────────────── */
+  async function loadValidadores() {
+    const tbody  = document.getElementById("vldTbody");
+    const filtro = document.getElementById("vldFiltroEstado")?.value || "todos";
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#6b7280;font-size:12px">A carregar…</td></tr>';
+    try {
+      const data = await request("/api/admin/validadores/listar?status=" + filtro);
+      const lista = Array.isArray(data?.validadores) ? data.validadores : (Array.isArray(data) ? data : []);
+
+      // KPIs
+      const total    = lista.length;
+      const ativos   = lista.filter(v => v.aprovado === true).length;
+      const pend     = lista.filter(v => !v.aprovado).length;
+      document.getElementById("vldKpiTotal").textContent    = total;
+      document.getElementById("vldKpiAtivos").textContent   = ativos;
+      document.getElementById("vldKpiPendentes").textContent = pend;
+
+      if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#6b7280;font-size:12px">Nenhum validador encontrado.</td></tr>';
+        return;
+      }
+
+      const scopeLabel = { motoristas:"Motoristas", veiculos:"Veículos", empresa:"Empresa", global:"Global" };
+      tbody.innerHTML = lista.map(v => {
+        const bloqueado = !v.aprovado && v.validacao?.status === "desativado";
+        const pendente  = !v.aprovado && !bloqueado;
+
+        const estado = v.aprovado
+          ? '<span style="background:rgba(31,201,125,.12);border:1px solid rgba(31,201,125,.3);color:#1fc97d;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">ACTIVO</span>'
+          : bloqueado
+            ? '<span style="background:rgba(240,80,80,.10);border:1px solid rgba(240,80,80,.3);color:#f05050;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">BLOQUEADO</span>'
+            : '<span style="background:rgba(240,160,32,.10);border:1px solid rgba(240,160,32,.3);color:#f0a020;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">PENDENTE</span>';
+
+        const registo = v.createdAt   ? new Date(v.createdAt).toLocaleString("pt-PT")   : "—";
+        const ultimo  = v.ultimoLogin ? new Date(v.ultimoLogin).toLocaleString("pt-PT")  : "—";
+        const scope   = scopeLabel[v.scope] || v.scope || "—";
+        const nome    = v.nome || "—";
+        const eid     = v._id;
+        const enome   = (v.nome || v.email || "").replace(/'/g, "&#39;");
+
+        const btnExcluir = `<button onclick="vldExcluir('${eid}','${enome}')" style="height:28px;padding:0 10px;border-radius:6px;border:1px solid rgba(240,80,80,.3);background:rgba(240,80,80,.08);color:#f05050;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">EXCLUIR</button>`;
+
+        let btnAcao = "";
+        if (pendente)   btnAcao = `<button onclick="vldAprovar('${eid}')"      style="height:28px;padding:0 10px;border-radius:6px;border:1px solid rgba(31,201,125,.3);background:rgba(31,201,125,.08);color:#1fc97d;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:4px">APROVAR</button>`;
+        else if (v.aprovado) btnAcao = `<button onclick="vldBloquear('${eid}')" style="height:28px;padding:0 10px;border-radius:6px;border:1px solid rgba(240,160,32,.3);background:rgba(240,160,32,.08);color:#f0a020;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:4px">BLOQUEAR</button>`;
+        else            btnAcao = `<button onclick="vldDesbloquear('${eid}')" style="height:28px;padding:0 10px;border-radius:6px;border:1px solid rgba(31,201,125,.3);background:rgba(31,201,125,.08);color:#1fc97d;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:4px">DESBLOQUEAR</button>`;
+
+        return `<tr style="background:rgba(255,255,255,.03);border-radius:10px">
+          <td style="padding:10px 12px;font-size:12px;font-weight:600;color:#e8eaed">${nome}</td>
+          <td style="padding:10px 12px;font-size:11px;color:#8a939f">${v.email || "—"}</td>
+          <td style="padding:10px 12px;font-size:11px;color:#8a939f">${scope}</td>
+          <td style="padding:10px 12px">${estado}</td>
+          <td style="padding:10px 12px;font-size:11px;color:#6b7280">${registo}</td>
+          <td style="padding:10px 12px;font-size:11px;color:#6b7280">${ultimo}</td>
+          <td style="padding:10px 12px;display:flex;gap:4px;flex-wrap:wrap">${btnAcao}${btnExcluir}</td>
+        </tr>`;
+      }).join("");
+    } catch(err) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#f05050;font-size:12px">Erro: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function vldAprovar(id) {
+    if (!confirm("Aprovar este validador?")) return;
+    try { await request("/api/admin/validadores/aprovar/" + id, { method: "POST" }); loadValidadores(); }
+    catch(err) { alert("Erro: " + err.message); }
+  }
+
+  async function vldBloquear(id) {
+    if (!confirm("Bloquear este validador? Perderá acesso imediatamente.")) return;
+    try { await request("/api/admin/validadores/desativar/" + id, { method: "POST" }); loadValidadores(); }
+    catch(err) { alert("Erro: " + err.message); }
+  }
+
+  async function vldDesbloquear(id) {
+    if (!confirm("Desbloquear este validador?")) return;
+    try { await request("/api/admin/validadores/aprovar/" + id, { method: "POST" }); loadValidadores(); }
+    catch(err) { alert("Erro: " + err.message); }
+  }
+
+  async function vldExcluir(id, nome) {
+    if (!confirm("ATENÇÃO: Eliminar permanentemente o validador '" + nome + "'?\nEsta acção não pode ser revertida.")) return;
+    try { await request("/api/admin/validadores/excluir/" + id, { method: "DELETE" }); loadValidadores(); }
+    catch(err) { alert("Erro: " + err.message); }
+  }
+
+  // ── Overlay validadores pendentes ─────────────────────────
+  async function abrirValidadoresPendentes() {
+    const ov    = document.getElementById("ovValidadoresPendentes");
+    const lista = document.getElementById("ovVldLista");
+    ov.style.display = "flex";
+    lista.innerHTML  = '<div style="text-align:center;padding:24px;color:#6b7280;font-size:12px">A carregar…</div>';
+    try {
+      const data   = await request("/api/admin/validadores/listar?status=pendente");
+      const items  = Array.isArray(data?.validadores) ? data.validadores : [];
+      if (!items.length) {
+        lista.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;font-size:12px">Nenhum validador pendente.</div>';
+        return;
+      }
+      const scopeLabel = { motoristas:"Motoristas", veiculos:"Veículos", empresa:"Empresa", global:"Global" };
+      lista.innerHTML = items.map(v => {
+        const ini   = (v.nome || v.email || "V")[0].toUpperCase();
+        const scope = scopeLabel[v.scope] || v.scope || "—";
+        return `<div class="vld-card-pendente" onclick="abrirValidacaoValidador('${v._id}')">
+          <div class="vld-card-avatar">${ini}</div>
+          <div class="vld-card-info">
+            <strong>${v.nome || "—"}</strong>
+            <span>${v.contacto || "—"} · ${v.email || "—"}</span>
+          </div>
+          <div class="vld-card-scope">${scope}</div>
+        </div>`;
+      }).join("");
+    } catch(err) {
+      lista.innerHTML = `<div style="text-align:center;padding:24px;color:#f05050;font-size:12px">Erro: ${err.message}</div>`;
+    }
+  }
+
+  function abrirValidacaoValidador(id) {
+    document.getElementById("ovValidadoresPendentes").style.display = "none";
+    window.open("/validacao.html?mode=validadores&id=" + id, "_blank");
+  }
+
+  window.abrirValidadoresPendentes = abrirValidadoresPendentes;
+
+  function vldAbrirPendentes() {
+    const pend = parseInt(document.getElementById("vldKpiPendentes")?.textContent || "0");
+    if (!pend) return; // sem pendentes — não faz nada
+    window.open("/validacao.html?mode=validadores", "_blank");
+  }
+  window.vldAbrirPendentes = vldAbrirPendentes;
+
+  // Expor funções de validadores ao scope global (necessário para onclick nos botões)
+  window.loadValidadores  = loadValidadores;
+  window.vldAprovar       = vldAprovar;
+  window.vldBloquear      = vldBloquear;
+  window.vldDesbloquear   = vldDesbloquear;
+  window.vldExcluir       = vldExcluir;
+
+  /* ── API KEYS — expor para onclick nos botões HTML ── */
+  window.pkOpenCreate = pkOpenCreate;
+  window.pkCloseCreate= pkCloseCreate;
+  window.pkCreate     = pkCreate;
+  window.pkCopyKey    = pkCopyKey;
+  window.pkSendEmail  = pkSendEmail;
+  window.pkRevoke     = pkRevoke;
+  window.pkReactivate = pkReactivate;
+  window.pkRotate     = pkRotate;
+
+  function safeText(x){ return (x === null || x === undefined || x === "") ? "-" : String(x); }
+
+  function statusBadge(st){
+    const x = String(st || "pendente").toLowerCase();
+    const cls =
+      x === "ativo" || x === "aprovado" || x === "emitida" || x === "paga" ? "s-ativo" :
+      x === "rejeitado" || x === "recusado" ? "s-recusado" :
+      x === "expirado" ? "s-expirado" : "s-pendente";
+    return `<span class="status ${cls}">${x.toUpperCase()}</span>`;
+  }
+
+  function getId(obj) {
+    return String(
+      obj?._id ||
+      obj?.id ||
+      obj?.motoristaId ||
+      obj?.colaboradorId ||
+      obj?.collaboratorId ||
+      obj?.frotaId ||
+      ""
+    );
+  }
+
+  function getMoneyFromTrip(v) {
+    const n =
+      Number(v?.valor) ||
+      Number(v?.quote?.total) ||
+      Number(v?.quote?.baseTotal) ||
+      Number(v?.paymentPlan?.customerDue) ||
+      0;
+
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function getTripDate(v) {
+    return (
+      v?.when ||
+      v?.date ||
+      v?.tripDate ||
+      v?.createdAt ||
+      null
+    );
+  }
+
+  function getTripDriverId(v) {
+    return String(
+      v?.motoristaId ||
+      v?.driverId ||
+      v?.driver?.driverId ||
+      v?.driver?._id ||
+      v?.motorista?.id ||
+      v?.motorista?._id ||
+      ""
+    );
+  }
+
+  function getTripPartnerName(v) {
+    return (
+      v?.collaborator?.empresa ||
+      v?.colaborador?.empresa ||
+      v?.partnerName ||
+      v?.partner?.nome ||
+      v?.customer?.empresa ||
+      v?.customer?.nome ||
+      v?.canal ||
+      "-"
+    );
+  }
+
+  function getTripRequesterName(v) {
+    return (
+      v?.customer?.nome ||
+      v?.customer?.email ||
+      v?.colaborador?.nome ||
+      v?.collaborator?.nome ||
+      v?.collaborator?.empresa ||
+      v?.colaborador?.empresa ||
+      "-"
+    );
+  }
+
+  function isTripCompleted(v) {
+    const st = String(v?.status || "").toLowerCase();
+    const pay = String(v?.paymentStatus || "").toLowerCase();
+
+    return (
+      st === "completed" ||
+      st === "concluida" ||
+      st === "concluída" ||
+      st === "finalizada" ||
+      pay === "paid" ||
+      pay === "paga"
+    );
+  }
+
+  function isTripCancelled(v) {
+    const st = String(v?.status || "").toLowerCase();
+    return (
+      st === "cancelled" ||
+      st === "canceled" ||
+      st === "cancelada"
+    );
+  }
+
+  function getMotoristaIban(m) {
+    return (
+      m?.iban ||
+      m?.IBAN ||
+      m?.dadosBancarios?.iban ||
+      m?.bank?.iban ||
+      "-"
+    );
+  }
+
+  function formatMoney(v) {
+    const n = Number(v || 0);
+    return `${(Number.isFinite(n) ? n : 0).toFixed(2)} €`;
+  }
+
+  function formatDate(v) {
+    if (!v) return "-";
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleString("pt-PT");
+  }
+
+  const kmsGrid = document.getElementById("kmsGrid");
+  const msgKms = document.getElementById("msgKms");
+  let kmsState = [];
+
+  const defaultKmsSeed = [
+    { key: "economica", label: "Económica", valorPorKm: 0.85, ativo: true },
+    { key: "confort", label: "Conforto", valorPorKm: 1.05, ativo: true },
+    { key: "executive", label: "Executive", valorPorKm: 1.35, ativo: true },
+    { key: "luxury", label: "Luxury", valorPorKm: 1.75, ativo: true },
+    { key: "grupo6", label: "Grupo 6", valorPorKm: 1.20, ativo: true },
+    { key: "grupo8", label: "Grupo 8", valorPorKm: 1.35, ativo: true },
+    { key: "grupo17", label: "Grupo 17", valorPorKm: 1.60, ativo: true },
+  ];
+
+  function renderKms(){
+    kmsGrid.innerHTML = "";
+    (kmsState || []).forEach((c, idx) => {
+      const box = document.createElement("div");
+      box.className = "km-box";
+      box.innerHTML = `
+        <div class="km-title">${safeText(c.key)}</div>
+        <div class="field" style="margin-top:10px">
+          <label>Label visível</label>
+          <input class="input" type="text" value="${safeText(c.label || "")}" data-idx="${idx}" data-k="label">
+        </div>
+        <div class="field">
+          <label>Valor €/km</label>
+          <input class="input tiny" type="number" step="0.01" value="${Number(c.valorPorKm || 0)}" data-idx="${idx}" data-k="valorPorKm">
+        </div>
+        <div class="field">
+          <label>Estado</label>
+          <select class="select" data-idx="${idx}" data-k="ativo">
+            <option value="true" ${c.ativo !== false ? "selected" : ""}>ATIVO</option>
+            <option value="false" ${c.ativo === false ? "selected" : ""}>INATIVO</option>
+          </select>
+        </div>
+      `;
+      kmsGrid.appendChild(box);
+    });
+
+    kmsGrid.querySelectorAll("[data-idx]").forEach(el => {
+      el.addEventListener("input", onKmsFieldChange);
+      el.addEventListener("change", onKmsFieldChange);
+    });
+  }
+
+  function onKmsFieldChange(ev){
+    const idx = Number(ev.target.dataset.idx);
+    const key = ev.target.dataset.k;
+    if (!Number.isFinite(idx) || !kmsState[idx]) return;
+
+    if (key === "valorPorKm") kmsState[idx].valorPorKm = Number(ev.target.value || 0);
+    if (key === "label") kmsState[idx].label = String(ev.target.value || "").trim();
+    if (key === "ativo") kmsState[idx].ativo = String(ev.target.value) === "true";
+  }
+
+  function fillKmCategoryPricesFromState(){
+    const byKey = Object.fromEntries((kmsState || []).map(x => [String(x.key || "").toLowerCase(), x]));
+    document.getElementById("kpc_economica").value = Number(byKey.economica?.valorPorKm ?? 0.85);
+    document.getElementById("kpc_confort").value = Number(byKey.confort?.valorPorKm ?? 1.05);
+    document.getElementById("kpc_executive").value = Number(byKey.executive?.valorPorKm ?? 1.35);
+    document.getElementById("kpc_luxury").value = Number(byKey.luxury?.valorPorKm ?? 1.75);
+    document.getElementById("kpc_g6").value = Number(byKey.grupo6?.valorPorKm ?? 1.20);
+    document.getElementById("kpc_g8").value = Number(byKey.grupo8?.valorPorKm ?? 1.35);
+    document.getElementById("kpc_g17").value = Number(byKey.grupo17?.valorPorKm ?? 1.60);
+  }
+
+  function syncKmPricesToState(){
+    const priceMap = {
+      economica: Number(document.getElementById("kpc_economica").value || 0),
+      confort: Number(document.getElementById("kpc_confort").value || 0),
+      executive: Number(document.getElementById("kpc_executive").value || 0),
+      luxury: Number(document.getElementById("kpc_luxury").value || 0),
+      grupo6: Number(document.getElementById("kpc_g6").value || 0),
+      grupo8: Number(document.getElementById("kpc_g8").value || 0),
+      grupo17: Number(document.getElementById("kpc_g17").value || 0),
+    };
+
+    Object.entries(priceMap).forEach(([key, value]) => {
+      const row = kmsState.find(x => String(x.key || "").toLowerCase() === key);
+      if (row) row.valorPorKm = Number.isFinite(value) ? value : 0;
+    });
+  }
+
+  async function loadKms(){
+    msgKms.textContent = "A carregar...";
+    try{
+      const data = await request(ROUTES.kmsGet);
+      const list = Array.isArray(data?.kms) ? data.kms : (Array.isArray(data?.categorias) ? data.categorias : []);
+      kmsState = list.length ? list.map(x => ({
+        key: String(x.key || "").trim(),
+        label: String(x.label || "").trim(),
+        valorPorKm: Number(x.valorPorKm || 0),
+        ativo: x.ativo !== false
+      })) : structuredClone(defaultKmsSeed);
+
+      renderKms();
+      fillKmCategoryPricesFromState();
+      msgKms.textContent = list.length ? "✅ KMS carregados." : "⚠️ Sem categorias na base. Pode usar 'CRIAR BASE'.";
+    }catch(e){
+      msgKms.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  async function saveKms(){
+    msgKms.textContent = "A guardar...";
+    try{
+      syncKmPricesToState();
+      const updates = (kmsState || []).map(x => ({
+        key: x.key,
+        label: String(x.label || "").trim(),
+        valorPorKm: Number(x.valorPorKm || 0),
+        ativo: x.ativo !== false
+      }));
+      await request(ROUTES.kmsPut, {
+        method:"PUT",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ updates })
+      });
+      await loadKms();
+      msgKms.textContent = "✅ Guardado com sucesso.";
+    }catch(e){
+      msgKms.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  async function seedKms(){
+    msgKms.textContent = "A criar base...";
+    try{
+      await request(ROUTES.kmsPut, {
+        method:"PUT",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ updates: defaultKmsSeed })
+      });
+      await loadKms();
+      msgKms.textContent = "✅ Base criada com sucesso.";
+    }catch(e){
+      msgKms.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  document.getElementById("btnReloadKms").onclick = loadKms;
+  document.getElementById("btnSaveKms").onclick = saveKms;
+  document.getElementById("btnSeedKms").onclick = seedKms;
+
+  const tbodyFaturasMini = document.getElementById("tbodyFaturasMini");
+  const faturacaoResumo = document.getElementById("faturacaoResumo");
+
+  function renderResumoFaturas(list){
+    const total = list.length;
+    const emitidas = list.filter(f => String(f?.status || "").toLowerCase() === "emitida").length;
+    const pagas = list.filter(f => String(f?.status || "").toLowerCase() === "paga").length;
+    const valorTotal = list.reduce((acc, f) => acc + Number(f?.valorTotal || 0), 0);
+
+    faturacaoResumo.innerHTML = `
+      <div class="mini-stat"><b>Total Faturas</b><span>${total}</span></div>
+      <div class="mini-stat"><b>Emitidas</b><span>${emitidas}</span></div>
+      <div class="mini-stat"><b>Pagas</b><span>${pagas}</span></div>
+      <div class="mini-stat"><b>Total (€)</b><span>${formatMoney(valorTotal)}</span></div>
+    `;
+  }
+
+  async function loadFaturasMini(){
+    tbodyFaturasMini.innerHTML = "";
+    try{
+      const data = await request(ROUTES.faturasGet);
+      const list = Array.isArray(data?.faturas) ? data.faturas : [];
+
+      renderResumoFaturas(list);
+
+      const recent = list
+        .slice()
+        .sort((a, b) => new Date(b?.issuedAt || b?.createdAt || 0) - new Date(a?.issuedAt || a?.createdAt || 0))
+        .slice(0, 8);
+
+      if(!recent.length){
+        tbodyFaturasMini.innerHTML = `<tr><td colspan="5">Sem faturas.</td></tr>`;
+        return;
+      }
+
+      recent.forEach(f => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><b>${safeText(f?.referenceCode)}</b></td>
+          <td>${statusBadge(f?.status || "emitida")}</td>
+          <td>${Number(f?.valorTotal || 0).toFixed(2)}</td>
+          <td>${formatDate(f?.issuedAt || f?.createdAt)}</td>
+          <td>${formatDate(f?.paidAt)}</td>
+        `;
+        tbodyFaturasMini.appendChild(tr);
+      });
+    }catch{
+      renderResumoFaturas([]);
+      tbodyFaturasMini.innerHTML = `<tr><td colspan="5">Sem acesso à faturação.</td></tr>`;
+    }
+  }
+
+  document.getElementById("btnReloadFaturasMini").onclick = loadFaturasMini;
+
+  const msgQuote = document.getElementById("msgQuote");
+  let currentQuoteConfig = null;
+
+  // Converter % (ex: 15) ou decimal (ex: 0.15) para decimal
+  function normalizePercentInput(val) {
+    const n = parseFloat(String(val).replace(',', '.'));
+    if (isNaN(n)) return 0.15;
+    return n > 1 ? n / 100 : n;
+  }
+
+  function getQuoteFormData(){
+    // plataformaPercent: campo mostra 15 (%) → backend recebe 0.15 (decimal)
+   const plataformaPercent = normalizePercentInput(
+  document.getElementById("qc_plataformaPercent").value
+);
+    return {
+      minimos: {
+        aeroporto: Number(document.getElementById("qc_minAeroporto").value || 0),
+        normal: Number(document.getElementById("qc_minNormal").value || 0),
+      },
+      espera: {
+        minutosGratis: Number(document.getElementById("qc_esperaGratis").value || 0),
+        valorPorMinExtra: Number(document.getElementById("qc_esperaMinuto").value || 0),
+      },
+      portagem: {
+        valorFixo: Number(document.getElementById("qc_portagem").value || 0),
+      },
+      transito: {
+        fatorMax: Number(document.getElementById("qc_maxTransito").value || 0),
+      },
+      horaPonta: {
+        fator: Number(document.getElementById("qc_fatorHoraPonta").value || 0),
+        manhaInicio: Number(document.getElementById("qc_rushMorningStart").value || 0),
+        manhaFim: Number(document.getElementById("qc_rushMorningEnd").value || 0),
+        tardeInicio: Number(document.getElementById("qc_rushEveningStart").value || 0),
+        tardeFim: Number(document.getElementById("qc_rushEveningEnd").value || 0),
+      },
+      procura: {
+        incrementoPorExcesso: Number(document.getElementById("qc_demandaStep").value || 0),
+        fatorMax: Number(document.getElementById("qc_demandaMax").value || 0),
+      },
+      plataformaPercent,
+      descontoColaboradorPercent: Number(document.getElementById("qc_descontoColaborador").value || 0),
+    };
+  }
+
+  function _updateTaxaDisplay() {
+    const raw    = Number(document.getElementById("qc_plataformaPercent")?.value || 0);
+    const pct    = raw > 1 ? raw : raw * 100;
+    const recebe = Math.max(0, 100 - pct);
+    const elT = document.getElementById("taxaGlobalActual");
+    const elR = document.getElementById("taxaMotoristaRecebe");
+    const inpN = document.getElementById("novaTaxa");
+    if (elT) elT.textContent = pct.toFixed(1) + "%";
+    if (elR) elR.textContent = recebe.toFixed(1) + "%";
+    if (inpN && document.activeElement !== inpN) inpN.value = pct.toFixed(1);
+  }
+
+  function fillQuoteForm(cfg){
+    currentQuoteConfig = cfg || {};
+    document.getElementById("qc_minAeroporto").value   = Number(cfg?.minimos?.aeroporto ?? 15);
+    document.getElementById("qc_minNormal").value      = Number(cfg?.minimos?.normal ?? 10);
+    document.getElementById("qc_esperaGratis").value   = Number(cfg?.espera?.minutosGratis ?? 10);
+    document.getElementById("qc_esperaMinuto").value   = Number(cfg?.espera?.valorPorMinExtra ?? 0.8);
+    document.getElementById("qc_portagem").value       = Number(cfg?.portagem?.valorFixo ?? 2.1);
+    document.getElementById("qc_maxTransito").value    = Number(cfg?.transito?.fatorMax ?? 1.3);
+    document.getElementById("qc_fatorHoraPonta").value = Number(cfg?.horaPonta?.fator ?? 1.1);
+    document.getElementById("qc_rushMorningStart").value  = Number(cfg?.horaPonta?.manhaInicio ?? 7);
+    document.getElementById("qc_rushMorningEnd").value    = Number(cfg?.horaPonta?.manhaFim ?? 10);
+    document.getElementById("qc_rushEveningStart").value  = Number(cfg?.horaPonta?.tardeInicio ?? 17);
+    document.getElementById("qc_rushEveningEnd").value    = Number(cfg?.horaPonta?.tardeFim ?? 20);
+    document.getElementById("qc_demandaStep").value    = Number(cfg?.procura?.incrementoPorExcesso ?? 0.15);
+    document.getElementById("qc_demandaMax").value     = Number(cfg?.procura?.fatorMax ?? 1.5);
+    document.getElementById("qc_descontoColaborador").value = Number(cfg?.descontoColaboradorPercent ?? 0);
+    // plataformaPercent: backend guarda 0.15 → mostrar 15 no campo
+    const rawPct = Number(cfg?.plataformaPercent ?? 0.15);
+    document.getElementById("qc_plataformaPercent").value = rawPct <= 1
+      ? parseFloat((rawPct * 100).toFixed(4))
+      : rawPct;
+    _updateTaxaDisplay();
+  }
+
+  // Listener em tempo real — actualiza o display verde ao digitar
+  document.getElementById("qc_plataformaPercent")
+    ?.addEventListener("input", _updateTaxaDisplay);
+
+  /* ══════════════════════════════════════════════════════════
+     PERCENTAGEM DA PLATAFORMA
+  ══════════════════════════════════════════════════════════ */
+  async function loadTaxaPlataforma() {
+    try {
+      const data = await request(ROUTES.quoteGet);
+      const cfg  = data?.config || data || {};
+      const raw  = Number(cfg.plataformaPercent ?? 0.15);
+      const pct  = raw <= 1 ? raw * 100 : raw;
+      const elTaxa   = document.getElementById("taxaGlobalActual");
+      const elRecebe = document.getElementById("taxaMotoristaRecebe");
+      if (elTaxa)   elTaxa.textContent   = pct.toFixed(1) + "%";
+      if (elRecebe) elRecebe.textContent = (100 - pct).toFixed(1) + "%";
+      const inp = document.getElementById("novaTaxa");
+      if (inp) inp.value = pct.toFixed(1);
+    } catch(e) { console.warn("Erro taxa:", e?.message); }
+  }
+
+  async function loadHistoricoTaxas() {
+    const tbody = document.getElementById("tbodyTaxas");
+    if (!tbody) return;
+    try {
+      const data = await request(ROUTES.quoteGet);
+      const lista = Array.isArray(data?.config?.taxasEspeciais) ? data.config.taxasEspeciais : [];
+      if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--silver-2)">Sem taxas especiais registadas.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = lista.map(h => {
+        const dt    = h.criadoEm ? new Date(h.criadoEm).toLocaleDateString("pt-PT") : "—";
+        const scope = h.cidade ? `${h.cidade}, ${h.pais}` : (h.pais || "—");
+        const exp   = h.expira ? new Date(h.expira).toLocaleDateString("pt-PT") : "Sem validade";
+        const taxa  = typeof h.taxa === 'number' ? (h.taxa > 1 ? h.taxa : h.taxa * 100).toFixed(1) : "?";
+        return `<tr>
+          <td style="padding:8px 10px;color:var(--silver-2)">${dt}</td>
+          <td style="padding:8px 10px;font-weight:900;color:#fff">${taxa}%</td>
+          <td style="padding:8px 10px;color:var(--silver);font-weight:700">🌍 País/Cidade</td>
+          <td style="padding:8px 10px;color:var(--silver-2)">${safeText(scope)}</td>
+          <td style="padding:8px 10px;color:var(--silver-2)">${exp}</td>
+          <td style="padding:8px 10px;color:var(--silver-2)">—</td>
+        </tr>`;
+      }).join("");
+    } catch {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--silver-2)">Sem dados.</td></tr>`;
+    }
+  }
+
+  // Listener no campo rápido de taxa — actualiza displays em tempo real
+  document.getElementById("novaTaxa")
+    ?.addEventListener("input", function() {
+      const taxa = Number(this.value || 0);
+      const pct  = taxa > 1 ? taxa : taxa * 100;
+      const rec  = Math.max(0, 100 - pct);
+      const elT  = document.getElementById("taxaGlobalActual");
+      const elR  = document.getElementById("taxaMotoristaRecebe");
+      if (elT) elT.textContent = pct.toFixed(1) + "%";
+      if (elR) elR.textContent = rec.toFixed(1) + "%";
+      // Sincronizar com o campo do formulário principal
+      const inpQ = document.getElementById("qc_plataformaPercent");
+      if (inpQ) inpQ.value = pct.toFixed(1);
+    });
+
+  async function loadPaisesGestores() {
+    const sel = document.getElementById("premioPaisId");
+    if (!sel) return;
+    try {
+      // Buscar colaboradores/gestores e extrair países únicos
+      const data = await request("/api/colaboradores");
+      const lista = data?.colaboradores || data?.gestores || data || [];
+      const paisesUnicos = [...new Set(
+        lista.map(g => g.pais || g.country || g.paisSeguranca || "")
+             .filter(Boolean)
+      )].sort();
+
+      if (!paisesUnicos.length) {
+        // Fallback: mostrar lista fixa de países comuns se API não devolver
+        sel.innerHTML = `
+          <option value="">Seleccione um país...</option>
+          <option value="PT">🇵🇹 Portugal</option>
+          <option value="BR">🇧🇷 Brasil</option>
+          <option value="AO">🇦🇴 Angola</option>
+          <option value="MZ">🇲🇿 Moçambique</option>
+          <option value="CV">🇨🇻 Cabo Verde</option>
+        `;
+        return;
+      }
+
+      const nomesPaises = {
+        PT:"🇵🇹 Portugal", BR:"🇧🇷 Brasil", AO:"🇦🇴 Angola",
+        MZ:"🇲🇿 Moçambique", CV:"🇨🇻 Cabo Verde", GW:"🇬🇼 Guiné-Bissau",
+        ST:"🇸🇹 São Tomé e Príncipe", ES:"🇪🇸 Espanha", FR:"🇫🇷 França",
+        DE:"🇩🇪 Alemanha", GB:"🇬🇧 Reino Unido", IT:"🇮🇹 Itália"
+      };
+
+      sel.innerHTML = `<option value="">Seleccione um país...</option>`;
+      paisesUnicos.forEach(p => {
+        const op = document.createElement("option");
+        op.value = p;
+        // Contar gestores neste país
+        const count = lista.filter(g => (g.pais || g.country || g.paisSeguranca || "") === p).length;
+        op.textContent = (nomesPaises[p] || p) + ` (${count} gestor${count !== 1 ? "es" : ""})`;
+        sel.appendChild(op);
+      });
+    } catch {
+      sel.innerHTML = `<option value="">Erro ao carregar países</option>`;
+    }
+  }
+
+  async function loadMotoristasSelectTaxa() {
+    // Substituído por loadPaisesGestores
+    await loadPaisesGestores();
+  }
+
+  if (document.getElementById("btnGuardarTaxa")) {
+    document.getElementById("btnGuardarTaxa").onclick = async () => {
+      const msg  = document.getElementById("msgTaxa");
+      const btn  = document.getElementById("btnGuardarTaxa");
+      const taxa = Number(document.getElementById("novaTaxa")?.value);
+      if (isNaN(taxa) || taxa < 0 || taxa > 100) {
+        msg.textContent = "❌ Valor inválido. Use um número entre 0 e 100 (ex: 15 para 15%).";
+        return;
+      }
+      const inpQuote = document.getElementById("qc_plataformaPercent");
+      if (inpQuote) inpQuote.value = taxa;
+      btn.disabled = true; btn.textContent = "A guardar..."; msg.textContent = "";
+      try {
+        await saveQuote();
+        // Actualizar displays imediatamente
+        const elT = document.getElementById("taxaGlobalActual");
+        const elR = document.getElementById("taxaMotoristaRecebe");
+        if (elT) elT.textContent = taxa.toFixed(1) + "%";
+        if (elR) elR.textContent = (100 - taxa).toFixed(1) + "%";
+        msg.textContent = `✅ Taxa global actualizada para ${taxa}% — motorista recebe ${(100-taxa).toFixed(1)}%.`;
+        const mEl = document.getElementById("taxaMotivo");
+        if (mEl) mEl.value = "";
+      } catch(e) {
+        msg.textContent = "❌ " + (e?.message || "Erro.");
+      } finally { btn.disabled = false; btn.textContent = "GUARDAR TAXA"; }
+    };
+  }
+
+  if (document.getElementById("btnGuardarPremio")) {
+    document.getElementById("btnGuardarPremio").onclick = async () => {
+      const msg    = document.getElementById("msgPremio");
+      const btn    = document.getElementById("btnGuardarPremio");
+      const pais   = document.getElementById("premioPaisId")?.value;
+      const taxa   = Number(document.getElementById("premioTaxa")?.value);
+      const expira = document.getElementById("premioExpira")?.value;
+      if (!pais)  { msg.textContent = "❌ Seleccione um país."; return; }
+      if (isNaN(taxa) || taxa < 0 || taxa > 100) { msg.textContent = "❌ Taxa inválida."; return; }
+      btn.disabled = true; btn.textContent = "A aplicar...";
+      try {
+        // Guardar via quote-config como taxasEspeciais
+        const _cfgR = await request(ROUTES.quoteGet);
+        const _taxas = Array.isArray(_cfgR?.config?.taxasEspeciais) ? _cfgR.config.taxasEspeciais : [];
+        const _cidade = document.getElementById("premioCidadeId")?.value || null;
+        const _filtradas = _taxas.filter(t => !(t.pais === pais && (t.cidade||"") === (_cidade||"")));
+        _filtradas.push({ pais, cidade: _cidade, taxa: taxa/100, expira: expira || null, criadoEm: new Date().toISOString() });
+        await request(ROUTES.quotePut, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ config: { ...(_cfgR?.config||{}), taxasEspeciais: _filtradas } })
+        });
+        const _scope = _cidade ? `${_cidade}, ${pais}` : pais;
+        msg.textContent = `✅ Taxa de ${taxa}% aplicada a todos os gestores de ${_scope}${expira ? " até " + new Date(expira).toLocaleDateString("pt-PT") : ""}.`;
+        loadHistoricoTaxas();
+        document.getElementById("premioTaxa").value = "";
+        document.getElementById("premioExpira").value = "";
+      } catch(e) {
+        msg.textContent = "❌ " + (e?.message || "Erro.");
+      } finally { btn.disabled = false; btn.textContent = "APLICAR"; }
+    };
+  }
+
+  if (document.getElementById("btnReloadTaxas")) {
+    document.getElementById("btnReloadTaxas").onclick = () => { loadHistoricoTaxas(); };
+  }
+
+  async function loadQuote(){
+    msgQuote.textContent = "A carregar...";
+    try{
+      const data = await request(ROUTES.quoteGet);
+      fillQuoteForm(data?.config || data);
+      msgQuote.textContent = "✅ Carregado.";
+    }catch(e){
+      msgQuote.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  async function saveQuote(){
+    const btnSQ = document.getElementById("btnSaveQuote");
+    if(btnSQ){ btnSQ.disabled=true; btnSQ.textContent="A guardar..."; }
+    msgQuote.textContent = "A guardar...";
+    try{
+      const formData = getQuoteFormData();
+      const config = { ...(currentQuoteConfig || {}), ...formData };
+      const resp = await request(ROUTES.quotePut, {
+        method:"PUT",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ config })
+      });
+      // Actualizar currentQuoteConfig com os valores enviados (não recarregar do backend
+      // para evitar latência que pode mostrar valor antigo)
+      currentQuoteConfig = config;
+      // Actualizar display da taxa imediatamente
+      _updateTaxaDisplay();
+      await loadTaxaPlataforma();
+      msgQuote.textContent = "✅ Guardado. Campo plataformaPercent=" + config.plataformaPercent.toFixed(4);
+    }catch(e){
+      console.error('[saveQuote]', e);
+      msgQuote.textContent = "❌ " + (e?.message || e);
+    } finally {
+      if(btnSQ){ btnSQ.disabled=false; btnSQ.textContent="GUARDAR"; }
+    }
+  }
+
+  document.getElementById("btnReloadQuote").onclick = loadQuote;
+  document.getElementById("btnSaveQuote").onclick = saveQuote;
+
+  const tbodyParceiros = document.getElementById("tbodyParceiros");
+  const msgParceiros = document.getElementById("msgParceiros");
+  const qParceiros = document.getElementById("qParceiros");
+  let parceirosState = [];
+
+  /* ── PARCEIROS ─────────────────────────────────── */
+  let _parceiros = [];
+
+  function renderParceiros() {
+    const q = (document.getElementById("qParceiros")?.value || "").toLowerCase();
+    const tbody = document.getElementById("tbodyParceiros");
+    if (!tbody) return;
+    const list = q ? _parceiros.filter(p =>
+      (p.empresa||"").toLowerCase().includes(q) ||
+      (p.email||"").toLowerCase().includes(q) ||
+      (p.tipo||"").toLowerCase().includes(q)
+    ) : _parceiros;
+
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--silver-3)">${q ? "Sem resultados." : "Sem parceiros."}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(p => {
+      const s = String(p.status || "pendente");
+      const css = {
+        pendente:  "background:rgba(255,159,67,.15);color:#ffd09b",
+        registado: "background:rgba(91,155,247,.15);color:#9ec5fe",
+        ativo:     "background:rgba(25,214,139,.15);color:#7fffc4",
+        recusado:  "background:rgba(255,80,80,.12);color:#ff9999",
+        expirado:  "background:rgba(255,255,255,.06);color:var(--silver-3)"
+      }[s] || "background:rgba(255,159,67,.15);color:#ffd09b";
+      const data = p.enviadoEm ? new Date(p.enviadoEm).toLocaleDateString("pt-PT") : "—";
+      const tipoLabel = {hotel:"Hotel",alojamento:"Alojamento",frota:"Frota"}[p.tipo] || safeText(p.tipo);
+      const ativarBtn = s === "registado"
+        ? `<button class="btn active" style="min-height:26px;padding:0 9px;font-size:11px" onclick="ativarConvite('${p._id}')">ATIVAR</button>` : "";
+      const excluirBtn = p.bloqueado
+        ? `<button class="btn danger" style="min-height:26px;padding:0 9px;font-size:11px;background:rgba(180,0,0,.25);border-color:rgba(255,60,60,.4)" onclick="excluirConvite('${p._id}','${p.empresa || p.email}')">🗑 EXCLUIR</button>`
+        : "";
+      const bloqBtn = p.bloqueado
+        ? `<button class="btn" style="min-height:26px;padding:0 9px;font-size:11px" onclick="desbloquearConvite('${p._id}')">DESBLOQUEAR</button>${excluirBtn}`
+        : `<button class="btn danger" style="min-height:26px;padding:0 9px;font-size:11px" onclick="bloquearConvite('${p._id}')">BLOQUEAR</button>`;
+      return `<tr style="border-bottom:1px solid var(--line)">
+        <td style="padding:9px 10px;color:#fff;font-weight:800">${safeText(p.empresa)}</td>
+        <td style="padding:9px 10px;color:var(--silver-2);font-size:12px">${safeText(p.email)}</td>
+        <td style="padding:9px 10px;color:var(--silver-2);font-size:11px;font-weight:900;text-transform:uppercase">${tipoLabel}</td>
+        <td style="padding:9px 10px"><span style="padding:3px 9px;border-radius:999px;font-size:11px;font-weight:900;${css}">${s.toUpperCase()}</span></td>
+        <td style="padding:9px 10px;color:var(--silver-3);font-size:12px">${data}</td>
+        <td style="padding:9px 10px;display:flex;gap:6px;flex-wrap:wrap">${ativarBtn}${bloqBtn}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  async function loadParceiros() {
+    const msg = document.getElementById("msgParceiros");
+    if (msg) msg.textContent = "A carregar...";
+    try {
+      const data = await request(ROUTES.parceiroConvites);
+      _parceiros = Array.isArray(data?.convites) ? data.convites : [];
+      renderParceiros();
+      if (msg) msg.textContent = `✅ ${_parceiros.length} parceiro(s).`;
+    } catch(e) {
+      if (msg) msg.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  document.getElementById("btnReloadParceiros").onclick = loadParceiros;
+  document.getElementById("qParceiros")?.addEventListener("input", renderParceiros);
+
+  const msgMotoristas = document.getElementById("msgMotoristas");
+  const motoristasBlocks = document.getElementById("motoristasBlocks");
+
+  function renderMotoristasPorParceiro(list) {
+    motoristasBlocks.innerHTML = "";
+    if (!list.length) {
+      motoristasBlocks.innerHTML = "<p style='color:var(--silver-3);padding:14px 0'>Sem motoristas encontrados.</p>";
+      return;
+    }
+
+    // Agrupar por parceiro
+    const grupos = {};
+    list.forEach(m => {
+      const parceiro = safeText(m.parceiro || m.frotaNome || m.empresa || m.frotaId || "Sem parceiro");
+      if (!grupos[parceiro]) grupos[parceiro] = [];
+      grupos[parceiro].push(m);
+    });
+
+    Object.entries(grupos).forEach(([parceiro, motoristas]) => {
+      const bloco = document.createElement("div");
+      bloco.style.cssText = "border:1px solid var(--line-2);border-radius:18px;overflow:hidden";
+
+      // Cabeçalho do parceiro
+      bloco.innerHTML = "<div style='padding:12px 16px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px'>"
+        + "<span style='font-size:12px;font-weight:900;letter-spacing:.1em;color:#fff'>PARCEIRO</span>"
+        + "<span style='font-size:14px;font-weight:800;color:var(--warn)'>" + parceiro + "</span>"
+        + "<span style='margin-left:auto;font-size:11px;color:var(--silver-3)'>" + motoristas.length + " motorista(s)</span>"
+        + "</div>";
+
+      // Cabeçalho de colunas
+      const header = document.createElement("div");
+      header.style.cssText = "display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 0.8fr 0.8fr;gap:0;padding:8px 16px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--line)";
+      header.innerHTML = ["MOTORISTA","CONTACTO","E-MAIL","IDIOMA","STATUS","APROVAÇÃO"].map(h =>
+        "<span style='font-size:11px;font-weight:900;letter-spacing:.06em;color:var(--silver-2)'>" + h + "</span>"
+      ).join("");
+      bloco.appendChild(header);
+
+      // Linhas de motoristas
+      motoristas.forEach((m, idx) => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 0.8fr 0.8fr;gap:0;padding:12px 16px;align-items:center;"
+          + (idx % 2 === 0 ? "" : "background:rgba(255,255,255,.02);")
+          + (idx < motoristas.length - 1 ? "border-bottom:1px solid var(--line);" : "");
+
+        const st = String(m.status || "pendente").toLowerCase();
+        const stColor = st === "ativo" ? "var(--ok)" : st === "inativo" ? "var(--bad)" : "var(--warn)";
+        const aprStatus = String(m.aprovacao || m.validacao?.status || "pendente").toLowerCase();
+        const aprColor = aprStatus === "aprovado" ? "var(--ok)" : aprStatus === "rejeitado" ? "var(--bad)" : "var(--warn)";
+
+        row.innerHTML =
+          "<div style='min-width:0'><div style='font-weight:800;color:#fff;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + safeText(m.nome) + "</div>"
+          + "<div style='font-size:11px;color:var(--silver-3)'>" + safeText(m.categoria) + "</div></div>"
+          + "<div style='font-size:12px;color:var(--silver-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + safeText(m.contacto || m.telefone) + "</div>"
+          + "<div style='font-size:12px;color:var(--silver-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + safeText(m.email) + "</div>"
+          + "<div style='font-size:12px;color:var(--silver-2)'>" + safeText(m.idioma || m.lingua || "PT") + "</div>"
+          + "<div><span style='font-size:11px;font-weight:900;color:" + stColor + "'>" + st.toUpperCase() + "</span></div>"
+          + "<div><span style='font-size:11px;font-weight:900;color:" + aprColor + "'>" + aprStatus.toUpperCase() + "</span></div>";
+
+        bloco.appendChild(row);
+      });
+
+      motoristasBlocks.appendChild(bloco);
+    });
+  }
+
+  let todosMotoristas = [];
+
+  async function loadMotoristas(){
+    msgMotoristas.textContent = "A carregar...";
+    motoristasBlocks.innerHTML = "";
+    try{
+      const data = await request(ROUTES.motoristasGet);
+      todosMotoristas = Array.isArray(data?.motoristas) ? data.motoristas : (Array.isArray(data) ? data : []);
+      renderMotoristasPorParceiro(todosMotoristas);
+      msgMotoristas.textContent = "✅ " + todosMotoristas.length + " motorista(s) carregado(s).";
+    }catch(e){
+      msgMotoristas.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  document.getElementById("btnReloadMotoristas").onclick = loadMotoristas;
+
+  const filterMotoristas = document.getElementById("filterMotoristas");
+  if (filterMotoristas) {
+    filterMotoristas.addEventListener("input", () => {
+      const q = filterMotoristas.value.trim().toLowerCase();
+      if (!q) { renderMotoristasPorParceiro(todosMotoristas); return; }
+      const filtrado = todosMotoristas.filter(m =>
+        (m.nome || "").toLowerCase().includes(q) ||
+        (m.email || "").toLowerCase().includes(q) ||
+        (m.parceiro || m.empresa || m.frotaNome || "").toLowerCase().includes(q)
+      );
+      renderMotoristasPorParceiro(filtrado);
+    });
+  }
+
+  const tbodyVeiculos = document.getElementById("tbodyVeiculos");
+  const msgVeiculos = document.getElementById("msgVeiculos");
+  const fVeiculos = document.getElementById("fVeiculos");
+
+  async function loadVeiculos(){
+    msgVeiculos.textContent = "A carregar...";
+    tbodyVeiculos.innerHTML = "";
+    try{
+      const data = await request(`/api/veiculos/todos?status=${fVeiculos.value}`);
+      const list = Array.isArray(data?.veiculos) ? data.veiculos : [];
+      if(!list.length){
+        tbodyVeiculos.innerHTML = `<tr><td colspan="5">Sem veículos.</td></tr>`;
+      } else {
+        list.forEach(v => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><b>${safeText(v.matricula)}</b></td>
+            <td>${safeText(v.marca)}</td>
+            <td>${safeText(v.modelo)}</td>
+            <td>${statusBadge(v.validacao?.status || v.aprovacao || "pendente")}</td>
+            <td>${safeText(v.estado || "-")}</td>
+          `;
+          tbodyVeiculos.appendChild(tr);
+        });
+      }
+      msgVeiculos.textContent = "✅ Veículos carregados.";
+    }catch(e){
+      msgVeiculos.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  document.getElementById("btnReloadVeiculos").onclick = loadVeiculos;
+  fVeiculos.onchange = loadVeiculos;
+
+  const colaboradoresBlocks = document.getElementById("colaboradoresBlocks");
+  const msgColaboradores = document.getElementById("msgColaboradores");
+  const fColaboradores = document.getElementById("fColaboradores");
+
+  async function loadColaboradores(){
+    msgColaboradores.textContent = "A carregar...";
+    colaboradoresBlocks.innerHTML = "";
+
+    try{
+      const [colabData, motoristasData, viagensData, quoteData] = await Promise.all([
+        request(ROUTES.colaboradoresGet(fColaboradores.value)),
+        request(ROUTES.motoristasGet),
+        request(ROUTES.viagensGet),
+        request(ROUTES.quoteGet).catch(() => ({ config: {} }))
+      ]);
+
+      const colaboradores = Array.isArray(colabData?.colaboradores) ? colabData.colaboradores : [];
+      const motoristas = Array.isArray(motoristasData?.motoristas) ? motoristasData.motoristas : [];
+      const viagens = Array.isArray(viagensData?.viagens) ? viagensData.viagens : [];
+
+      const plataformaPercentRaw = Number(quoteData?.config?.plataformaPercent ?? 0.15);
+      const plataformaPercent =
+        plataformaPercentRaw > 1
+          ? plataformaPercentRaw / 100
+          : plataformaPercentRaw;
+
+      if(!colaboradores.length){
+        colaboradoresBlocks.innerHTML = `<div class="msg">Sem colaboradores.</div>`;
+        msgColaboradores.textContent = "✅ Sem registos.";
+        return;
+      }
+
+      colaboradores.forEach(colab => {
+        const colabId = getId(colab);
+        const empresa = safeText(colab?.empresa);
+        const nome = safeText(colab?.nome);
+        const email = safeText(colab?.email);
+        const contacto = safeText(colab?.contacto);
+        const tipo = safeText(colab?.tipo);
+        const aprovado = !!colab?.aprovado;
+
+        const motoristasDoColab = motoristas.filter(m => {
+          const ownerId = String(
+            m?.frotaId ||
+            m?.colaboradorId ||
+            m?.collaboratorId ||
+            m?.empresaId ||
+            ""
+          );
+          return colabId && ownerId === colabId;
+        });
+
+        const block = document.createElement("div");
+        block.className = "colab-block";
+
+        const top = document.createElement("div");
+        top.className = "colab-top";
+        top.innerHTML = `
+          <div class="colab-title">${empresa} — ${nome}</div>
+          <div class="colab-meta">
+            <div class="meta-box"><b>Email</b><span>${email}</span></div>
+            <div class="meta-box"><b>Contacto</b><span>${contacto}</span></div>
+            <div class="meta-box"><b>Tipo / Estado</b><span>${tipo} • ${aprovado ? "Aprovado" : "Pendente"}</span></div>
+          </div>
+        `;
+        block.appendChild(top);
+
+        const driversList = document.createElement("div");
+        driversList.className = "drivers-list";
+
+        if(!motoristasDoColab.length){
+          driversList.innerHTML = `<div class="msg" style="margin-top:0">Sem motoristas associados a este colaborador.</div>`;
+        } else {
+          motoristasDoColab.forEach(m => {
+            const motoristaId = getId(m);
+            const nomeMotorista = safeText(m?.nome);
+            const emailMotorista = safeText(m?.email);
+            const iban = safeText(getMotoristaIban(m));
+
+            const viagensDoMotorista = viagens.filter(v => {
+              const driverId = getTripDriverId(v);
+              return motoristaId && driverId === motoristaId;
+            });
+
+            const faturadas = viagensDoMotorista.filter(isTripCompleted);
+            const finalizadas = viagensDoMotorista.filter(isTripCompleted).length;
+            const canceladas = viagensDoMotorista.filter(isTripCancelled).length;
+
+            const bruto = faturadas.reduce((acc, v) => {
+              return acc + getMoneyFromTrip(v);
+            }, 0);
+
+            const liquido = bruto - (bruto * plataformaPercent);
+
+            const line = document.createElement("div");
+            line.className = "driver-line";
+            line.innerHTML = `
+              <div><div class="head">Motorista</div><div class="val">${nomeMotorista}</div></div>
+              <div><div class="head">Email</div><div class="val">${emailMotorista}</div></div>
+              <div><div class="head">IBAN</div><div class="val">${iban}</div></div>
+              <div><div class="head">Finalizadas</div><div class="val">${finalizadas}</div></div>
+              <div><div class="head">Canceladas</div><div class="val">${canceladas}</div></div>
+              <div><div class="head">Total Bruto</div><div class="val">${bruto.toFixed(2)} €</div></div>
+              <div><div class="head">Total Líquido</div><div class="val">${liquido.toFixed(2)} €</div></div>
+            `;
+            driversList.appendChild(line);
+          });
+        }
+
+        block.appendChild(driversList);
+        colaboradoresBlocks.appendChild(block);
+      });
+
+      msgColaboradores.textContent = "✅ Colaboradores carregados.";
+    }catch(e){
+      msgColaboradores.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  document.getElementById("btnReloadColaboradores").onclick = loadColaboradores;
+  fColaboradores.onchange = loadColaboradores;
+
+  const tbodyViagens = document.getElementById("tbodyViagens");
+  const msgViagens = document.getElementById("msgViagens");
+
+  async function loadViagens(){
+    msgViagens.textContent = "A carregar...";
+    tbodyViagens.innerHTML = "";
+
+    try{
+      const data = await request(ROUTES.viagensGet);
+      const list = Array.isArray(data?.viagens) ? data.viagens : [];
+
+      if(!list.length){
+        tbodyViagens.innerHTML = `<tr><td colspan="4">Sem viagens.</td></tr>`;
+        msgViagens.textContent = "✅ Sem registos.";
+        return;
+      }
+
+      list.forEach(v => {
+        const parceiro = getTripPartnerName(v);
+        const quemFez = getTripRequesterName(v);
+
+        const rawDate = getTripDate(v);
+        const dataViagem = rawDate
+          ? new Date(rawDate).toLocaleString("pt-PT")
+          : "-";
+
+        const valor = getMoneyFromTrip(v).toFixed(2);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${safeText(parceiro)}</td>
+          <td>${safeText(quemFez)}</td>
+          <td>${safeText(dataViagem)}</td>
+          <td><b>${valor}</b></td>
+        `;
+        tbodyViagens.appendChild(tr);
+      });
+
+      msgViagens.textContent = "✅ Viagens carregadas.";
+    }catch(e){
+      msgViagens.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  document.getElementById("btnReloadViagens").onclick = loadViagens;
+
+  const tbodyAudit = document.getElementById("tbodyAudit");
+  const msgAudit = document.getElementById("msgAudit");
+
+  async function loadAudit(){
+    msgAudit.textContent = "A carregar...";
+    tbodyAudit.innerHTML = "";
+    try{
+      const data = await request(ROUTES.auditGet);
+      const list = Array.isArray(data?.logs) ? data.logs : [];
+      if(!list.length){
+        tbodyAudit.innerHTML = `<tr><td colspan="5">Sem logs.</td></tr>`;
+      } else {
+        list.forEach(a => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${safeText(a.action)}</td>
+            <td>${safeText(a.actorAdminName)}</td>
+            <td>${safeText(a.targetType)}</td>
+            <td>${safeText(a.targetId)}</td>
+            <td>${a.createdAt ? new Date(a.createdAt).toLocaleString("pt-PT") : "-"}</td>
+          `;
+          tbodyAudit.appendChild(tr);
+        });
+      }
+      msgAudit.textContent = "✅ Audit carregado.";
+    }catch(e){
+      msgAudit.textContent = "❌ " + (e?.message || e);
+    }
+  }
+
+  document.getElementById("btnReloadAudit").onclick = loadAudit;
+
+
+  // ── CONVITES — SUB-TABS ──────────────────────────────────────
+  const tabBtnParceiro = document.getElementById("tabBtnParceiro");
+  const tabBtnColab    = document.getElementById("tabBtnColab");
+  const tabBtnValid    = document.getElementById("tabBtnValid");
+  const tabParceiro    = document.getElementById("tabParceiro");
+  const tabColab       = document.getElementById("tabColab");
+  const tabValid       = document.getElementById("tabValid");
+
+  const tabBtnSegOp = document.getElementById("tabBtnSegOp");
+  const tabSegOp    = document.getElementById("tabSegOp");
+
+  function setConviteTab(tab) {
+    const btnMap = { parceiro: tabBtnParceiro, colab: tabBtnColab, valid: tabBtnValid, segop: tabBtnSegOp };
+    const tabMap = { parceiro: tabParceiro,    colab: tabColab,    valid: tabValid,    segop: tabSegOp    };
+    Object.values(btnMap).forEach(b => {
+      if (b) { b.style.background = "linear-gradient(180deg,#17191d,#101216)"; b.style.color = "var(--silver)"; }
+    });
+    Object.values(tabMap).forEach(t => { if (t) t.style.display = "none"; });
+    if (btnMap[tab]) { btnMap[tab].style.background = "linear-gradient(180deg,#dfe4ea,#b6bec8)"; btnMap[tab].style.color = "#000"; }
+    if (tabMap[tab]) tabMap[tab].style.display = "flex";
+    if (tab === "parceiro") carregarConvitesParceiros();
+    if (tab === "segop")    carregarOperadoresSeguranca();
+  }
+
+  if (tabBtnParceiro) tabBtnParceiro.onclick = () => setConviteTab("parceiro");
+  if (tabBtnColab)    tabBtnColab.onclick    = () => setConviteTab("colab");
+  if (tabBtnValid)    tabBtnValid.onclick    = () => setConviteTab("valid");
+  if (tabBtnSegOp)    tabBtnSegOp.onclick    = () => setConviteTab("segop");
+
+  // ── Enviar convite parceiro/hotel ──
+  if (document.getElementById("btnEnviarParceiro")) {
+    document.getElementById("btnEnviarParceiro").onclick = async () => {
+      const btn = document.getElementById("btnEnviarParceiro");
+      const msg = document.getElementById("msgParceiro");
+      const empresa  = document.getElementById("pc_empresa")?.value?.trim();
+      const nif      = document.getElementById("pc_nif")?.value?.trim();
+      const email    = document.getElementById("pc_email")?.value?.trim();
+      const contacto = document.getElementById("pc_contacto")?.value?.trim();
+      const tipo     = document.getElementById("pc_tipo")?.value;
+      if (!empresa || !nif || !email || !contacto) { msg.textContent = "❌ Preencha todos os campos."; return; }
+      btn.disabled = true; btn.style.opacity = '.55'; btn.textContent = 'A enviar...';
+      msg.textContent = "";
+      try {
+        const data = await request(ROUTES.parceiroConvites, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ empresa, nif, email, contacto, tipo })
+        });
+        msg.textContent = "✅ " + (data?.message || "Convite enviado.");
+        if (data?.activationLink) msg.textContent += " Link: " + data.activationLink;
+        ["pc_empresa","pc_nif","pc_email","pc_contacto"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+        carregarConvitesParceiros();
+      } catch(e) { msg.textContent = "❌ " + (e?.message || "Erro."); }
+      finally { btn.disabled = false; btn.style.opacity = ''; btn.textContent = 'ENVIAR CONVITE'; }
+    };
+  }
+
+  if (document.getElementById("btnRefreshConvites")) {
+    document.getElementById("btnRefreshConvites").onclick = carregarConvitesParceiros;
+  }
+
+  async function carregarConvitesParceiros() {
+    const tbody = document.getElementById("tbodyConvites");
+    if (!tbody) return;
+    tbody.innerHTML = "<tr><td colspan='6' style='padding:14px;text-align:center;color:var(--silver-3)'>A carregar...</td></tr>";
+    try {
+      const data = await request(ROUTES.parceiroConvites);
+      const list = Array.isArray(data?.convites) ? data.convites : [];
+      if (!list.length) {
+        tbody.innerHTML = "<tr><td colspan='6' style='padding:14px;text-align:center;color:var(--silver-3)'>Sem convites.</td></tr>";
+        return;
+      }
+      const coresStatus = {
+        pendente:  "background:rgba(255,159,67,.15);color:#ffd09b;border:1px solid rgba(255,159,67,.3)",
+        registado: "background:rgba(91,155,247,.15);color:#9ec5fe;border:1px solid rgba(91,155,247,.3)",
+        ativo:     "background:rgba(25,214,139,.15);color:#7fffc4;border:1px solid rgba(25,214,139,.3)",
+        recusado:  "background:rgba(255,80,80,.12);color:#ff9999;border:1px solid rgba(255,80,80,.3)",
+        expirado:  "background:rgba(255,255,255,.06);color:var(--silver-3);border:1px solid var(--line)"
+      };
+      tbody.innerHTML = list.map(c => {
+        const s   = String(c.status || "pendente");
+        const css = coresStatus[s] || coresStatus.pendente;
+        const badge = "<span style='padding:3px 9px;border-radius:999px;font-size:11px;font-weight:900;" + css + "'>" + s.toUpperCase() + "</span>";
+        const dataEnv = c.enviadoEm ? new Date(c.enviadoEm).toLocaleDateString("pt-PT") : "—";
+        const ativarBtn = s === "registado"
+          ? "<button class='btn active' style='min-height:26px;padding:0 10px;font-size:11px' onclick=\"ativarConvite('" + c._id + "')\">ATIVAR</button>" : "";
+        const excluirBtn2 = c.bloqueado
+          ? "<button class='btn danger' style='min-height:26px;padding:0 10px;font-size:11px;background:rgba(180,0,0,.25);border-color:rgba(255,60,60,.4)' onclick=\"excluirConvite('" + c._id + "','" + safeText(c.empresa || c.email) + "')\">🗑 EXCLUIR</button>"
+          : "";
+        const bloqBtn = c.bloqueado
+          ? "<button class='btn' style='min-height:26px;padding:0 10px;font-size:11px' onclick=\"desbloquearConvite('" + c._id + "')\">DESBLOQUEAR</button>" + excluirBtn2
+          : "<button class='btn danger' style='min-height:26px;padding:0 10px;font-size:11px' onclick=\"bloquearConvite('" + c._id + "')\">BLOQUEAR</button>";
+        return "<tr style='border-bottom:1px solid var(--line)'>"
+          + "<td style='padding:9px 10px;color:#fff;font-weight:800'>" + safeText(c.empresa) + "</td>"
+          + "<td style='padding:9px 10px;color:var(--silver-2)'>" + safeText(c.email) + "</td>"
+          + "<td style='padding:9px 10px;color:var(--silver-2);text-transform:uppercase;font-size:11px;font-weight:900'>" + safeText(c.tipo) + "</td>"
+          + "<td style='padding:9px 10px'>" + badge + "</td>"
+          + "<td style='padding:9px 10px;color:var(--silver-3);font-size:12px'>" + dataEnv + "</td>"
+          + "<td style='padding:9px 10px;display:flex;gap:6px;flex-wrap:wrap'>" + ativarBtn + bloqBtn + "</td>"
+          + "</tr>";
+      }).join("");
+    } catch(e) {
+      tbody.innerHTML = "<tr><td colspan='6' style='padding:14px;text-align:center;color:#ff9999'>Erro: " + safeText(e?.message) + "</td></tr>";
+    }
+  }
+
+  window.ativarConvite = async (id) => {
+    if (!confirm("Ativar esta conta de parceiro?")) return;
+    try { await request(ROUTES.parceiroConvitePatch(id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "ativo" }) }); carregarConvitesParceiros(); }
+    catch(e) { alert("Erro: " + e.message); }
+  };
+  window.bloquearConvite = async (id) => {
+    const motivo = prompt("Motivo do bloqueio (opcional):");
+    if (motivo === null) return;
+    try { await request(ROUTES.parceiroConvitePatch(id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bloqueado: true, motivoBloqueio: motivo || "" }) }); carregarConvitesParceiros(); }
+    catch(e) { alert("Erro: " + e.message); }
+  };
+  window.desbloquearConvite = async (id) => {
+    try { await request(ROUTES.parceiroConvitePatch(id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bloqueado: false, motivoBloqueio: "" }) }); carregarConvitesParceiros(); }
+    catch(e) { alert("Erro: " + e.message); }
+  };
+
+  window.excluirConvite = async (id, nome) => {
+    if (!confirm(`⚠️ ATENÇÃO\n\nTem a certeza que quer EXCLUIR definitivamente o convite de:\n"${nome}"\n\nEsta acção é irreversível — o registo será apagado da base de dados.`)) return;
+    try {
+      await request(ROUTES.parceiroConviteDelete(id), { method: "DELETE" });
+      // Recarregar ambas as listas
+      if (typeof carregarConvitesParceiros === "function") carregarConvitesParceiros();
+      if (typeof loadParceiros === "function") loadParceiros();
+      alert("✅ Convite excluído com sucesso.");
+    } catch(e) {
+      alert("Erro ao excluir: " + (e?.message || e));
+    }
+  };
+
+  // ── Colaboradores ──
+  if (document.getElementById("btnInviteColab")) {
+    document.getElementById("btnInviteColab").onclick = async () => {
+      const btn = document.getElementById("btnInviteColab");
+      const msg = document.getElementById("msgInviteColab");
+      if (btn.disabled) return;
+      btn.disabled = true; btn.style.opacity = '.55'; btn.textContent = 'A enviar...';
+      msg.textContent = "";
+      try {
+        const data = await request(ROUTES.inviteColab, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            empresa:  document.getElementById("ic_empresa")?.value?.trim(),
+            nome:     document.getElementById("ic_nome")?.value?.trim(),
+            email:    document.getElementById("ic_email")?.value?.trim(),
+            contacto: document.getElementById("ic_contacto")?.value?.trim(),
+            tipo:     document.getElementById("ic_tipo")?.value,
+            pais:     document.getElementById("ic_pais")?.value?.trim(),
+            concelho: document.getElementById("ic_concelho")?.value?.trim(),
+            cidade:   document.getElementById("ic_cidade")?.value?.trim()
+          })
+        });
+        msg.textContent = "✅ " + (data?.message || "Convite enviado.");
+      } catch(e) { msg.textContent = "❌ " + (e?.message || e); }
+      finally { btn.disabled = false; btn.style.opacity = ''; btn.textContent = 'ENVIAR CONVITE'; }
+    };
+  }
+
+  // ── Validadores ──
+  if (document.getElementById("btnInviteValidador")) {
+    document.getElementById("btnInviteValidador").onclick = async () => {
+      const msg = document.getElementById("msgInviteValidador");
+      const raw = document.getElementById("iv_emails")?.value || "";
+      const emails = raw.split(/[\n,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
+      if (!emails.length) { msg.textContent = "❌ Indique pelo menos um email."; return; }
+      const btnV = document.getElementById("btnInviteValidador");
+      if (btnV) { btnV.disabled = true; btnV.style.opacity = '.55'; btnV.textContent = 'A enviar...'; }
+      msg.textContent = "";
+      let ok = 0, fail = 0, fails = [];
+      for (const email of emails) {
+        try {
+          await request(ROUTES.inviteValidador, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, scope: document.getElementById("iv_scope")?.value, channel: document.getElementById("iv_channel")?.value, note: document.getElementById("iv_note")?.value?.trim() })
+          });
+          ok++;
+        } catch(e) { fail++; fails.push(email + ": " + (e?.message || e)); }
+      }
+      msg.textContent = "✅ Enviados: " + ok + "  ❌ Falhas: " + fail + (fails.length ? "\n" + fails.join("\n") : "");
+      if (fail > 0) {
+        msg.textContent += "\n\n⚠️ Se o erro for 'Erro ao convidar validador', verifique o enum do campo 'scope' no modelo Validador.js — deve incluir: motoristas, veiculos, empresa, global.";
+      }
+      if (btnV) { btnV.disabled = false; btnV.style.opacity = ''; btnV.textContent = 'ENVIAR CONVITES'; }
+    };
+  }
+
+  if (document.getElementById("btnAbrirRegistoMotorista")) document.getElementById("btnAbrirRegistoMotorista").onclick = () => { window.location.href = "/motorista-registo.html"; };
+  if (document.getElementById("btnAbrirRegistoVeiculo"))   document.getElementById("btnAbrirRegistoVeiculo").onclick   = () => { window.location.href = "/veiculo-registo.html"; };
+
+
+  /* ── MODAL REGISTAR MOTORISTA ─────────────────────────── */
+  function openModal(id)  { const m = document.getElementById(id); if(m){m.style.display="flex";} }
+  function closeModal(id) { const m = document.getElementById(id); if(m){m.style.display="none";} }
+
+  document.getElementById("btnOpenRegMotorista").onclick = () => { window.location.href = "/motorista-registo.html"; };
+  document.getElementById("closeRegMotorista").onclick   = () => closeModal("modalRegMotorista");
+  document.getElementById("closeRegMotorista2").onclick  = () => closeModal("modalRegMotorista");
+  document.getElementById("btnOpenRegVeiculo").onclick   = () => { window.location.href = "/veiculo-registo.html"; };
+  document.getElementById("closeRegVeiculo").onclick     = () => closeModal("modalRegVeiculo");
+  document.getElementById("closeRegVeiculo2").onclick    = () => closeModal("modalRegVeiculo");
+
+  document.getElementById("btnSubmitMotorista").onclick = async () => {
+    const btn = document.getElementById("btnSubmitMotorista");
+    const msg = document.getElementById("msgRegMotorista");
+    const nome    = document.getElementById("rm_nome").value.trim();
+    const email   = document.getElementById("rm_email").value.trim();
+    const telefone= document.getElementById("rm_telefone").value.trim();
+    if (!nome || !email || !telefone) { msg.textContent = "❌ Nome, email e telefone são obrigatórios."; msg.className = "msg"; return; }
+
+    const fd = new FormData();
+    fd.append("nome", nome);
+    fd.append("email", email);
+    fd.append("telefone", telefone);
+    fd.append("categoria", document.getElementById("rm_categoria").value);
+    fd.append("idioma", document.getElementById("rm_idioma").value);
+    const bi    = document.getElementById("rm_bi").files[0];
+    const carta = document.getElementById("rm_carta").files[0];
+    const foto  = document.getElementById("rm_foto").files[0];
+    if (bi)    fd.append("bi", bi);
+    if (carta) fd.append("cartaConducao", carta);
+    if (foto)  fd.append("fotoPerfil", foto);
+
+    btn.disabled = true; btn.textContent = "A registar...";
+    msg.textContent = "";
+    try {
+      const res = await fetch(ROUTES.registarMotorista, { method:"POST", credentials:"include", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "HTTP " + res.status);
+      msg.textContent = "✅ Motorista registado com sucesso.";
+      msg.className = "msg";
+      btn.textContent = "✅ REGISTADO";
+      setTimeout(() => { closeModal("modalRegMotorista"); btn.disabled=false; btn.textContent="REGISTAR"; msg.textContent=""; }, 2000);
+      loadMotoristas();
+    } catch(e) {
+      msg.textContent = "❌ " + (e?.message || "Erro ao registar.");
+      btn.disabled = false; btn.textContent = "REGISTAR";
+    }
+  };
+
+  document.getElementById("btnSubmitVeiculo").onclick = async () => {
+    const btn = document.getElementById("btnSubmitVeiculo");
+    const msg = document.getElementById("msgRegVeiculo");
+    const matricula = document.getElementById("rv_matricula").value.trim();
+    const marca     = document.getElementById("rv_marca").value.trim();
+    const modelo    = document.getElementById("rv_modelo").value.trim();
+    if (!matricula || !marca || !modelo) { msg.textContent = "❌ Matrícula, marca e modelo são obrigatórios."; return; }
+
+    const fd = new FormData();
+    fd.append("matricula", matricula);
+    fd.append("marca", marca);
+    fd.append("modelo", modelo);
+    fd.append("ano", document.getElementById("rv_ano").value);
+    fd.append("cor", document.getElementById("rv_cor").value.trim());
+    fd.append("lugares", document.getElementById("rv_lugares").value);
+    // "categoria" deixou de ser enviada — o backend deriva-a
+    // automaticamente da regra Marca/Modelo (painel "Categorias
+    // Veículos"). Ver VehicleCategoryRule.js / veiculos.routes.js.
+    // Nomes de campo têm de bater certo com o multer.fields() do
+    // backend (veiculos.routes.js: duaFrente, duaVerso, inspecaoDoc,
+    // seguroDoc, autorizacaoDoc, fotos). Um nome de campo desconhecido
+    // faz o multer rejeitar o pedido INTEIRO antes de chegar à rota —
+    // era isto que impedia qualquer registo com documento anexado.
+    ["rv_seguro","rv_inspecao","rv_registo","rv_foto"].forEach(id => {
+      const f = document.getElementById(id).files[0];
+      const names = {rv_seguro:"seguroDoc", rv_inspecao:"inspecaoDoc", rv_registo:"duaFrente", rv_foto:"fotos"};
+      if (f) fd.append(names[id], f);
+    });
+
+    btn.disabled = true; btn.textContent = "A registar...";
+    msg.textContent = "";
+    try {
+      const res = await fetch(ROUTES.registarVeiculo, { method:"POST", credentials:"include", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "HTTP " + res.status);
+      msg.textContent = "✅ Veículo registado com sucesso.";
+      btn.textContent = "✅ REGISTADO";
+      setTimeout(() => { closeModal("modalRegVeiculo"); btn.disabled=false; btn.textContent="REGISTAR"; msg.textContent=""; }, 2000);
+    } catch(e) {
+      msg.textContent = "❌ " + (e?.message || "Erro ao registar.");
+      btn.disabled = false; btn.textContent = "REGISTAR";
+    }
+  };
+
+  // ── GESTOR DE SEGURANÇA ──────────────────────────────────────
+  const PAISES_LABEL = { PT:"🇵🇹 Portugal", BR:"🇧🇷 Brasil", AO:"🇦🇴 Angola", MZ:"🇲🇿 Moçambique", CV:"🇨🇻 Cabo Verde", ST:"🇸🇹 São Tomé e Príncipe", GW:"🇬🇼 Guiné-Bissau", GQ:"🇬🇶 Guiné Equatorial", TL:"🇹🇱 Timor-Leste" };
+
+  function setBtnEnviando(btn, labelOriginal, enviando) {
+    if (!btn) return;
+    btn.disabled      = enviando;
+    btn.textContent   = enviando ? "A enviar..." : labelOriginal;
+    btn.style.opacity = enviando ? "0.55" : "";
+    btn.style.cursor  = enviando ? "not-allowed" : "";
+  }
+
+  function limparFormSegOp() {
+    ["so_nome","so_email","so_nif","so_cc","so_contacto","so_endereco"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = "";
+    });
+    const msg = document.getElementById("msgInviteSegOp");
+    if (msg) { msg.textContent = "Pronto."; msg.style.color = ""; }
+  }
+
+  const btnLimparSegOp = document.getElementById("btnLimparSegOp");
+  if (btnLimparSegOp) btnLimparSegOp.onclick = limparFormSegOp;
+
+  const btnInviteSegOp = document.getElementById("btnInviteSegOp");
+  if (btnInviteSegOp) {
+    btnInviteSegOp.onclick = async () => {
+      const msg      = document.getElementById("msgInviteSegOp");
+      const nome     = document.getElementById("so_nome")?.value?.trim();
+      const email    = document.getElementById("so_email")?.value?.trim();
+      const nif      = document.getElementById("so_nif")?.value?.trim().replace(/\s/g,"");
+      const cc       = document.getElementById("so_cc")?.value?.trim();
+      const contacto = document.getElementById("so_contacto")?.value?.trim();
+      const endereco = document.getElementById("so_endereco")?.value?.trim();
+      const pais     = document.getElementById("so_pais")?.value;
+
+      if (!nome || !email || !nif || !cc || !contacto || !endereco || !pais) {
+        msg.textContent = "❌ Preencha todos os campos obrigatórios."; msg.style.color = "var(--bad)"; return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        msg.textContent = "❌ Email inválido."; msg.style.color = "var(--bad)"; return;
+      }
+      if (!/^\d{9}$/.test(nif) && !/^\d{11}$/.test(nif)) {
+        msg.textContent = "❌ NIF deve ter 9 dígitos ou CPF 11 dígitos."; msg.style.color = "var(--bad)"; return;
+      }
+
+      setBtnEnviando(btnInviteSegOp, "✉️ ENVIAR CONVITE", true);
+      msg.textContent = "A enviar convite..."; msg.style.color = "var(--silver-2)";
+      try {
+        const data = await request("/api/admin/operadores-seguranca/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, email, nif, cc, contacto, endereco, pais })
+        });
+        msg.textContent = "✅ " + (data?.message || "Convite enviado. O gestor receberá o link com acesso restrito a " + (PAISES_LABEL[pais] || pais) + ".");
+        msg.style.color = "var(--ok)";
+        if (data?.activationLink || data?.link) {
+          const link = data.activationLink || data.link;
+          msg.innerHTML += `<br><small style="color:var(--silver-2);word-break:break-all">🔗 <a href="${link}" target="_blank" style="color:var(--ok)">${link}</a></small>`;
+        }
+        limparFormSegOp();
+        carregarOperadoresSeguranca();
+      } catch(e) {
+        msg.textContent = "❌ " + (e?.message || "Erro ao enviar convite."); msg.style.color = "var(--bad)";
+      } finally {
+        setBtnEnviando(btnInviteSegOp, "✉️ ENVIAR CONVITE", false);
+      }
+    };
+  }
+
+  const btnRefreshSegOp = document.getElementById("btnRefreshSegOp");
+  if (btnRefreshSegOp) btnRefreshSegOp.onclick = carregarOperadoresSeguranca;
+
+  async function carregarOperadoresSeguranca() {
+    const tbody = document.getElementById("tbodySegOp");
+    if (!tbody) return;
+    tbody.innerHTML = "<tr><td colspan='6' style='padding:14px;text-align:center;color:var(--silver-3)'>A carregar...</td></tr>";
+    try {
+      const data = await request("/api/admin/operadores-seguranca");
+      const lista = data?.operadores || [];
+      if (!lista.length) {
+        tbody.innerHTML = "<tr><td colspan='6' style='padding:14px;text-align:center;color:var(--silver-3)'>Sem gestores registados.</td></tr>";
+        return;
+      }
+      tbody.innerHTML = lista.map(o => {
+        const aprovado = !!o.aprovado;
+        const estado   = aprovado ? "APROVADO" : (o.tokenUsadoEm ? "PENDENTE" : "CONVITE ENVIADO");
+        const cor      = aprovado ? "rgba(25,214,139,.12)" : o.tokenUsadoEm ? "rgba(255,160,60,.1)" : "rgba(91,155,247,.1)";
+        const corTxt   = aprovado ? "#19d68b" : o.tokenUsadoEm ? "#ffa03c" : "#9ec5fe";
+        const paisLabel = PAISES_LABEL[o.pais] || o.pais || o.regiao || "—";
+        return `<tr style="border-bottom:1px solid var(--line)">
+          <td style="padding:8px 10px;color:var(--silver);font-weight:700">${safeText(o.nome||"—")}</td>
+          <td style="padding:8px 10px;color:var(--silver-2);font-size:12px">${safeText(o.email)}</td>
+          <td style="padding:8px 10px;color:var(--silver-2)">${safeText(o.contacto||"—")}</td>
+          <td style="padding:8px 10px;color:var(--silver-2)">${safeText(paisLabel)}</td>
+          <td style="padding:8px 10px"><span style="padding:3px 10px;border-radius:999px;font-size:10px;font-weight:900;background:${cor};color:${corTxt}">${estado}</span></td>
+          <td style="padding:8px 10px"><div style="display:flex;gap:6px">
+            ${!aprovado && o.tokenUsadoEm ? `<button class="btn active" style="min-height:26px;padding:0 10px;font-size:11px" onclick="aprovarSegOp('${o._id}','aprovado')">✅ APROVAR</button>` : ""}
+            ${aprovado ? `<button class="btn" style="min-height:26px;padding:0 10px;font-size:11px" onclick="aprovarSegOp('${o._id}','rejeitado')">✕ REVOGAR</button>` : ""}
+          </div></td>
+        </tr>`;
+      }).join("");
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan='6' style='padding:14px;text-align:center;color:var(--bad)'>Erro: ${safeText(e?.message||String(e))}</td></tr>`;
+    }
+  }
+
+  window.aprovarSegOp = async function(id, status) {
+    try {
+      const data = await request(`/api/admin/operadores-seguranca/${id}/aprovar`, {
+        method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({status})
+      });
+      if (data?.ok) carregarOperadoresSeguranca();
+    } catch(e) { alert("Erro: " + e?.message); }
+  };
+
+  setConviteTab("parceiro");
+
+  (async () => {
+    const ok = await ensureAdminMasterOrRedirect();
+    if (!ok) return;
+    await loadKms();
+    await loadFaturasMini();
+    await loadQuote();
+    await loadTaxaPlataforma();
+    await loadHistoricoTaxas();
+    await loadMotoristasSelectTaxa();
+    await loadParceiros();
+    await loadColaboradores();
+    await loadMotoristas();
+    await loadVeiculos();
+    await loadViagens();
+    await loadAudit();
+  })();
+
+  // Expostos no window: o script "CATEGORIAS OVERLAY" mais abaixo
+  // corre num <script> SEPARADO, fora desta IIFE — sem isto,
+  // request() e ROUTES ficam presos neste escopo privado e
+  // qualquer chamada a partir de lá falha com "request is not
+  // defined". Mudança aditiva, não afecta nada dentro desta IIFE.
+  window.request = request;
+  window.ROUTES = ROUTES;
+})();
+
+</script>
+
+<!-- ══ OVERLAY VALIDADORES PENDENTES ══ -->
+<div id="ovValidadoresPendentes" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.82);backdrop-filter:blur(16px);align-items:flex-end;justify-content:center">
+  <div style="width:100%;max-width:640px;max-height:85vh;background:#111318;border:1px solid rgba(255,255,255,.10);border-radius:24px 24px 0 0;display:flex;flex-direction:column;overflow:hidden;animation:slideUp .25s ease">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#fff;letter-spacing:.04em">Validadores Pendentes</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">Seleccione um validador para ver e validar os documentos</div>
+      </div>
+      <button onclick="document.getElementById('ovValidadoresPendentes').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;line-height:1;padding:4px">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:16px;display:flex;flex-direction:column;gap:10px" id="ovVldLista">
+      <div style="text-align:center;padding:24px;color:#6b7280;font-size:12px">A carregar…</div>
+    </div>
+    <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0;text-align:center">
+      <button onclick="window.open('/validacao.html?mode=validadores','_blank')" style="height:44px;padding:0 24px;border-radius:12px;border:1px solid rgba(212,216,223,.25);background:rgba(212,216,223,.08);color:#e8eaed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.06em">ABRIR PAINEL DE VALIDAÇÃO DE VALIDADORES</button>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+.vld-card-pendente{
+  border:1px solid rgba(255,255,255,.08);border-radius:16px;
+  background:rgba(255,255,255,.04);padding:14px 16px;
+  cursor:pointer;transition:.15s;display:flex;align-items:center;gap:14px;
+}
+.vld-card-pendente:hover{border-color:rgba(212,216,223,.3);background:rgba(255,255,255,.07);transform:translateY(-1px)}
+.vld-card-avatar{width:40px;height:40px;border-radius:50%;flex-shrink:0;background:rgba(212,216,223,.08);border:1px solid rgba(212,216,223,.2);display:grid;place-items:center;font-size:14px;font-weight:900;color:#cdd2da}
+.vld-card-info strong{display:block;font-size:13px;font-weight:700;color:#e8eaed;margin-bottom:3px}
+.vld-card-info span{font-size:11px;color:#6b7280}
+.vld-card-scope{margin-left:auto;flex-shrink:0;font-size:10px;font-weight:700;color:#8a939f;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:3px 8px;letter-spacing:.08em;text-transform:uppercase}
+</style>
+
+
+
+<!-- ══ OVERLAY: CATEGORIAS DE VEÍCULOS ══════════════════════ -->
+<div id="modalCategorias" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.80);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#0c0c0f;border:1px solid var(--line-2);border-radius:20px;width:min(860px,98vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+    <!-- Header -->
+    <div style="padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex:0 0 auto">
+      <div>
+        <div style="font-size:15px;font-weight:900;color:#fff">Categorias por Marca/Modelo</div>
+        <div style="font-size:11px;color:var(--silver-3);margin-top:3px">O admin define — o sistema aplica automaticamente no registo</div>
+      </div>
+      <button onclick="fecharModalCategorias()" style="background:none;border:none;color:var(--silver-3);font-size:20px;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px">&#x2715;</button>
+    </div>
+
+    <!-- Body: 3 colunas -->
+    <div style="display:grid;grid-template-columns:200px 220px 1fr;flex:1;overflow:hidden;min-height:0">
+
+      <!-- Col 1: Marcas -->
+      <div style="border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:12px;border-bottom:1px solid var(--line);flex:0 0 auto">
+          <input id="vcNovaMarca" placeholder="Nova marca..." style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line-2);background:var(--panel-2);color:var(--silver);font-size:11px;box-sizing:border-box">
+          <button onclick="vcAdicionarMarca()" style="width:100%;margin-top:6px;padding:7px;border-radius:8px;border:1px solid rgba(25,214,139,.3);background:rgba(25,214,139,.06);color:var(--ok);font-size:11px;font-weight:700;cursor:pointer">+ MARCA</button>
+        </div>
+        <div id="vcListaMarcas" style="overflow-y:auto;flex:1;padding:6px"></div>
+      </div>
+
+      <!-- Col 2: Modelos -->
+      <div style="border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--line);flex:0 0 auto">
+          <div id="vcMarcaSel" style="font-size:10px;font-weight:700;color:var(--silver-3);margin-bottom:6px">Seleccione uma marca</div>
+          <input id="vcNovoModelo" placeholder="Novo modelo..." style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line-2);background:var(--panel-2);color:var(--silver);font-size:11px;box-sizing:border-box" disabled>
+          <button onclick="vcAdicionarModelo()" id="vcBtnModelo" style="width:100%;margin-top:6px;padding:7px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--silver-3);font-size:11px;font-weight:700;cursor:pointer;opacity:.4" disabled>+ MODELO</button>
+        </div>
+        <div id="vcListaModelos" style="overflow-y:auto;flex:1;padding:6px"></div>
+      </div>
+
+      <!-- Col 3: Categorias do modelo seleccionado -->
+      <div style="display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--line);flex:0 0 auto">
+          <div id="vcModeloSel" style="font-size:12px;font-weight:800;color:#fff;margin-bottom:2px">—</div>
+          <div style="font-size:10px;color:var(--silver-3)">Assinale as categorias que este modelo pode realizar</div>
+        </div>
+        <div style="padding:16px 18px;flex:1;overflow-y:auto">
+          <div id="vcCatWrap" style="opacity:.3;pointer-events:none">
+            <!-- Categorias individuais -->
+            <div style="font-size:9px;font-weight:700;color:var(--silver-3);letter-spacing:.1em;margin-bottom:10px">CATEGORIAS INDIVIDUAIS</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
+              <label class="vc-cat-row" data-cat="economica"><input type="checkbox" value="economica"> <span class="vc-icon">🚗</span> <span class="vc-name">Económica</span> <span class="vc-desc">Sedan standard · 4 pax</span></label>
+              <label class="vc-cat-row" data-cat="confort">  <input type="checkbox" value="confort">   <span class="vc-icon">🚙</span> <span class="vc-name">Confort</span>    <span class="vc-desc">Sedan premium · 4 pax</span></label>
+              <label class="vc-cat-row" data-cat="executive"><input type="checkbox" value="executive"> <span class="vc-icon">🏎️</span> <span class="vc-name">Executive</span>  <span class="vc-desc">Berlina executiva · 4 pax</span></label>
+              <label class="vc-cat-row" data-cat="luxury">   <input type="checkbox" value="luxury">    <span class="vc-icon">💎</span> <span class="vc-name">Luxury</span>     <span class="vc-desc">Luxo premium · 4 pax</span></label>
+            </div>
+            <!-- Grupos -->
+            <div style="font-size:9px;font-weight:700;color:var(--silver-3);letter-spacing:.1em;margin-bottom:10px">GRUPOS</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+              <label class="vc-cat-row" data-cat="grupo6">  <input type="checkbox" value="grupo6">   <span class="vc-icon">🚐</span> <span class="vc-name">Grupo 6</span>  <span class="vc-desc">Minivan · 6 pax</span></label>
+              <label class="vc-cat-row" data-cat="grupo8">  <input type="checkbox" value="grupo8">   <span class="vc-icon">🚌</span> <span class="vc-name">Grupo 8</span>  <span class="vc-desc">Minibus · 8 pax</span></label>
+              <label class="vc-cat-row" data-cat="grupo17"> <input type="checkbox" value="grupo17">  <span class="vc-icon">🚎</span> <span class="vc-name">Grupo 17</span> <span class="vc-desc">Autocarro · 17 pax</span></label>
+            </div>
+            <button onclick="vcGuardarCategorias()" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(180deg,#e0e4ea,#bec6d1);color:#07080a;font-weight:900;font-size:13px;cursor:pointer">GUARDAR CATEGORIAS</button>
+          </div>
+          <div id="vcCatEmpty" style="padding:32px;text-align:center;color:var(--silver-3);font-size:11px">Seleccione uma marca e modelo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.vc-cat-row {
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:10px;border:1px solid var(--line);background:var(--panel-2);
+  cursor:pointer;transition:.15s;
+}
+.vc-cat-row:hover { border-color:var(--line-2); }
+.vc-cat-row input[type="checkbox"] { width:16px;height:16px;accent-color:var(--ok);cursor:pointer; }
+.vc-cat-row input:checked ~ .vc-name { color:#fff; }
+.vc-cat-row:has(input:checked) { border-color:rgba(25,214,139,.3);background:rgba(25,214,139,.06); }
+.vc-icon  { font-size:16px; }
+.vc-name  { font-size:12px;font-weight:700;color:var(--silver-2);flex:1; }
+.vc-desc  { font-size:10px;color:var(--silver-3); }
+.vc-marca-item, .vc-modelo-item {
+  padding:9px 12px;border-radius:8px;cursor:pointer;font-size:12px;
+  color:var(--silver-2);display:flex;align-items:center;justify-content:space-between;
+  transition:.12s;
+}
+.vc-marca-item:hover, .vc-modelo-item:hover { background:var(--panel-3); }
+.vc-marca-item.active { background:rgba(25,214,139,.08);color:var(--ok);font-weight:700; }
+.vc-modelo-item.active { background:rgba(25,214,139,.08);color:var(--ok);font-weight:700; }
+.vc-del { font-size:10px;color:var(--bad);opacity:0;transition:.12s;background:none;border:none;cursor:pointer;padding:2px 6px; }
+.vc-marca-item:hover .vc-del, .vc-modelo-item:hover .vc-del { opacity:1; }
+</style>
+
+<script>
+/* ── CATEGORIAS OVERLAY ── */
+let _vcDados   = {};   // { marcaLabel: { marca, label, modelos: [...] } }
+let _vcMarcaSel  = null;
+let _vcModeloSel = null;
+
+async function abrirModalCategorias() {
+  document.getElementById('modalCategorias').style.display = 'flex';
+  await vcCarregarDados();
+}
+
+function fecharModalCategorias() {
+  document.getElementById('modalCategorias').style.display = 'none';
+}
+
+async function vcCarregarDados() {
+  try {
+    const r = await request(ROUTES.vcGet);
+    _vcDados = {};
+    (r.marcas || []).forEach(m => { _vcDados[m.label] = m; });
+    vcRenderMarcas();
+  } catch(e) { console.error('vcCarregarDados:', e); }
+}
+
+function vcRenderMarcas() {
+  const el = document.getElementById('vcListaMarcas');
+  const marcas = Object.values(_vcDados).sort((a,b) => a.label.localeCompare(b.label));
+  el.innerHTML = marcas.map(m => `
+    <div class="vc-marca-item ${_vcMarcaSel === m.label ? 'active' : ''}" onclick="vcSelecionarMarca('${escapeAttr(m.label)}')">
+      <span>${escapeHtml(m.label)}</span>
+      <span style="font-size:10px;color:var(--silver-3)">${m.modelos.length}</span>
+    </div>`).join('');
+}
+
+function vcSelecionarMarca(label) {
+  _vcMarcaSel  = label;
+  _vcModeloSel = null;
+  const inp = document.getElementById('vcNovoModelo');
+  const btn = document.getElementById('vcBtnModelo');
+  const lbl = document.getElementById('vcMarcaSel');
+  lbl.textContent = label;
+  inp.disabled = false; btn.disabled = false; btn.style.opacity = '1';
+  inp.style.borderColor = '';
+  vcRenderMarcas();
+  vcRenderModelos();
+  vcRenderCats(null);
+}
+
+function vcRenderModelos() {
+  const el = document.getElementById('vcListaModelos');
+  if (!_vcMarcaSel || !_vcDados[_vcMarcaSel]) { el.innerHTML = ''; return; }
+  const modelos = _vcDados[_vcMarcaSel].modelos.sort((a,b) => a.label.localeCompare(b.label));
+  el.innerHTML = modelos.map(m => `
+    <div class="vc-modelo-item ${_vcModeloSel?.label === m.label ? 'active' : ''}" onclick="vcSelecionarModelo(${JSON.stringify(m)})">
+      <span>${escapeHtml(m.label)}</span>
+      <div style="display:flex;align-items:center;gap:4px">
+        <span style="font-size:9px;color:var(--ok)">${(m.categorias||[]).length > 0 ? '✓' : ''}</span>
+        <button class="vc-del" onclick="event.stopPropagation();vcRemoverModelo('${m.id}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function vcSelecionarModelo(m) {
+  _vcModeloSel = m;
+  document.getElementById('vcModeloSel').textContent = `${_vcMarcaSel} ${m.label}`;
+  vcRenderModelos();
+  vcRenderCats(m.categorias || []);
+}
+
+function vcRenderCats(cats) {
+  const wrap  = document.getElementById('vcCatWrap');
+  const empty = document.getElementById('vcCatEmpty');
+  if (!cats) { wrap.style.opacity = '.3'; wrap.style.pointerEvents = 'none'; empty.style.display = 'block'; return; }
+  wrap.style.opacity = '1'; wrap.style.pointerEvents = 'auto'; empty.style.display = 'none';
+  wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = cats.includes(cb.value);
+  });
+}
+
+async function vcAdicionarMarca() {
+  const inp = document.getElementById('vcNovaMarca');
+  const label = inp.value.trim();
+  if (!label) return;
+  if (_vcDados[label]) { vcSelecionarMarca(label); inp.value = ''; return; }
+  _vcDados[label] = { marca: label.toLowerCase(), label, modelos: [] };
+  vcRenderMarcas();
+  vcSelecionarMarca(label);
+  inp.value = '';
+}
+
+async function vcAdicionarModelo() {
+  if (!_vcMarcaSel) return;
+  const inp = document.getElementById('vcNovoModelo');
+  const label = inp.value.trim();
+  if (!label) return;
+  // Criar regra vazia (sem categorias por enquanto)
+  try {
+    await request(ROUTES.vcPost, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ marcaLabel: _vcMarcaSel, modeloLabel: label, categorias: ['economica'] }),
+    });
+    await vcCarregarDados();
+    vcSelecionarMarca(_vcMarcaSel);
+    inp.value = '';
+    // Auto-seleccionar o novo modelo
+    const m = _vcDados[_vcMarcaSel]?.modelos.find(x => x.label.toLowerCase() === label.toLowerCase());
+    if (m) vcSelecionarModelo(m);
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function vcGuardarCategorias() {
+  if (!_vcMarcaSel || !_vcModeloSel) return;
+  const cats = [...document.querySelectorAll('#vcCatWrap input:checked')].map(c => c.value);
+  if (!cats.length) { alert('Seleccione pelo menos uma categoria.'); return; }
+  // Capturar ANTES de vcSelecionarMarca() correr mais abaixo — essa
+  // função põe _vcModeloSel a null como efeito colateral (é o
+  // comportamento certo quando o utilizador troca de marca à mão,
+  // mas aqui apagava a própria referência que ainda íamos usar).
+  const modeloLabelAtual = _vcModeloSel.label;
+  try {
+    const resp = await request(ROUTES.vcPost, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ marcaLabel: _vcMarcaSel, modeloLabel: modeloLabelAtual, categorias: cats }),
+    });
+    await vcCarregarDados();
+    vcSelecionarMarca(_vcMarcaSel);
+    const m = _vcDados[_vcMarcaSel]?.modelos.find(x => x.label === modeloLabelAtual);
+    if (m) vcSelecionarModelo(m);
+    const n = resp?.veiculosAtualizados || 0;
+    alert(`✅ Categorias guardadas.${n > 0 ? `\n${n} veículo(s) já registado(s) foram atualizados automaticamente.` : ''}`);
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function vcRemoverModelo(id) {
+  if (!confirm('Remover esta regra?')) return;
+  await request(ROUTES.vcDelete(id), { method: 'DELETE' });
+  await vcCarregarDados();
+  if (_vcMarcaSel) vcSelecionarMarca(_vcMarcaSel);
+}
+
+function escapeAttr(s) { return String(s).replace(/'/g, "\'"); }
+function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Bind botão
+document.getElementById('btnCategorias')?.addEventListener('click', abrirModalCategorias);
+</script>
+
+<div style="position:fixed;right:14px;bottom:14px;z-index:400">
+  <div style="font-size:12px;font-family:Inter,Arial,system-ui,sans-serif;color:#9aa1ab;background:rgba(8,10,13,.72);backdrop-filter:blur(10px);padding:9px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px">
+    <span style="opacity:.7">&copy; REALMETROPOLIS</span>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('privacidade');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Privacidade</a>
+    <span style="opacity:.35">&middot;</span>
+    <a href="#" onclick="abrirLegalOverlay('cookies');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Cookies</a>
+  </div>
+</div>
+
+<!-- Overlay translúcido — Privacidade / Cookies -->
+<div id="legalOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(4,5,7,.72);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:24px">
+  <div style="width:min(720px,94vw);max-height:86vh;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(22,25,31,.92),rgba(10,11,14,.96));border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:0 40px 100px rgba(0,0,0,.6);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;text-transform:uppercase">REALMETROPOLIS</div>
+      <button onclick="fecharLegalOverlay()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#cdd2da;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;line-height:1">&times;</button>
+    </div>
+    <iframe id="legalOverlayFrame" src="" style="flex:1;border:none;width:100%;background:transparent;min-height:60vh"></iframe>
+  </div>
+</div>
+<script>
+function abrirLegalOverlay(tipo){
+  var url = tipo === 'cookies' ? '/cookies.html' : '/privacidade.html';
+  document.getElementById('legalOverlayFrame').src = url;
+  document.getElementById('legalOverlay').style.display = 'flex';
+}
+function fecharLegalOverlay(){
+  document.getElementById('legalOverlay').style.display = 'none';
+  document.getElementById('legalOverlayFrame').src = '';
+}
+document.getElementById('legalOverlay')?.addEventListener('click', function(e){
+  if (e.target.id === 'legalOverlay') fecharLegalOverlay();
+});
+</script>
+
+</body>
+</html>

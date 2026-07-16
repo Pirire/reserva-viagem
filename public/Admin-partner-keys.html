@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REALMETROPOLIS — API Keys de Parceiros</title>
+<style>
+:root{
+  --bg:#050507;--bg2:#0b0d11;--panel:#11151c;--panel2:#0c1016;
+  --line:rgba(217,221,227,.10);--line2:rgba(217,221,227,.18);--line3:rgba(217,221,227,.32);
+  --silver:#e3e8ef;--silver2:#aeb7c4;--silver3:#596270;
+  --text:#f7f9fc;--shadow:0 20px 60px rgba(0,0,0,.60);
+  --ok:#19d68b;--bad:#ff5a5a;--warn:#f0a500;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;}
+html,body{width:100%;min-height:100%;background:var(--bg);color:var(--text);}
+body{padding:20px;}
+
+.page-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 0 18px;border-bottom:1px solid var(--line2);margin-bottom:20px;
+  flex-wrap:wrap;gap:12px;
+}
+.page-title{font-size:15px;font-weight:900;letter-spacing:.1em;color:var(--silver);}
+.page-sub{font-size:11px;color:var(--silver3);margin-top:3px;}
+
+/* Toolbar */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.btn{
+  min-height:38px;padding:0 14px;border-radius:12px;border:none;
+  background:linear-gradient(180deg,#e2e7ee,#bec7d2);
+  color:#000;font-weight:900;font-size:12px;letter-spacing:.04em;
+  cursor:pointer;transition:.2s ease;
+}
+.btn:hover{filter:brightness(1.04);transform:translateY(-1px);}
+.btn.ghost{background:linear-gradient(180deg,#181c23,#101319);color:var(--silver);border:1px solid var(--line2);}
+.btn.ghost:hover{border-color:var(--line3);}
+.btn.danger{background:linear-gradient(180deg,rgba(200,40,40,.3),rgba(140,25,25,.2));color:#ff9090;border:1px solid rgba(255,80,80,.3);}
+.btn.small{min-height:32px;font-size:11px;padding:0 10px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+/* Cards da grelha */
+.keys-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;margin-bottom:20px;}
+
+.key-card{
+  background:linear-gradient(180deg,#14171e,#0d0f14);
+  border:1px solid var(--line2);border-radius:18px;
+  padding:18px;position:relative;overflow:hidden;
+}
+.key-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,rgba(217,221,227,.25),transparent);
+}
+.key-card.inactive{opacity:.55;}
+.key-card.inactive::before{background:linear-gradient(90deg,rgba(255,90,90,.3),transparent);}
+
+.key-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px;}
+.key-empresa{font-size:14px;font-weight:900;color:var(--text);margin-bottom:3px;}
+.key-email{font-size:11px;color:var(--silver3);}
+
+.key-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.06em;
+  flex-shrink:0;
+}
+.badge-live{background:rgba(25,214,139,.1);color:var(--ok);border:1px solid rgba(25,214,139,.25);}
+.badge-test{background:rgba(240,165,0,.1);color:var(--warn);border:1px solid rgba(240,165,0,.25);}
+.badge-off{background:rgba(255,90,90,.1);color:var(--bad);border:1px solid rgba(255,90,90,.25);}
+
+.key-preview{
+  font-family:'Courier New',monospace;font-size:12px;
+  background:rgba(0,0,0,.3);border:1px solid var(--line);
+  border-radius:8px;padding:8px 12px;
+  color:var(--silver2);margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.key-preview span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.key-perms{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
+.perm-tag{
+  font-size:9px;padding:3px 8px;border-radius:4px;
+  background:rgba(217,221,227,.07);border:1px solid var(--line);
+  color:var(--silver3);font-family:'Courier New',monospace;
+}
+
+.key-meta{font-size:10px;color:var(--silver3);line-height:1.7;margin-bottom:12px;}
+.key-meta b{color:var(--silver2);}
+
+.key-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* Modal */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.modal-bg.open{display:flex;}
+.modal{
+  background:linear-gradient(180deg,#14171e,#0d1014);
+  border:1px solid var(--line2);border-radius:22px;
+  width:min(520px,100%);padding:28px;
+  box-shadow:0 40px 100px rgba(0,0,0,.7);
+}
+.modal h3{font-size:16px;font-weight:900;margin-bottom:6px;color:var(--text);}
+.modal .sub{font-size:12px;color:var(--silver3);margin-bottom:20px;line-height:1.5;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;color:var(--silver2);margin-bottom:6px;letter-spacing:.04em;}
+.input{
+  width:100%;min-height:44px;padding:0 12px;border-radius:12px;
+  border:1px solid var(--line2);background:#0a0c10;
+  color:var(--text);font-size:13px;outline:none;transition:.18s;
+}
+.input:focus{border-color:var(--line3);box-shadow:0 0 0 3px rgba(217,221,227,.05);}
+.select{
+  width:100%;min-height:44px;padding:0 12px;border-radius:12px;
+  border:1px solid var(--line2);background:#0a0c10;
+  color:var(--text);font-size:13px;outline:none;
+}
+.checkbox-group{display:flex;flex-direction:column;gap:8px;}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver2);cursor:pointer;}
+.checkbox-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--ok);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+
+/* Key reveal box */
+.key-reveal{
+  background:rgba(25,214,139,.06);border:1px solid rgba(25,214,139,.2);
+  border-radius:14px;padding:18px;margin-bottom:16px;
+}
+.key-reveal-title{font-size:12px;font-weight:900;color:var(--ok);margin-bottom:8px;}
+.key-reveal-value{
+  font-family:'Courier New',monospace;font-size:13px;color:var(--text);
+  word-break:break-all;line-height:1.6;
+  background:rgba(0,0,0,.3);border-radius:8px;padding:10px 12px;
+  margin-bottom:8px;
+}
+.key-reveal-warn{font-size:11px;color:rgba(255,200,0,.7);line-height:1.5;}
+
+/* Msg */
+.msg{
+  padding:12px 14px;border-radius:12px;font-size:12px;line-height:1.5;
+  margin-top:12px;display:none;
+}
+.msg.ok{display:block;background:rgba(25,214,139,.07);border:1px solid rgba(25,214,139,.2);color:#7fffc4;}
+.msg.err{display:block;background:rgba(255,90,90,.07);border:1px solid rgba(255,90,90,.2);color:#ff9999;}
+
+/* Empty state */
+.empty{text-align:center;padding:60px 20px;color:var(--silver3);}
+.empty .icon{font-size:40px;margin-bottom:12px;}
+.empty p{font-size:14px;}
+
+/* Stats */
+.stats-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.stat-box{
+  flex:1;min-width:120px;
+  background:linear-gradient(180deg,#14171e,#0d0f14);
+  border:1px solid var(--line2);border-radius:14px;
+  padding:16px;text-align:center;
+}
+.stat-box .n{font-size:28px;font-weight:900;color:var(--text);line-height:1;}
+.stat-box .l{font-size:10px;color:var(--silver3);margin-top:4px;letter-spacing:.06em;text-transform:uppercase;}
+
+/* Docs portal link */
+.docs-box{
+  background:linear-gradient(180deg,rgba(25,214,139,.05),rgba(25,214,139,.02));
+  border:1px solid rgba(25,214,139,.15);border-radius:16px;
+  padding:18px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;
+}
+.docs-box .icon{font-size:24px;flex-shrink:0;margin-top:2px;}
+.docs-box h4{font-size:13px;font-weight:900;color:var(--text);margin-bottom:4px;}
+.docs-box p{font-size:12px;color:var(--silver3);line-height:1.5;}
+.docs-box a{color:var(--ok);text-decoration:underline;font-size:12px;}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <div>
+    <div class="page-title">🔑 API KEYS — EMPRESAS PARCEIRAS</div>
+    <div class="page-sub">Gerir chaves de acesso para submissão externa de documentos ao sistema de validação.</div>
+  </div>
+  <div class="toolbar" style="margin:0;">
+    <button class="btn ghost small" onclick="loadKeys()">↻ ATUALIZAR</button>
+    <button class="btn" onclick="openCreateModal()">+ NOVA API KEY</button>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-box"><div class="n" id="statTotal">—</div><div class="l">Total</div></div>
+  <div class="stat-box"><div class="n" id="statAtivas">—</div><div class="l">Activas</div></div>
+  <div class="stat-box"><div class="n" id="statLive">—</div><div class="l">Live</div></div>
+  <div class="stat-box"><div class="n" id="statSandbox">—</div><div class="l">Sandbox</div></div>
+</div>
+
+<!-- Docs box -->
+<div class="docs-box">
+  <div class="icon">📋</div>
+  <div>
+    <h4>Portal de submissão para empresas parceiras</h4>
+    <p>Cada empresa acede ao portal em <a href="/parceiro-submit.html" target="_blank">/parceiro-submit.html</a> e usa a sua API Key para submeter motoristas e veículos directamente para o painel de validação.</p>
+  </div>
+</div>
+
+<!-- Grid de chaves -->
+<div class="keys-grid" id="keysGrid">
+  <div class="empty"><div class="icon">🔑</div><p>A carregar...</p></div>
+</div>
+
+<!-- ══════════════════════════
+     MODAL — CRIAR CHAVE
+══════════════════════════ -->
+<div class="modal-bg" id="modalCreate">
+  <div class="modal">
+    <h3>Nova API Key</h3>
+    <p class="sub">A chave será gerada e exibida <b>uma única vez</b>. Envie-a à empresa por canal seguro.</p>
+
+    <div class="field"><label>Empresa *</label><input class="input" id="f_empresa" placeholder="Nome da empresa"></div>
+    <div class="field"><label>Email de contacto técnico *</label><input class="input" id="f_email" type="email" placeholder="dev@empresa.pt"></div>
+    <div class="field"><label>Contacto (opcional)</label><input class="input" id="f_contacto" placeholder="+351..."></div>
+    <div class="field"><label>Ambiente</label>
+      <select class="select" id="f_ambiente">
+        <option value="sandbox">Sandbox — testes, sem impacto real</option>
+        <option value="live">Live — produção</option>
+      </select>
+    </div>
+    <div class="field"><label>Permissões</label>
+      <div class="checkbox-group">
+        <label class="checkbox-row"><input type="checkbox" value="submit:driver"  checked> Submeter motoristas</label>
+        <label class="checkbox-row"><input type="checkbox" value="submit:vehicle" checked> Submeter veículos</label>
+        <label class="checkbox-row"><input type="checkbox" value="read:status"> Consultar estado de submissão</label>
+        <label class="checkbox-row"><input type="checkbox" value="webhook:receive"> Receber notificações webhook</label>
+      </div>
+    </div>
+    <div class="field"><label>URL Webhook (opcional)</label><input class="input" id="f_webhook" placeholder="https://empresa.pt/webhook/validacao"></div>
+    <div class="field"><label>Notas internas</label><input class="input" id="f_notas" placeholder="Agência XYZ — contrato n.º 2026-01"></div>
+
+    <div id="keyRevealBox" style="display:none;">
+      <div class="key-reveal">
+        <div class="key-reveal-title">✅ API Key gerada com sucesso</div>
+        <div class="key-reveal-value" id="keyRevealValue"></div>
+        <div class="key-reveal-warn">⚠️ Esta chave não voltará a ser exibida. Copie e envie à empresa agora.</div>
+      </div>
+      <button class="btn" style="width:100%;margin-bottom:8px;" onclick="copyKey()">📋 COPIAR CHAVE</button>
+    </div>
+
+    <div class="msg" id="msgCreate"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeCreateModal()">FECHAR</button>
+      <button class="btn" id="btnCreate" onclick="createKey()">CRIAR CHAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     MODAL — REVOGAR
+══════════════════════════ -->
+<div class="modal-bg" id="modalRevoke">
+  <div class="modal">
+    <h3>Revogar API Key</h3>
+    <p class="sub">A chave será desactivada imediatamente. A empresa deixará de conseguir submeter documentos. Esta acção pode ser revertida editando a chave.</p>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeRevokeModal()">CANCELAR</button>
+      <button class="btn danger" id="btnConfirmRevoke" onclick="confirmRevoke()">REVOGAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     MODAL — RODAR CHAVE
+══════════════════════════ -->
+<div class="modal-bg" id="modalRotate">
+  <div class="modal">
+    <h3>Rodar API Key</h3>
+    <p class="sub">A chave actual será invalidada e uma nova será gerada. A empresa terá de actualizar a chave nos seus sistemas.</p>
+
+    <div id="rotateRevealBox" style="display:none;">
+      <div class="key-reveal">
+        <div class="key-reveal-title">✅ Nova chave gerada</div>
+        <div class="key-reveal-value" id="rotateRevealValue"></div>
+        <div class="key-reveal-warn">⚠️ Chave anterior invalidada. Envie esta nova chave à empresa.</div>
+      </div>
+      <button class="btn" style="width:100%;margin-bottom:8px;" onclick="copyRotatedKey()">📋 COPIAR NOVA CHAVE</button>
+    </div>
+
+    <div class="msg" id="msgRotate"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeRotateModal()">FECHAR</button>
+      <button class="btn" id="btnConfirmRotate" onclick="confirmRotate()">GERAR NOVA CHAVE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = location.origin;
+let keys = [];
+let pendingId = null;
+let currentKey = "";
+let rotatedKey = "";
+
+/* ── FETCH ─────────────────────────────── */
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...opts.headers },
+    ...opts,
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
+/* ── LOAD ─────────────────────────────── */
+async function loadKeys() {
+  const grid = document.getElementById("keysGrid");
+  grid.innerHTML = `<div class="empty"><div class="icon">⏳</div><p>A carregar...</p></div>`;
+
+  const { ok, data } = await apiFetch("/api/admin/partner-keys");
+  if (!ok) {
+    grid.innerHTML = `<div class="empty"><div class="icon">❌</div><p>Erro ao carregar chaves.</p></div>`;
+    return;
+  }
+
+  keys = data.keys || [];
+  updateStats(keys);
+
+  if (!keys.length) {
+    grid.innerHTML = `<div class="empty"><div class="icon">🔑</div><p>Nenhuma API Key criada ainda.<br>Clique em <b>+ NOVA API KEY</b> para começar.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = keys.map(renderCard).join("");
+}
+
+function updateStats(list) {
+  document.getElementById("statTotal").textContent   = list.length;
+  document.getElementById("statAtivas").textContent  = list.filter(k => k.ativo).length;
+  document.getElementById("statLive").textContent    = list.filter(k => k.ambiente === "live" && k.ativo).length;
+  document.getElementById("statSandbox").textContent = list.filter(k => k.ambiente === "sandbox" && k.ativo).length;
+}
+
+function renderCard(k) {
+  const badge = k.ativo
+    ? (k.ambiente === "live"
+        ? `<span class="key-badge badge-live">● LIVE</span>`
+        : `<span class="key-badge badge-test">● SANDBOX</span>`)
+    : `<span class="key-badge badge-off">● REVOGADA</span>`;
+
+  const perms = (k.permissoes || []).map(p =>
+    `<span class="perm-tag">${p}</span>`
+  ).join("");
+
+  const lastUsed = k.lastUsedAt
+    ? `Último uso: ${new Date(k.lastUsedAt).toLocaleDateString("pt-PT")}`
+    : "Nunca usada";
+
+  const created = new Date(k.createdAt).toLocaleDateString("pt-PT");
+
+  const actions = k.ativo ? `
+    <button class="btn ghost small" onclick="openRotateModal('${k._id}')">↻ RODAR CHAVE</button>
+    <button class="btn danger small" onclick="openRevokeModal('${k._id}')">✕ REVOGAR</button>
+  ` : `
+    <button class="btn ghost small" onclick="reactivateKey('${k._id}')">↩ REACTIVAR</button>
+  `;
+
+  return `
+    <div class="key-card ${k.ativo ? "" : "inactive"}">
+      <div class="key-card-head">
+        <div>
+          <div class="key-empresa">${k.empresa}</div>
+          <div class="key-email">${k.email}</div>
+        </div>
+        ${badge}
+      </div>
+      <div class="key-preview">
+        <span>${k.keyPreview || "rm_...não disponível"}</span>
+        <span style="font-size:10px;color:var(--silver3);">ocultada</span>
+      </div>
+      <div class="key-perms">${perms}</div>
+      <div class="key-meta">
+        <b>Criada em:</b> ${created}<br>
+        <b>${lastUsed}</b><br>
+        ${k.totalUsos ? `<b>Total de usos:</b> ${k.totalUsos}` : ""}
+        ${k.webhookUrl ? `<br><b>Webhook:</b> ${k.webhookUrl}` : ""}
+        ${k.notas ? `<br><b>Nota:</b> ${k.notas}` : ""}
+      </div>
+      <div class="key-actions">${actions}</div>
+    </div>
+  `;
+}
+
+/* ── CRIAR ─────────────────────────────── */
+function openCreateModal() {
+  document.getElementById("modalCreate").classList.add("open");
+  document.getElementById("keyRevealBox").style.display = "none";
+  document.getElementById("msgCreate").className = "msg";
+  document.getElementById("btnCreate").style.display = "";
+  document.getElementById("f_empresa").value = "";
+  document.getElementById("f_email").value = "";
+  document.getElementById("f_contacto").value = "";
+  document.getElementById("f_webhook").value = "";
+  document.getElementById("f_notas").value = "";
+  document.getElementById("f_ambiente").value = "sandbox";
+}
+
+function closeCreateModal() {
+  document.getElementById("modalCreate").classList.remove("open");
+  loadKeys();
+}
+
+async function createKey() {
+  const empresa  = document.getElementById("f_empresa").value.trim();
+  const email    = document.getElementById("f_email").value.trim();
+  const contacto = document.getElementById("f_contacto").value.trim();
+  const ambiente = document.getElementById("f_ambiente").value;
+  const webhook  = document.getElementById("f_webhook").value.trim();
+  const notas    = document.getElementById("f_notas").value.trim();
+  const msg      = document.getElementById("msgCreate");
+
+  if (!empresa || !email) {
+    msg.className = "msg err"; msg.textContent = "Empresa e email são obrigatórios."; return;
+  }
+
+  const permissoes = [...document.querySelectorAll("#modalCreate input[type=checkbox]:checked")]
+    .map(c => c.value);
+
+  const btn = document.getElementById("btnCreate");
+  btn.disabled = true; btn.textContent = "A criar...";
+
+  const { ok, data } = await apiFetch("/api/admin/partner-keys", {
+    method: "POST",
+    body: JSON.stringify({ empresa, email, contacto, ambiente, permissoes, webhookUrl: webhook, notas }),
+  });
+
+  btn.disabled = false; btn.textContent = "CRIAR CHAVE";
+
+  if (!ok) {
+    msg.className = "msg err"; msg.textContent = data?.message || "Erro ao criar chave."; return;
+  }
+
+  currentKey = data.apiKey;
+  document.getElementById("keyRevealValue").textContent = currentKey;
+  document.getElementById("keyRevealBox").style.display = "block";
+  document.getElementById("btnCreate").style.display = "none";
+  msg.className = "msg ok"; msg.textContent = "✅ Chave criada. Copie e envie à empresa.";
+}
+
+function copyKey() {
+  navigator.clipboard.writeText(currentKey).then(() => alert("Chave copiada!"));
+}
+
+/* ── REVOGAR ─────────────────────────────── */
+function openRevokeModal(id) {
+  pendingId = id;
+  document.getElementById("modalRevoke").classList.add("open");
+}
+function closeRevokeModal() {
+  document.getElementById("modalRevoke").classList.remove("open");
+  pendingId = null;
+}
+async function confirmRevoke() {
+  if (!pendingId) return;
+  const btn = document.getElementById("btnConfirmRevoke");
+  btn.disabled = true;
+  const { ok, data } = await apiFetch(`/api/admin/partner-keys/${pendingId}`, { method: "DELETE" });
+  btn.disabled = false;
+  closeRevokeModal();
+  if (ok) loadKeys();
+  else alert(data?.message || "Erro ao revogar.");
+}
+
+async function reactivateKey(id) {
+  if (!confirm("Reactivar esta API Key?")) return;
+  const { ok, data } = await apiFetch(`/api/admin/partner-keys/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ativo: true }),
+  });
+  if (ok) loadKeys();
+  else alert(data?.message || "Erro ao reactivar.");
+}
+
+/* ── RODAR CHAVE ─────────────────────────── */
+function openRotateModal(id) {
+  pendingId = id;
+  document.getElementById("rotateRevealBox").style.display = "none";
+  document.getElementById("msgRotate").className = "msg";
+  document.getElementById("btnConfirmRotate").style.display = "";
+  document.getElementById("modalRotate").classList.add("open");
+}
+function closeRotateModal() {
+  document.getElementById("modalRotate").classList.remove("open");
+  pendingId = null;
+  loadKeys();
+}
+async function confirmRotate() {
+  if (!pendingId) return;
+  const btn = document.getElementById("btnConfirmRotate");
+  btn.disabled = true; btn.textContent = "A gerar...";
+  const { ok, data } = await apiFetch(`/api/admin/partner-keys/${pendingId}/rotate`, { method: "POST" });
+  btn.disabled = false;
+  const msg = document.getElementById("msgRotate");
+  if (!ok) { msg.className = "msg err"; msg.textContent = data?.message || "Erro."; return; }
+  rotatedKey = data.apiKey;
+  document.getElementById("rotateRevealValue").textContent = rotatedKey;
+  document.getElementById("rotateRevealBox").style.display = "block";
+  document.getElementById("btnConfirmRotate").style.display = "none";
+  msg.className = "msg ok"; msg.textContent = "✅ Nova chave activa. Antiga invalidada.";
+}
+function copyRotatedKey() {
+  navigator.clipboard.writeText(rotatedKey).then(() => alert("Nova chave copiada!"));
+}
+
+/* ── INIT ─────────────────────────────── */
+loadKeys();
+
+/* Fechar modal ao clicar fora */
+document.querySelectorAll(".modal-bg").forEach(bg => {
+  bg.addEventListener("click", e => { if (e.target === bg) bg.classList.remove("open"); });
+});
+</script>
+</body>
+</html>

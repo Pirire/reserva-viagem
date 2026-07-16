@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REALMETROPOLIS</title>
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+    html,body{width:100%;height:100%;overflow:hidden;}
+    body{background:url('imagens/imagem-fundo.jpg') center/cover no-repeat;}
+
+   header{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  padding:14px 30px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  z-index:200;
+  background:rgba(0,0,0,0.88);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(192,192,192,0.18);
+  box-shadow:0 8px 30px rgba(0,0,0,0.35);
+}
+  /* BOTÕES HEADER - PREMIUM CLEAN */
+.pill-btn{
+  padding:10px 18px;
+  border-radius:50px;
+  border:1px solid rgba(192,192,192,0.25);
+  cursor:pointer;
+  font-weight:700;
+  font-size:16px;
+  letter-spacing:0.8px;
+  margin-left:12px;
+
+  color:#d9d9d9;
+  background:rgba(255,255,255,0.04);
+
+  transition:all .25s ease;
+}
+
+/* HOVER PREMIUM */
+.pill-btn:hover{
+  color:#ffffff;
+  border-color:rgba(230,230,230,0.65);
+  background:rgba(255,255,255,0.08);
+
+  box-shadow:
+    0 0 12px rgba(220,220,220,0.25),
+    inset 0 0 6px rgba(255,255,255,0.08);
+
+  transform:translateY(-1px);
+}
+
+/* CLICK FEEDBACK */
+.pill-btn:active{
+  transform:scale(0.96);
+}  
+
+  
+    
+
+  .rm-circle{
+    width:38px;height:38px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+    color:#fff;font-weight:900;font-size:12px;letter-spacing:.06em;
+    border:2px solid rgba(212,216,223,.65);
+    background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
+    box-shadow:0 0 0 4px rgba(212,216,223,.08),0 2px 8px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.16);
+    cursor:pointer;transition:.2s;
+  }
+  .rm-circle:hover{border-color:rgba(212,216,223,.9);box-shadow:0 0 0 5px rgba(212,216,223,.14)}
+
+    .header-left{display:flex;align-items:center;}
+    .header-center{display:flex;align-items:center;flex-wrap:wrap;gap:10px;}
+    .header-right{display:flex;align-items:center;gap:10px;}
+
+    .brand-name{
+      font-weight:bold;
+      letter-spacing:1.5px;
+      font-size:20px;
+      color:#d9d9d9;
+    }
+
+    .quem-somos-panel{
+      position:fixed;top:60px;left:-400px;width:400px;height:calc(100% - 60px);
+      background:rgba(0,0,0,0.85);color:white;padding:20px;transition:left 0.5s ease;
+      z-index:150;overflow-y:auto;
+    }
+
+    .carousel-container{
+      width:100%;
+      position:fixed;left:0;bottom:10px;
+      display:flex;justify-content:center;align-items:flex-end;
+      transition: transform 0.5s ease;
+      z-index:120;pointer-events:auto;
+    }
+
+    .carousel{
+      display:flex;gap:30px;justify-content:center;align-items:flex-end;
+      transition: transform 0.5s ease;
+    }
+
+    .carousel img{
+      width:200px;height:150px;border-radius:15px;object-fit:cover;cursor:pointer;
+      transition: all 0.5s ease;box-shadow:0 0 15px rgba(0,0,0,0.3);z-index:1;
+    }
+
+    .carousel img.center{
+      width:250px;height:180px;box-shadow:0 0 25px silver;
+    }
+
+    .carousel img:hover{
+      transform: scale(1.3);box-shadow:0 0 30px silver;z-index:5;
+    }
+
+    .popup-overlay{
+      display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+      background: rgba(0,0,0,0.6);backdrop-filter: blur(8px);
+      justify-content:center;align-items:center;z-index:500;opacity:0;transition: opacity 0.4s ease;
+    }
+
+    .popup-overlay.active{display:flex;opacity:1;}
+
+    .popup-box{
+      width:400px;max-height:80%;background: rgba(0,0,0,0.9);
+      padding:25px;border-radius:20px;box-shadow:0 0 25px rgba(0,0,0,.5);
+      color:#ccc;text-align:center;overflow-y:auto;transform:translateY(-50px);transition:transform 0.4s ease;
+    }
+
+    .popup-overlay.active .popup-box{transform:translateY(0);}
+
+    .popup-box input,.popup-box textarea,.popup-box select{
+      width:100%;padding:12px;margin-top:5px;border:none;border-radius:10px;outline:none;
+      background: rgba(255,255,255,0.1);color:#ddd;
+    }
+
+    .popup-box .popup-btn{
+      width:30%;padding:8px;margin-top:10px;background:silver;color:black;border:none;border-radius:25px;
+      font-weight:bold;cursor:pointer;transition:all 0.3s;
+    }
+
+    .popup-box .popup-btn:hover{background:#9a9a9a;color:white;}
+
+    .contact-inputs{display:none;margin-top:15px;flex-direction:column;gap:10px;}
+    .contact-options{display:flex;gap:10px;justify-content:center;margin-top:15px;}
+
+    .popup-messages{margin:10px 0 12px 0;display:flex;flex-direction:column;gap:8px;}
+    .popup-messages .msg{
+      padding:10px 12px;border-radius:12px;text-align:left;font-size:14px;line-height:1.3;background:rgba(255,255,255,0.06);
+    }
+    .popup-messages .msg.error{border:1px solid rgba(255,0,0,0.35);color:#ffb3b3;}
+    .popup-messages .msg.success{border:1px solid rgba(0,255,0,0.25);color:#bfffd0;}
+    .popup-messages .msg.info{border:1px solid rgba(255,215,0,0.25);color:#ffe8a8;}
+
+    #lightbox{
+      display:none;position:fixed;inset:0;background:rgba(0,0,0,0.86);
+      justify-content:center;align-items:center;z-index:1000;
+    }
+
+    .lightbox-inner{
+      width:min(92vw, 1000px);display:flex;flex-direction:column;align-items:center;gap:10px;
+    }
+
+    .lightbox-media{
+      position:relative;width:100%;display:flex;justify-content:center;align-items:center;
+    }
+
+    #lightbox-img{
+      max-width:100%;max-height:min(78vh, 720px);border-radius:15px;display:block;
+    }
+
+    .lightbox-watermark{
+      position:absolute;left:0;right:0;bottom:8px;text-align:center;font-weight:700;letter-spacing:2px;
+      color:rgba(255,255,255,0.28);text-transform:uppercase;pointer-events:none;
+      text-shadow:0 2px 8px rgba(0,0,0,0.6);padding:0 10px;user-select:none;
+    }
+
+    .lightbox-controls{width:100%;display:flex;justify-content:center;gap:10px;}
+
+    .lightbox-controls button{
+      padding:10px 15px;border-radius:10px;border:none;background:silver;color:black;font-weight:bold;cursor:pointer;
+    }
+
+    body.quem-open .carousel-container{transform: translateX(200px) scale(0.85);}
+
+   .car-reserve-btn{
+  position:fixed;
+  top:180px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:14px 24px;
+  background:rgba(0,0,0,0.92);
+  border:1px solid rgba(192,192,192,0.28);
+  border-radius:80px;
+  text-decoration:none;
+  z-index:300;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.45),
+    0 0 18px rgba(192,192,192,0.18);
+  backdrop-filter:blur(8px);
+  animation:carGlow 2.4s infinite alternate, carFloat 3.2s ease-in-out infinite;
+  transition:
+    background .25s ease,
+    border-color .25s ease,
+    box-shadow .25s ease,
+    filter .25s ease;
+}
+
+    .car-text{color:silver;font-weight:900;letter-spacing:2px;font-size:18px;white-space:nowrap;}
+    .car-body{position:relative;width:70px;height:24px;background:#111;border-radius:20px;border:2px solid silver;}
+    .car-roof{position:absolute;top:-12px;left:14px;width:42px;height:14px;background:#111;border:2px solid silver;border-bottom:none;border-radius:12px 12px 0 0;}
+    .car-window{position:absolute;top:-9px;width:16px;height:8px;background:rgba(192,192,192,0.25);border-radius:4px;}
+    .car-window.left{left:18px;}
+    .car-window.right{right:18px;}
+    .wheel{position:absolute;bottom:-8px;width:14px;height:14px;background:#000;border:2px solid silver;border-radius:50%;}
+    .wheel.left{left:10px;}
+    .wheel.right{right:10px;}
+
+    .car-reserve-btn:hover{
+  background:rgba(255,255,255,0.06);
+  border-color:rgba(230,230,230,0.6);
+  box-shadow:
+    0 14px 34px rgba(0,0,0,0.5),
+    0 0 26px rgba(220,220,220,0.30);
+  filter:brightness(1.08);
+}
+    }
+
+   @keyframes carGlow{
+  from{
+    box-shadow:
+      0 10px 30px rgba(0,0,0,0.45),
+      0 0 12px rgba(192,192,192,0.16);
+  }
+  to{
+    box-shadow:
+      0 10px 30px rgba(0,0,0,0.45),
+      0 0 24px rgba(220,220,220,0.26);
+  }
+}
+
+   @keyframes carFloat{
+  0%,100%{
+    transform:translateX(-50%) translateY(0);
+  }
+  50%{
+    transform:translateX(-50%) translateY(-6px);
+  }
+}
+
+    @media(max-width:900px){
+      .carousel img{width:160px;height:120px;}
+      .carousel img.center{width:200px;height:150px;}
+    }
+
+    @media(max-width:600px){
+      .carousel{gap:14px;}
+      .carousel img{width:125px;height:95px;}
+      .carousel img.center{width:155px;height:115px;}
+      body.quem-open .carousel-container{transform: translateX(160px) scale(0.78);}
+    }
+  #btnEncerrarSessao{
+    display:none;position:fixed;top:70px;right:16px;z-index:999;
+    width:38px;height:38px;border-radius:50%;
+    background:rgba(10,11,13,.92);border:1px solid rgba(239,68,68,.4);
+    color:#ef4444;font-size:18px;cursor:pointer;
+    align-items:center;justify-content:center;
+    box-shadow:0 4px 14px rgba(239,68,68,.2);transition:all .2s;
+  }
+  #btnEncerrarSessao:hover{background:rgba(239,68,68,.15);border-color:#ef4444;}
+  
+    /* hover nas opções do popup de acesso */
+    .rm-opt {
+      border:1.5px solid rgba(255,255,255,.2);
+      border-radius:14px;padding:22px 10px;
+      cursor:pointer;background:rgba(255,255,255,.04);
+      transition:border-color .18s, background .18s, transform .15s;
+    }
+    .rm-opt:hover {
+      border-color:rgba(255,255,255,.55);
+      background:rgba(255,255,255,.1);
+      transform:translateY(-2px);
+    }
+    .rm-opt:active { transform:translateY(0); }
+
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-left">
+      <div class="rm-circle" id="adminLogoTrigger">RM</div>
+      <div class="brand-name">REALMETROPOLIS</div>
+    </div>
+
+    <div class="header-center">
+      <button class="pill-btn" id="quemSomosBtn" type="button">QUEM SOMOS</button>
+      <button class="pill-btn" id="colaboradorBtn" type="button">HOTEL / ALOJAMENTO</button>
+      <button class="pill-btn" id="areaClienteBtn" type="button">ÁREA DE CLIENTE</button>
+      <button class="pill-btn" id="contatoBtn" type="button">CONTACTO</button>
+    </div>
+
+    <div class="header-right">
+    </div>
+  </header>
+
+  <a href="./reserva.html" class="car-reserve-btn" aria-label="Reservar Viagem">
+    <span class="car-body">
+      <span class="car-roof"></span>
+      <span class="car-window left"></span>
+      <span class="car-window right"></span>
+      <span class="wheel left"></span>
+      <span class="wheel right"></span>
+    </span>
+    <span class="car-text">RESERVAR</span>
+  </a>
+
+  <div class="quem-somos-panel" id="quemSomosPanel">
+    <h2>Quem Somos</h2>
+    <p>Desde 2018, a REALMETROPOLIS tem vindo a afirmar-se como uma referência no transporte premium e no turismo profissional, construída sobre um princípio simples, mas inabalável: confiança absoluta.
+
+Nascemos com uma visão clara — elevar o padrão do serviço, onde cada viagem representa não apenas um percurso, mas uma responsabilidade. Cada cliente confia-nos o seu tempo, a sua segurança e a sua experiência. E é essa confiança que nos move todos os dias.
+
+Ao longo dos anos, crescemos com base na integridade, no rigor e no compromisso com a excelência. Selecionamos cuidadosamente os nossos colaboradores, validamos cada documento, cada veículo e cada detalhe, porque acreditamos que o profissionalismo não é uma opção — é uma obrigação.
+
+A REALMETROPOLIS não é apenas uma plataforma.
+É uma estrutura construída sobre segurança, transparência e responsabilidade.
+
+Operamos com padrões exigentes, processos de validação rigorosos e uma dedicação permanente à qualidade, garantindo que cada parceiro e cada serviço cumprem os níveis mais elevados de confiança e credibilidade.
+
+Para nós, cada viagem é mais do que um destino.
+É um compromisso com a excelência.
+
+REALMETROPOLIS
+Desde 2018, a construir confiança todos os dias.</p>
+  </div>
+
+  <div class="carousel-container">
+    <div class="carousel" id="carousel">
+      <img src="imagens/lisboa-1.jpg" alt="Lisboa 1" data-group="g1">
+      <img src="imagens/lisboa02.jpg" alt="Lisboa 2" data-group="g2">
+      <img src="imagens/lisboa03.jpg" alt="Lisboa 3" data-group="g3">
+      <img src="imagens/Sintra1.jpg" alt="Sintra 1" data-group="g4">
+      <img src="imagens/Sintra02.jpg" alt="Sintra 2" data-group="g5">
+      <img src="imagens/Sintra03.jpg" alt="Sintra 3" data-group="g6">
+    </div>
+  </div>
+
+  <div id="lightbox">
+    <div class="lightbox-inner">
+      <div class="lightbox-media">
+        <img id="lightbox-img" src="" alt="Imagem">
+        <div class="lightbox-watermark" id="lightboxWatermark">REALMETROPOLIS</div>
+      </div>
+      <div class="lightbox-controls">
+        <button id="prevBtn" type="button">&#8592;</button>
+        <button id="nextBtn" type="button">&#8594;</button>
+        <button id="closeLightbox" type="button">FECHAR</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="popup-overlay" id="popupColaborador">
+    <div class="popup-box">
+      <div class="popup-messages" id="msgColab"></div>
+
+      <h2>HOTEL / ALOJAMENTO</h2>
+      <div id="colabFormLogin" style="display:flex;flex-direction:column;gap:10px;">
+        <input id="colabLoginEmail" type="email" placeholder="Email">
+        <input id="colabLoginPass" type="password" placeholder="Palavra Passe">
+        <span style="font-size:12px;color:#8b95a2;cursor:pointer;text-align:right;user-select:none;" onclick="(()=>{const i=document.getElementById('colabLoginPass');const s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'Ocultar senha':'Mostrar senha';})()">Mostrar senha</span>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button class="popup-btn" id="colabEntrarBtn" type="button">ENTRAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="popup-overlay" id="popupCliente">
+    <div class="popup-box">
+      <div class="popup-messages" id="msgCli"></div>
+
+      <h2>ÁREA DE CLIENTE</h2>
+
+      <div id="clienteFormLogin" style="display:flex;flex-direction:column;gap:10px;">
+        <input id="cliLoginEmail" type="email" placeholder="Email">
+        <input id="cliLoginPass" type="password" placeholder="Palavra Passe">
+        <span style="font-size:12px;color:#8b95a2;cursor:pointer;text-align:right;user-select:none;" onclick="(()=>{const i=document.getElementById('cliLoginPass');const s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'Ocultar senha':'Mostrar senha';})()">Mostrar senha</span>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button class="popup-btn" id="clienteEntrarBtn" type="button">ENTRAR</button>
+          <button class="popup-btn" id="clienteRegBtn" type="button">REGISTAR</button>
+        </div>
+      </div>
+
+      <div id="clienteFormReg" style="display:none;flex-direction:column;gap:10px;">
+        <input id="cliNome" type="text" placeholder="Nome">
+        <input id="cliEmail" type="email" placeholder="Email">
+        <input id="cliContacto" type="text" placeholder="Contacto">
+        <input id="cliPass" type="password" placeholder="Palavra Passe">
+        <input id="cliPass2" type="password" placeholder="Confirmar Palavra Passe">
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button class="popup-btn" id="clienteConfirmReg" type="button">REGISTAR</button>
+          <button class="popup-btn" id="clienteCloseReg" type="button">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="popup-overlay" id="popupContato">
+    <div class="popup-box">
+      <div class="popup-messages" id="msgContato"></div>
+
+      <h2>CONTACTO</h2>
+
+      <div style="margin-top:10px;color:#ccc;">
+        <div><b>Contacto:</b> +351938070495</div>
+      </div>
+
+      <div class="contact-options" id="contactOptions">
+        <button class="popup-btn" id="viaWhats" type="button">VIA WHATSAPP</button>
+        <button class="popup-btn" id="viaEmail" type="button">VIA E-MAIL</button>
+      </div>
+
+      <div id="whatsMode" style="display:none;margin-top:15px;flex-direction:column;gap:10px;">
+        <div style="color:#ccc;" id="whatsHint">Clique para abrir o WhatsApp:</div>
+        <button class="popup-btn" id="openWhatsBtn" style="width:70%;" type="button">ABRIR WHATSAPP</button>
+        <button class="popup-btn" id="closeContactModeWhats" style="width:40%;" type="button">FECHAR</button>
+      </div>
+
+      <div class="contact-inputs" id="contactInputs">
+        <input id="contactNome" type="text" placeholder="Nome">
+        <input id="contactEmail" type="email" placeholder="Email">
+        <textarea id="contactMsg" placeholder="Mensagem"></textarea>
+
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button class="popup-btn" id="sendContactBtn" type="button">ENVIAR</button>
+          <button class="popup-btn" id="closeContactModeEmail" type="button">FECHAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="popup-overlay" id="popupAdmin">
+    <div class="popup-box" style="text-align:center;padding:28px 24px;width:min(480px,94vw)">
+      <div style="font-size:11px;font-weight:900;color:#edf0f5;letter-spacing:.14em;margin-bottom:3px">ACESSO RESTRITO</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.35);margin-bottom:20px;letter-spacing:.04em">Selecione o tipo de acesso</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:18px;align-items:stretch">
+
+        <a href="./admin-login.html" style="text-decoration:none;flex:1;display:flex">
+          <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
+            <span style="font-size:24px;line-height:1">🔑</span>
+            <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">ADMIN</span>
+            <span style="font-size:9px;color:rgba(255,255,255,.45);line-height:1.5;display:block">Painel<br>administrativo</span>
+          </div>
+        </a>
+
+        <a href="./gestor-frota-login.html" style="text-decoration:none;flex:1;display:flex">
+          <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
+            <span style="font-size:24px;line-height:1">🚐</span>
+            <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">GESTOR</span>
+            <span style="font-size:9px;color:rgba(255,255,255,.45);line-height:1.5;display:block">Gestão de<br>motoristas</span>
+          </div>
+        </a>
+
+        <a href="./login-operador-seguranca.html" style="text-decoration:none;flex:1;display:flex">
+          <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
+            <span style="font-size:24px;line-height:1">🛡️</span>
+            <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">SEGURANÇA</span>
+            <span style="font-size:9px;color:rgba(255,255,255,.45);line-height:1.5;display:block">Centro de<br>monitorização</span>
+          </div>
+        </a>
+
+        <a href="./motorista-login.html" style="text-decoration:none;flex:1;display:flex">
+          <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
+            <span style="font-size:24px;line-height:1">🚗</span>
+            <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">MOTORISTA</span>
+            <span style="font-size:9px;color:rgba(255,255,255,.45);line-height:1.5;display:block">Área do<br>motorista</span>
+          </div>
+        </a>
+
+        <a href="./validador-login.html" style="text-decoration:none;flex:1;display:flex">
+          <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
+            <span style="font-size:24px;line-height:1">✅</span>
+            <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">VALIDADOR</span>
+            <span style="font-size:9px;color:rgba(255,255,255,.45);line-height:1.5;display:block">Validação de<br>documentos</span>
+          </div>
+        </a>
+
+      </div>
+
+      <button onclick="document.getElementById('popupAdmin').classList.remove('active')"
+        style="background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:8px;
+               color:rgba(255,255,255,.35);font-size:11px;font-weight:700;padding:7px 22px;
+               cursor:pointer;font-family:Arial;letter-spacing:.06em">
+        FECHAR
+      </button>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const adminLogoTrigger = document.getElementById("adminLogoTrigger");
+
+      let clicks = 0;
+      let timer;
+
+      adminLogoTrigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+
+        clicks++;
+
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          clicks = 0;
+        }, 1200);
+
+        if (clicks >= 5) {
+          openAdminPopup();
+          clicks = 0;
+        }
+      });
+
+      const API_BASE =
+        (location.protocol === "file:")
+          ? "http://localhost:10000"
+          : "";
+
+      const CONFIG = {
+        API_BASE_URL: API_BASE,
+        ROUTES: {
+          clientes: { register: "/api/clientes/register", login: "/api/clientes/login" },
+          colaboradores: { register: "/api/colaboradores/register", login: "/api/colaboradores/login" },
+          contact: "/api/contact"
+        }
+      };
+
+      window.CONFIG = CONFIG;
+
+      function clearMessages(id){
+        const box = document.getElementById(id);
+        if (box) box.innerHTML = "";
+      }
+
+      function showMessage(id, type, text){
+        const box = document.getElementById(id);
+        if (!box) return;
+        const div = document.createElement("div");
+        div.className = "msg " + (type || "info");
+        div.textContent = text;
+        box.appendChild(div);
+      }
+
+      function setLoading(btn, on, loadingText){
+        if (!btn) return;
+        if (on) {
+          btn.dataset._oldText = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = loadingText || "…";
+          btn.setAttribute("aria-busy", "true");
+        } else {
+          btn.disabled = false;
+          btn.removeAttribute("aria-busy");
+          if (btn.dataset._oldText) btn.textContent = btn.dataset._oldText;
+          delete btn.dataset._oldText;
+        }
+      }
+
+     function openAdminPopup(){
+        var p = document.getElementById('popupAdmin');
+        p.classList.add('active');
+        // reset visual
+        ['optAdmin','optGestorFrota','optSeguranca','optMotorista'].forEach(function(id){
+          var el=document.getElementById(id);
+          if(el){el.style.opacity='1';}
+        });
+      }
+
+      function resetAdminPopup(){
+        clearMessages("msgAdmin");
+        const u = document.getElementById("adminLoginUser");
+        const p = document.getElementById("adminLoginPass");
+        if (u) u.value = "";
+        if (p) p.value = "";
+      }
+
+      function isEmailValid(v){
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||"").trim());
+      }
+
+      function joinUrl(base, path){
+        return String(base || "").replace(/\/$/, "") + "/" + String(path||"").replace(/^\//, "");
+      }
+
+      async function safeParseJson(res){
+        const text = await res.text().catch(() => "");
+        if (!text) return {};
+        try { return JSON.parse(text); } catch { return { message: text }; }
+      }
+
+      async function apiFetch(path, options = {}){
+        const url = joinUrl(CONFIG.API_BASE_URL, path);
+
+        const headers = new Headers(options.headers || {});
+        headers.set("Accept", "application/json");
+
+        const body = options.body;
+        const isJson = body && typeof body === "object" && !(body instanceof FormData);
+
+        const finalOptions = { ...options, headers };
+        if (isJson) {
+          headers.set("Content-Type", "application/json");
+          finalOptions.body = JSON.stringify(body);
+        }
+
+        let res;
+        try {
+          res = await fetch(url, finalOptions);
+        } catch (e) {
+          throw new Error("Erro de ligação ao servidor.");
+        }
+
+        const data = await safeParseJson(res);
+
+        if (!res.ok) {
+          throw new Error(data?.message || "Erro de ligação ao servidor.");
+        }
+        return data;
+      }
+
+      async function syncMinhaContaUI(){
+        const btn    = document.getElementById("areaClienteBtn");
+        const btnOff = document.getElementById("btnEncerrarSessao");
+        if (!btn) return;
+        try {
+          const res  = await fetch("/api/clientes/me", { credentials: "include" });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data?.user?.nome) {
+            btn.textContent = data.user.nome.split(" ")[0].toUpperCase();
+            if (btnOff) btnOff.style.display = "flex";
+            return;
+          }
+        } catch {}
+        try {
+          const res2 = await fetch("/api/admin/parceiros/me", { credentials: "include" });
+          const d2   = await res2.json().catch(() => ({}));
+          if (res2.ok && d2?.parceiro) {
+            btn.textContent = String(d2.parceiro.empresa || "HOTEL / ALOJAMENTO").split(" ")[0].toUpperCase();
+            if (btnOff) btnOff.style.display = "flex";
+            return;
+          }
+        } catch {}
+        btn.textContent = "ÁREA DE CLIENTE";
+        if (btnOff) btnOff.style.display = "none";
+      }
+
+      const quemBtn = document.getElementById("quemSomosBtn");
+      const quemPanel = document.getElementById("quemSomosPanel");
+      const popupColaborador = document.getElementById("popupColaborador");
+      const popupCliente = document.getElementById("popupCliente");
+      const popupContato = document.getElementById("popupContato");
+
+      syncMinhaContaUI();
+
+      const _btnOff = document.getElementById("btnEncerrarSessao");
+      if (_btnOff) {
+        _btnOff.onclick = async () => {
+          await fetch("/api/clientes/logout",        { method:"POST", credentials:"include" }).catch(()=>{});
+          await fetch("/api/admin/parceiros/logout", { method:"POST", credentials:"include" }).catch(()=>{});
+          await fetch("/api/motorista/logout",       { method:"POST", credentials:"include" }).catch(()=>{});
+          window.location.href = "./index.html";
+        };
+      }
+
+      quemBtn.onclick = (e) => {
+        e.stopPropagation();
+        const open = quemPanel.style.left !== "0px";
+        if (open) {
+          quemPanel.style.left = "0px";
+          document.body.classList.add("quem-open");
+        } else {
+          quemPanel.style.left = "-400px";
+          document.body.classList.remove("quem-open");
+        }
+      };
+
+      document.getElementById("colaboradorBtn").onclick = async (e) => {
+        e.stopPropagation();
+        clearMessages("msgColab");
+        try {
+          const res  = await fetch("/api/admin/parceiros/me", { credentials: "include" });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data?.parceiro) {
+            const tipo = String(data.parceiro.tipo || "").toLowerCase();
+            window.location.href = tipo === "frota" ? "./gestor-frota.html" : "./hotel-dashboard.html";
+            return;
+          }
+        } catch {}
+        popupColaborador.classList.add("active");
+      };
+
+      document.getElementById("areaClienteBtn").onclick = async (e) => {
+        e.stopPropagation();
+        clearMessages("msgCli");
+        try {
+          const res = await fetch("/api/clientes/me", { credentials: "include" });
+          if (res.ok) { window.location.href = "./minha-conta.html"; return; }
+        } catch {}
+        popupCliente.classList.add("active");
+      };
+
+      document.getElementById("contatoBtn").onclick = (e) => {
+        e.stopPropagation();
+        clearMessages("msgContato");
+        popupContato.classList.add("active");
+        resetContactPopup();
+      };
+
+      document.addEventListener("click", (e) => {
+        if (!quemPanel.contains(e.target) && e.target !== quemBtn) {
+          quemPanel.style.left = "-400px";
+          document.body.classList.remove("quem-open");
+        }
+
+        document.querySelectorAll(".popup-overlay").forEach((p) => {
+          const box = p.querySelector(".popup-box");
+          if (p.classList.contains("active") && box && !box.contains(e.target)) {
+            p.classList.remove("active");
+            if (p.id === "popupContato") resetContactPopup();
+            if (p.id === "popupColaborador") resetColaboradorPopup();
+            if (p.id === "popupCliente") resetClientePopup();
+            if (p.id === "popupAdmin") resetAdminPopup();
+          }
+        });
+      });
+
+      const groups = {
+        g1: ["imagens/lisboa-1.jpg", "imagens/teste.jpg"],
+        g2: ["imagens/lisboa02.jpg"],
+        g3: ["imagens/lisboa03.jpg"],
+        g4: ["imagens/Sintra1.jpg"],
+        g5: ["imagens/Sintra02.jpg"],
+        g6: ["imagens/Sintra03.jpg"],
+      };
+
+      const carouselImages = Array.from(document.querySelectorAll(".carousel img"));
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImg = document.getElementById("lightbox-img");
+
+      let currentGroupKey = null;
+      let currentIndex = 0;
+
+      function openLightbox(groupKey, index) {
+        currentGroupKey = groupKey;
+        currentIndex = index;
+        const arr = groups[currentGroupKey] || [];
+        if (!arr.length) return;
+
+        lightbox.style.display = "flex";
+        lightboxImg.src = arr[currentIndex];
+      }
+
+      function closeLightbox() {
+        lightbox.style.display = "none";
+        lightboxImg.src = "";
+        currentGroupKey = null;
+        currentIndex = 0;
+      }
+
+      function showPrev() {
+        const arr = groups[currentGroupKey] || [];
+        if (!arr.length) return;
+        currentIndex = (currentIndex - 1 + arr.length) % arr.length;
+        lightboxImg.src = arr[currentIndex];
+      }
+
+      function showNext() {
+        const arr = groups[currentGroupKey] || [];
+        if (!arr.length) return;
+        currentIndex = (currentIndex + 1) % arr.length;
+        lightboxImg.src = arr[currentIndex];
+      }
+
+      carouselImages.forEach((img) => {
+        img.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const g = img.dataset.group || null;
+          if (!g) return;
+          openLightbox(g, 0);
+        });
+      });
+
+      document.getElementById("prevBtn").onclick = showPrev;
+      document.getElementById("nextBtn").onclick = showNext;
+      document.getElementById("closeLightbox").onclick = closeLightbox;
+
+      lightbox.addEventListener("click", (e) => {
+        const inner = document.querySelector(".lightbox-inner");
+        if (inner && !inner.contains(e.target)) closeLightbox();
+      });
+
+      document.getElementById("colabEntrarBtn").onclick = async () => {
+        clearMessages("msgColab");
+
+        const email = (document.getElementById("colabLoginEmail")?.value || "").trim().toLowerCase();
+        const senha = (document.getElementById("colabLoginPass")?.value || "").trim();
+
+        if (!email || !senha) { showMessage("msgColab","error","Preencha todos os campos obrigatórios."); return; }
+        if (!isEmailValid(email)) { showMessage("msgColab","error","Email inválido."); return; }
+
+        const btn = document.getElementById("colabEntrarBtn");
+        setLoading(btn, true, "A entrar…");
+
+        // Tentar primeiro o login de parceiro (hotel/alojamento/frota)
+        // depois o login de colaborador (motorista interno)
+        const endpoints = [
+          "/api/admin/parceiros/login",
+        ];
+
+        let loggedIn = false;
+        let lastErr  = "Credenciais inválidas.";
+
+        try {
+          for (const url of endpoints) {
+            try {
+              const r = await fetch(url, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, senha, password: senha })
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok) {
+                // Redirecionar conforme o tipo
+                const tipo = String(d?.parceiro?.tipo || d?.tipo || "").toLowerCase();
+                showMessage("msgColab","success","Login efetuado!");
+                popupColaborador.classList.remove("active");
+                setTimeout(() => {
+                  const _tipo = String(d?.parceiro?.tipo || d?.tipo || "").toLowerCase();
+                  window.location.href = _tipo === "frota" ? "./gestor-frota.html" : "./hotel-dashboard.html";
+                }, 400);
+                loggedIn = true;
+                break;
+              }
+              lastErr = d?.message || lastErr;
+            } catch { continue; }
+          }
+          if (!loggedIn) {
+            showMessage("msgColab","error", lastErr);
+          }
+        } finally {
+          setLoading(btn, false);
+        }
+      };
+
+      document.getElementById("clienteRegBtn").onclick = () => {
+        clearMessages("msgCli");
+        document.getElementById("clienteFormLogin").style.display = "none";
+        document.getElementById("clienteFormReg").style.display = "flex";
+      };
+
+      document.getElementById("clienteCloseReg").onclick = () => resetClientePopup();
+
+      function resetColaboradorPopup() {
+        clearMessages("msgColab");
+        const le = document.getElementById("colabLoginEmail");
+        const lp = document.getElementById("colabLoginPass");
+        if (le) le.value = "";
+        if (lp) lp.value = "";
+      }
+
+      function resetClientePopup() {
+        clearMessages("msgCli");
+        const reg = document.getElementById("clienteFormReg");
+        reg.querySelectorAll("input").forEach((i) => (i.value = ""));
+        document.getElementById("clienteFormReg").style.display = "none";
+        document.getElementById("clienteFormLogin").style.display = "flex";
+
+        const le = document.getElementById("cliLoginEmail");
+        const lp = document.getElementById("cliLoginPass");
+        if (le) le.value = "";
+        if (lp) lp.value = "";
+      }
+
+      document.getElementById("clienteConfirmReg").onclick = async () => {
+        clearMessages("msgCli");
+
+        const nome = (document.getElementById("cliNome")?.value || "").trim();
+        const email = (document.getElementById("cliEmail")?.value || "").trim();
+        const contacto = (document.getElementById("cliContacto")?.value || "").trim();
+        const password = (document.getElementById("cliPass")?.value || "");
+        const password2 = (document.getElementById("cliPass2")?.value || "");
+
+        if (!nome || !email || !contacto || !password || !password2) { showMessage("msgCli","error","Preencha todos os campos obrigatórios."); return; }
+        if (!isEmailValid(email)) { showMessage("msgCli","error","Email inválido."); return; }
+        if (password !== password2) { showMessage("msgCli","error","As palavras-passe não coincidem."); return; }
+
+        const btn = document.getElementById("clienteConfirmReg");
+        try {
+          setLoading(btn, true, "A registar…");
+
+          const data = await apiFetch(CONFIG.ROUTES.clientes.register, {
+            method: "POST",
+            body: { nome, email, contacto, senha: password, password }
+          });
+
+          // token em httpOnly cookie
+          await syncMinhaContaUI();
+
+          showMessage("msgCli","success","Cliente registado com sucesso!");
+          document.getElementById("clienteFormReg").style.display = "none";
+          document.getElementById("clienteFormLogin").style.display = "flex";
+        } catch (err) {
+          showMessage("msgCli","error", err?.message || "Erro de ligação ao servidor.");
+        } finally {
+          setLoading(btn, false);
+        }
+      };
+
+      document.getElementById("clienteEntrarBtn").onclick = async () => {
+        clearMessages("msgCli");
+
+        const email = (document.getElementById("cliLoginEmail")?.value || "").trim();
+        const senha = (document.getElementById("cliLoginPass")?.value || "").trim();
+
+        if (!email || !senha) { showMessage("msgCli","error","Preencha todos os campos obrigatórios."); return; }
+        if (!isEmailValid(email)) { showMessage("msgCli","error","Email inválido."); return; }
+
+        const btn = document.getElementById("clienteEntrarBtn");
+        try {
+          setLoading(btn, true, "A entrar…");
+
+          const data = await apiFetch(CONFIG.ROUTES.clientes.login, {
+            method: "POST",
+            credentials: "include",
+            body: { email, senha, password: senha }
+          });
+
+          if (data?.ok || data?.success || data?.token) {
+            showMessage("msgCli","success","Login efetuado com sucesso!");
+            popupCliente.classList.remove("active");
+            document.getElementById("cliLoginEmail").value = "";
+            document.getElementById("cliLoginPass").value = "";
+            await syncMinhaContaUI();
+            setTimeout(() => { window.location.href = "./minha-conta.html"; }, 600);
+          } else {
+            showMessage("msgCli","error","Credenciais inválidas.");
+          }
+        } catch (err) {
+          showMessage("msgCli","error", err?.message || "Credenciais inválidas.");
+        } finally {
+          setLoading(btn, false);
+        }
+      };
+
+      const contactOptions = document.getElementById("contactOptions");
+      const contactInputs = document.getElementById("contactInputs");
+      const whatsMode = document.getElementById("whatsMode");
+
+      function resetContactPopup() {
+        clearMessages("msgContato");
+        document.getElementById("contactNome").value = "";
+        document.getElementById("contactEmail").value = "";
+        document.getElementById("contactMsg").value = "";
+
+        contactInputs.style.display = "none";
+        whatsMode.style.display = "none";
+        contactOptions.style.display = "flex";
+      }
+
+      document.getElementById("viaWhats").onclick = () => {
+        clearMessages("msgContato");
+        contactOptions.style.display = "none";
+        whatsMode.style.display = "flex";
+      };
+
+      document.getElementById("viaEmail").onclick = () => {
+        clearMessages("msgContato");
+        contactOptions.style.display = "none";
+        contactInputs.style.display = "flex";
+      };
+
+      document.getElementById("openWhatsBtn").onclick = () => {
+        window.open("https://wa.me/351928070495", "_blank");
+      };
+
+      document.getElementById("closeContactModeWhats").onclick = () => resetContactPopup();
+      document.getElementById("closeContactModeEmail").onclick = () => resetContactPopup();
+
+      document.getElementById("sendContactBtn").onclick = async () => {
+        clearMessages("msgContato");
+
+        const nome = document.getElementById("contactNome").value.trim();
+        const email = document.getElementById("contactEmail").value.trim();
+        const mensagem = document.getElementById("contactMsg").value.trim();
+
+        if (!nome || !email || !mensagem) { showMessage("msgContato","error","Preencha todos os campos obrigatórios."); return; }
+        if (!isEmailValid(email)) { showMessage("msgContato","error","Email inválido."); return; }
+
+        const btn = document.getElementById("sendContactBtn");
+        try {
+          setLoading(btn, true, "A enviar…");
+
+          const data = await apiFetch(CONFIG.ROUTES.contact, {
+            method: "POST",
+            body: { nome, email, mensagem }
+          });
+            document.getElementById("adminEntrarBtn").onclick = async () => {
+  clearMessages("msgAdmin");
+
+  const user = (document.getElementById("adminLoginUser")?.value || "").trim();
+  const senha = (document.getElementById("adminLoginPass")?.value || "").trim();
+
+  if (!user || !senha) {
+    showMessage("msgAdmin","error","Preencha todos os campos.");
+    return;
+  }
+
+  const btn = document.getElementById("adminEntrarBtn");
+
+  try {
+    setLoading(btn, true, "A entrar…");
+
+    const data = await apiFetch("/api/admin/login", {
+      method: "POST",
+      body: { user, senha }
+    });
+
+    if (data?.token) {
+      // token admin em httpOnly cookie
+
+      showMessage("msgAdmin","success","Acesso autorizado!");
+
+      // 👉 REDIRECIONA PARA ADMIN
+      setTimeout(() => {
+       window.location.href = "./admin.html";
+      }, 800);
+    } else {
+      showMessage("msgAdmin","error","Credenciais inválidas.");
+    }
+
+  } catch (err) {
+    showMessage("msgAdmin","error", err?.message || "Erro no login.");
+  } finally {
+    setLoading(btn, false);
+  }
+};
+          showMessage("msgContato","success", data?.message || "Mensagem enviada!");
+          resetContactPopup();
+        } catch (err) {
+          showMessage("msgContato","error", err?.message || "Erro de ligação ao servidor.");
+        } finally {
+          setLoading(btn, false);
+        }
+      };
+    });
+  </script>
+</body>
+</html>

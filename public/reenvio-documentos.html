@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>REALMETROPOLIS — Reenvio de Documentos</title>
+<style>
+  :root{
+    --bg:#050505;--panel:#0d0f12;--panel-2:#14171c;
+    --silver:#d9dde3;--silver-2:#b8c0ca;--silver-3:#8b95a2;
+    --line:#2c323a;--line-2:#5f6874;
+    --ok:#1cd68e;--bad:#ff6b6b;--warn:#efab51;
+    --shadow:0 22px 50px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,Arial,system-ui,sans-serif}
+  html,body{background:radial-gradient(circle at top,#111319 0%,#070708 38%,#040404 100%);color:var(--silver);min-height:100%}
+  body{padding:28px}
+  .shell{max-width:900px;margin:0 auto}
+  .card{background:linear-gradient(180deg,rgba(20,23,28,.98),rgba(10,11,14,.98));border:1px solid var(--line-2);border-radius:28px;box-shadow:var(--shadow);overflow:hidden}
+  .header{display:flex;align-items:center;gap:16px;padding:24px 28px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01))}
+  .rm-ring{width:60px;height:60px;border-radius:50%;border:2px solid #bcc4cf;display:flex;align-items:center;justify-content:center;color:#e2e7ee;font-weight:900;font-size:20px;background:linear-gradient(180deg,#1e2229,#101217);flex:0 0 auto}
+  .header h1{font-size:24px;font-weight:900;color:#eef2f7}
+  .header p{color:var(--silver-2);margin-top:6px;font-size:14px}
+  .body{padding:26px}
+
+  .info-box{padding:16px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.03);margin-bottom:22px}
+  .info-box b{display:block;color:#fff;font-size:15px;margin-bottom:6px}
+  .info-box span{color:var(--silver-2);font-size:13px}
+
+  .doc-recusado{
+    margin-bottom:16px;padding:18px;border-radius:18px;
+    border:1px solid rgba(255,107,107,.3);
+    background:linear-gradient(180deg,rgba(255,107,107,.07),rgba(255,107,107,.03));
+  }
+  .doc-recusado h3{color:#ffb4b4;font-size:15px;font-weight:900;margin-bottom:8px}
+  .motivos{margin-bottom:12px;padding-left:16px}
+  .motivos li{color:var(--silver-2);font-size:13px;margin-bottom:4px}
+
+  .upload-box{border:1px dashed #6c7683;border-radius:14px;padding:12px;background:rgba(255,255,255,.02)}
+  .upload-box small{display:block;color:var(--silver-3);margin-bottom:8px;font-size:12px}
+  .upload-box input[type="file"]{width:100%;padding:10px;background:#0b0d11;border:1px solid var(--line-2);border-radius:10px;color:#f7f8fb;font-size:14px}
+  .chip{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:12px;color:var(--silver-2);margin-top:8px}
+
+  .actions{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:24px}
+  .btn{min-height:52px;padding:0 22px;border-radius:16px;border:1px solid var(--line-2);background:linear-gradient(180deg,#242a32,#14181e);color:#eef2f7;cursor:pointer;font-weight:900;font-size:15px;transition:.15s ease}
+  .btn:hover{transform:translateY(-1px)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .btn.submit{background:linear-gradient(180deg,#e3e8ef,#bfc7d2);color:#000}
+
+  .msg{margin-top:18px;padding:15px 16px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,#171a20,#101319);font-size:14px;white-space:pre-wrap;color:var(--silver)}
+  .msg.ok{border-color:rgba(28,214,142,.3);color:#dffff1}
+  .msg.err{border-color:rgba(255,107,107,.3);color:#ffe7e7}
+
+  .loading{text-align:center;padding:48px;color:var(--silver-2);font-size:15px}
+  .invalid{text-align:center;padding:48px}
+  .invalid h2{color:#ffb4b4;font-size:20px;margin-bottom:12px}
+  .invalid p{color:var(--silver-2);font-size:14px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="card">
+    <div class="header">
+      <div class="rm-ring">RM</div>
+      <div>
+        <h1>Reenvio de Documentos</h1>
+        <p>Envie apenas os documentos que necessitam de correção.</p>
+      </div>
+    </div>
+    <div class="body" id="bodyContent">
+      <div class="loading">A carregar informações...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const body = document.getElementById("bodyContent");
+
+  // Lê o token do URL
+  const token = new URLSearchParams(location.search).get("token");
+
+  if (!token) {
+    body.innerHTML = `
+      <div class="invalid">
+        <h2>Link inválido</h2>
+        <p>Este link não é válido. Por favor verifique o email recebido.</p>
+      </div>`;
+    return;
+  }
+
+  let dadosReenvio = null;
+
+  // Carrega os dados do reenvio
+  async function carregarDados() {
+    try {
+      const res = await fetch(`/api/validacoes/reenvio/${token}`, { credentials: "include" });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        body.innerHTML = `
+          <div class="invalid">
+            <h2>Link inválido ou expirado</h2>
+            <p>${data.message || "Este link já foi utilizado ou expirou. Contacte o suporte."}</p>
+          </div>`;
+        return;
+      }
+
+      dadosReenvio = data;
+      renderFormulario(data);
+
+    } catch (err) {
+      body.innerHTML = `
+        <div class="invalid">
+          <h2>Erro de ligação</h2>
+          <p>Não foi possível carregar os dados. Tente novamente mais tarde.</p>
+        </div>`;
+    }
+  }
+
+  function renderFormulario(data) {
+    const docs = data.documentosParaCorrigir || [];
+
+    if (!docs.length) {
+      body.innerHTML = `
+        <div class="invalid">
+          <h2>Sem documentos para corrigir</h2>
+          <p>Não existem documentos pendentes de correção.</p>
+        </div>`;
+      return;
+    }
+
+    const tipo = data.modo === "veiculos" ? "Veículo" : "Motorista";
+
+    let html = `
+      <div class="info-box">
+        <b>${tipo}: ${data.nome || "—"}</b>
+        <span>Email: ${data.email || "—"}</span>
+        ${data.matricula ? `<span style="display:block;margin-top:4px">Matrícula: ${data.matricula}</span>` : ""}
+      </div>
+      <p style="color:var(--silver-2);font-size:14px;margin-bottom:18px">
+        Os seguintes documentos foram <b style="color:#efab51">recusados</b> e precisam de ser reenviados:
+      </p>
+      <form id="formReenvio" novalidate>
+    `;
+
+    docs.forEach(doc => {
+      const motivos = Array.isArray(doc.motivos) ? doc.motivos : [];
+      html += `
+        <div class="doc-recusado">
+          <h3>📄 ${doc.label || doc.docKey}</h3>
+          ${motivos.length ? `
+            <ul class="motivos">
+              ${motivos.map(m => `<li>${m}</li>`).join("")}
+            </ul>
+          ` : ""}
+          <div class="upload-box">
+            <small>Carregar documento corrigido (PDF ou imagem)</small>
+            <input type="file" name="${doc.docKey}" id="file_${doc.docKey}" accept=".pdf,image/*" required />
+            <div><span class="chip" id="chip_${doc.docKey}">Nenhum ficheiro selecionado</span></div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+        <div class="actions">
+          <button class="btn submit" type="submit" id="btnEnviar" disabled>Enviar documentos corrigidos</button>
+        </div>
+        <div class="msg" id="msg">Carregue todos os documentos listados para ativar o envio.</div>
+      </form>
+    `;
+
+    body.innerHTML = html;
+
+    // Bind previews e validação
+    const form = document.getElementById("formReenvio");
+    const btnEnviar = document.getElementById("btnEnviar");
+    const msgEl = document.getElementById("msg");
+    const fileInputs = form.querySelectorAll("input[type='file']");
+
+    fileInputs.forEach(input => {
+      input.addEventListener("change", () => {
+        const chip = document.getElementById(`chip_${input.name}`);
+        if (chip) chip.textContent = input.files?.[0]?.name || "Nenhum ficheiro selecionado";
+        validar();
+      });
+    });
+
+    function validar() {
+      const todos = Array.from(fileInputs).every(i => i.files?.length > 0);
+      btnEnviar.disabled = !todos;
+      if (todos) {
+        msgEl.className = "msg ok";
+        msgEl.textContent = "Tudo pronto. Clique em Enviar para submeter os documentos.";
+      } else {
+        msgEl.className = "msg";
+        msgEl.textContent = "Carregue todos os documentos listados para ativar o envio.";
+      }
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      btnEnviar.disabled = true;
+      msgEl.className = "msg";
+      msgEl.textContent = "A enviar...";
+
+      try {
+        const formData = new FormData(form);
+
+        const res = await fetch(`/api/validacoes/reenvio/${token}`, {
+          method: "POST",
+          body: formData,
+          credentials: "include"
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.message || "Erro ao enviar.");
+        }
+
+        msgEl.className = "msg ok";
+        msgEl.textContent = "✅ Documentos enviados com sucesso!\nA sua submissão está em análise. Receberá um email com o resultado.";
+        form.querySelectorAll("input,button").forEach(el => el.disabled = true);
+
+      } catch (err) {
+        msgEl.className = "msg err";
+        msgEl.textContent = "❌ " + (err.message || "Erro ao enviar. Tente novamente.");
+        btnEnviar.disabled = false;
+      }
+    });
+  }
+
+  carregarDados();
+})();
+</script>
+</body>
+</html>

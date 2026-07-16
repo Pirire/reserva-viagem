@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>REALMETROPOLIS — Registo de Hotel</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,system-ui,sans-serif;}
+    html,body{min-height:100%;background:#050507;color:#d9dde3;}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;}
+
+    .card{
+      width:min(680px,96vw);
+      background:linear-gradient(180deg,#0e1012,#08090b);
+      border:1px solid rgba(196,201,212,.14);
+      border-radius:22px;padding:28px;
+      box-shadow:0 30px 80px rgba(0,0,0,.7);
+    }
+
+    .head{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+    .rm{
+      width:46px;height:46px;border-radius:50%;
+      border:1.5px solid rgba(196,201,212,.35);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:900;font-size:13px;color:#c4c9d4;flex:0 0 auto;
+    }
+    h1{font-size:18px;color:#edf0f5;letter-spacing:.04em;line-height:1.3;}
+    .sub{color:rgba(255,255,255,.6);font-size:13px;margin:6px 0 18px;line-height:1.4;}
+
+    .badge{
+      display:inline-block;padding:5px 13px;border-radius:999px;
+      font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;
+      background:rgba(196,201,212,.1);border:1px solid rgba(196,201,212,.3);
+      color:#d9dde3;margin-bottom:16px;
+    }
+
+    .section-label{
+      font-size:11px;font-weight:900;letter-spacing:.12em;
+      color:rgba(255,255,255,.55);text-transform:uppercase;
+      margin:20px 0 10px;padding-bottom:6px;
+      border-bottom:1px solid rgba(255,255,255,.1);
+    }
+
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .full{grid-column:1/-1;}
+
+    label{
+      display:block;font-size:11px;font-weight:700;
+      color:rgba(255,255,255,.6);letter-spacing:.06em;text-transform:uppercase;
+      margin-bottom:5px;margin-top:2px;
+    }
+
+    input{
+      width:100%;padding:12px 14px;border-radius:12px;
+      border:1.5px solid rgba(196,201,212,.2);
+      background:#0d1014;color:#edf0f5;font-size:14px;
+      outline:none;transition:.18s ease;
+    }
+    input:focus{border-color:rgba(196,201,212,.55);box-shadow:0 0 0 3px rgba(196,201,212,.08);}
+    input::placeholder{color:#3d4655;}
+
+    .senha-wrap{position:relative;}
+    .senha-wrap input{padding-right:44px;}
+    .toggle-pwd{
+      position:absolute;right:12px;top:50%;transform:translateY(-50%);
+      background:none;border:none;color:rgba(255,255,255,.3);
+      cursor:pointer;font-size:15px;padding:0;line-height:1;transition:color .15s;
+    }
+    .toggle-pwd:hover{color:rgba(255,255,255,.6);}
+
+    .senha-nota{font-size:11px;color:rgba(255,255,255,.45);margin-top:4px;}
+
+    .actions{display:flex;justify-content:flex-end;margin-top:22px;}
+    .btn{
+      padding:13px 28px;border-radius:13px;
+      border:none;
+      background:linear-gradient(180deg,#e0e4ea,#bec6d1);
+      color:#07080a;font-weight:900;font-size:13px;letter-spacing:.06em;
+      cursor:pointer;transition:.18s ease;
+      box-shadow:0 4px 16px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.6);
+    }
+    .btn:hover{filter:brightness(1.05);transform:translateY(-1px);}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+    .msg{
+      margin-top:14px;padding:12px 14px;border-radius:12px;
+      font-size:13px;font-weight:600;line-height:1.4;display:none;
+    }
+    .msg.show{display:block;}
+    .msg.ok {background:rgba(25,214,139,.07);border:1px solid rgba(25,214,139,.2);color:#7fffc4;}
+    .msg.err{background:rgba(255,80,80,.07);border:1px solid rgba(255,80,80,.2);color:#ff9999;}
+
+    .overlay{
+      display:none;position:fixed;inset:0;
+      background:rgba(0,0,0,.88);backdrop-filter:blur(14px);
+      align-items:center;justify-content:center;z-index:999;
+    }
+    .overlay.active{display:flex;}
+    .modal{
+      width:min(460px,92vw);
+      background:linear-gradient(160deg,#0e1012,#07080a);
+      border:1px solid rgba(196,201,212,.15);
+      border-radius:22px;padding:32px;text-align:center;
+    }
+    .modal .icon{font-size:40px;margin-bottom:14px;}
+    .modal h2{color:#edf0f5;font-size:18px;margin-bottom:10px;letter-spacing:.06em;}
+    .modal p{color:#7d8896;font-size:13px;line-height:1.55;margin-bottom:22px;}
+    .modal .btn{background:linear-gradient(180deg,#e0e4ea,#bec6d1);}
+
+    .hint-valid{
+      padding:9px 13px;border-radius:10px;font-size:12px;font-weight:600;
+      background:rgba(25,214,139,.06);border:1px solid rgba(25,214,139,.18);
+      color:#7fffc4;margin-bottom:4px;display:none;
+    }
+    .hint-valid.show{display:block;}
+
+    @media(max-width:520px){
+      .grid{grid-template-columns:1fr;}
+      .full{grid-column:1;}
+      .card{padding:20px;}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <div class="rm">RM</div>
+      <div>
+        <h1>Registo de Parceiro</h1>
+      </div>
+    </div>
+    <div class="badge" id="badgeTipo">Hotel / Alojamento</div>
+    <p class="sub" id="hint">A validar convite…</p>
+    <div class="hint-valid" id="hintValid">✅ Convite válido. Preencha os dados para criar a sua conta.</div>
+
+    <form id="form" autocomplete="off">
+      <input type="hidden" id="token">
+      <input type="hidden" id="tipo" value="hotel">
+
+      <div class="section-label">Dados da empresa</div>
+      <div class="grid">
+        <div>
+          <label>Nome da empresa *</label>
+          <input id="empresa" type="text" placeholder="Ex: Hotel Lisboa Gold" required>
+        </div>
+        <div>
+          <label>NIF *</label>
+          <input id="nif" type="text" placeholder="Ex: 501234567" required>
+        </div>
+        <div>
+          <label>IBAN</label>
+          <input id="iban" type="text" placeholder="PT50...">
+        </div>
+        <div>
+          <label>Contacto *</label>
+          <input id="contacto" type="tel" placeholder="+351 912 345 678" required>
+        </div>
+        <div class="full">
+          <label>Endereço completo *</label>
+          <input id="endereco" type="text" placeholder="Rua, número, cidade, código postal" required>
+        </div>
+        <div>
+          <label>País *</label>
+          <select id="pais" required style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid rgba(196,201,212,.2);background:#0d1014;color:#edf0f5;font-size:14px;outline:none;transition:.18s ease">
+            <option value="">Seleccione...</option>
+            <option value="PT">🇵🇹 Portugal</option>
+            <option value="BR">🇧🇷 Brasil</option>
+            <option value="AO">🇦🇴 Angola</option>
+            <option value="MZ">🇲🇿 Moçambique</option>
+            <option value="CV">🇨🇻 Cabo Verde</option>
+            <option value="GW">🇬🇼 Guiné-Bissau</option>
+            <option value="ST">🇸🇹 São Tomé e Príncipe</option>
+            <option value="ES">🇪🇸 Espanha</option>
+            <option value="FR">🇫🇷 França</option>
+            <option value="DE">🇩🇪 Alemanha</option>
+            <option value="GB">🇬🇧 Reino Unido</option>
+            <option value="IT">🇮🇹 Itália</option>
+          </select>
+        </div>
+        <div>
+          <label>Cidade *</label>
+          <input id="cidade" type="text" placeholder="Ex: Lisboa, São Paulo, Luanda" required>
+        </div>
+        <div id="concelhoWrap" style="display:none">
+          <label id="concelhoLabel">Concelho</label>
+          <input id="concelho" type="text" placeholder="Concelho">
+        </div>
+      </div>
+
+      <div class="section-label">Responsável</div>
+      <div class="grid">
+        <div>
+          <label>Nome do responsável *</label>
+          <input id="responsavelNome" type="text" placeholder="Nome completo" required>
+        </div>
+        <div>
+          <label>Email *</label>
+          <input id="email" type="email" placeholder="hotel@exemplo.pt" required>
+        </div>
+      </div>
+
+      <div class="section-label">Acesso ao painel</div>
+      <div class="grid">
+        <div>
+          <label>Senha *</label>
+          <div class="senha-wrap">
+            <input id="senha" type="password" placeholder="Mínimo 6 caracteres" required autocomplete="new-password">
+            <button type="button" class="toggle-pwd" id="toggleSenha">👁</button>
+          </div>
+          <div class="senha-nota">Use esta senha para aceder ao painel do hotel.</div>
+        </div>
+        <div>
+          <label>Confirmar senha *</label>
+          <div class="senha-wrap">
+            <input id="confirmarSenha" type="password" placeholder="Repita a senha" required autocomplete="new-password">
+            <button type="button" class="toggle-pwd" id="toggleConfirmar">👁</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="btnEnviar" type="submit">CRIAR CONTA E REGISTAR</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de sucesso -->
+<div class="overlay" id="ovObrigado">
+  <div class="modal">
+    <div class="icon">✅</div>
+    <h2>CONTA CRIADA</h2>
+    <p>
+      O seu registo foi concluído com sucesso.<br>
+      Pode agora aceder ao painel do hotel com o seu email e senha.
+    </p>
+    <button class="btn" id="btnIrPainel" type="button">IR PARA O PAINEL</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const API_BASE = location.protocol === "file:" ? "http://localhost:10000" : "";
+  const api = async (path, opts = {}) => {
+    const res  = await fetch(API_BASE + path, opts).catch(() => null);
+    if (!res) throw new Error("Erro de ligação ao servidor.");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || "Erro no servidor.");
+    return data;
+  };
+
+  const qs    = new URLSearchParams(location.search);
+  const token = qs.get("token") || "";
+  document.getElementById("token").value = token;
+
+  const hint      = document.getElementById("hint");
+  const hintValid = document.getElementById("hintValid");
+  const msg       = document.getElementById("msg");
+  const btn       = document.getElementById("btnEnviar");
+
+  // Validar convite
+  try {
+    const data    = await api(`/api/admin/parceiros/convite?token=${encodeURIComponent(token)}`);
+    const convite = data?.convite || {};
+
+    hint.textContent = "";
+    hintValid.classList.add("show");
+
+    if (convite.tipo) {
+      document.getElementById("tipo").value = convite.tipo;
+      document.getElementById("badgeTipo").textContent =
+        convite.tipo === "hotel" ? "Hotel" : convite.tipo === "alojamento" ? "Alojamento Local" : convite.tipo.toUpperCase();
+    }
+    if (convite.empresa)  document.getElementById("empresa").value  = convite.empresa;
+    if (convite.nif)      document.getElementById("nif").value      = convite.nif;
+    if (convite.contacto) document.getElementById("contacto").value = convite.contacto;
+    if (convite.email)    document.getElementById("email").value    = convite.email;
+    if (convite.pais)   { document.getElementById("pais").value = convite.pais; document.getElementById("pais").dispatchEvent(new Event("change")); }
+    if (convite.cidade)   document.getElementById("cidade").value   = convite.cidade;
+
+    if (data.alreadyRegistered) {
+      showMsg("err", "Este convite já foi utilizado. Aceda ao painel com o seu email e senha.");
+      btn.disabled = true;
+      hintValid.classList.remove("show");
+    }
+  } catch (e) {
+    hint.textContent = "❌ " + (e.message || "Convite inválido ou expirado.");
+    hintValid.classList.remove("show");
+    btn.disabled = true;
+  }
+
+  // Países com Concelho / Municipio
+  const PAISES_COM_CONCELHO = { PT: 'Concelho', ES: 'Municipio', GB: 'District' };
+
+  document.getElementById('pais').addEventListener('change', function() {
+    const pais = this.value;
+    const wrap  = document.getElementById('concelhoWrap');
+    const label = document.getElementById('concelhoLabel');
+    const inp   = document.getElementById('concelho');
+    if (PAISES_COM_CONCELHO[pais]) {
+      wrap.style.display  = '';
+      label.textContent   = PAISES_COM_CONCELHO[pais];
+      inp.placeholder     = PAISES_COM_CONCELHO[pais];
+    } else {
+      wrap.style.display  = 'none';
+      inp.value           = ''; // limpar se não aplicável
+    }
+  });
+
+  // Toggle senha
+  document.getElementById("toggleSenha").onclick = () => {
+    const inp = document.getElementById("senha");
+    inp.type  = inp.type === "password" ? "text" : "password";
+  };
+  document.getElementById("toggleConfirmar").onclick = () => {
+    const inp = document.getElementById("confirmarSenha");
+    inp.type  = inp.type === "password" ? "text" : "password";
+  };
+
+  // Submit
+  document.getElementById("form").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    hideMsg();
+
+    const senha     = document.getElementById("senha").value;
+    const confirmar = document.getElementById("confirmarSenha").value;
+
+    if (senha.length < 6) { showMsg("err", "A senha deve ter pelo menos 6 caracteres."); return; }
+    if (senha !== confirmar) { showMsg("err", "As senhas não coincidem."); return; }
+
+    btn.disabled    = true;
+    btn.textContent = "A criar conta...";
+
+    try {
+      await api("/api/admin/parceiros/registar-hotel", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token:          document.getElementById("token").value,
+          empresa:        document.getElementById("empresa").value.trim(),
+          nif:            document.getElementById("nif").value.trim(),
+          iban:           document.getElementById("iban").value.trim(),
+          contacto:       document.getElementById("contacto").value.trim(),
+          email:          document.getElementById("email").value.trim(),
+          endereco:       document.getElementById("endereco").value.trim(),
+          responsavelNome:document.getElementById("responsavelNome").value.trim(),
+          tipo:           document.getElementById("tipo").value,
+          pais:           document.getElementById("pais").value,
+          cidade:         document.getElementById("cidade").value.trim(),
+          concelho:       document.getElementById("concelho")?.value?.trim() || null,
+          senha,
+        })
+      });
+      document.getElementById("ovObrigado").classList.add("active");
+    } catch (e) {
+      showMsg("err", e.message || "Erro ao criar conta.");
+      btn.disabled    = false;
+      btn.textContent = "CRIAR CONTA E REGISTAR";
+    }
+  });
+
+  document.getElementById("btnIrPainel").onclick = () => {
+    window.location.href = "/minha-conta.html";
+  };
+
+  function showMsg(tipo, texto) {
+    msg.className = `msg show ${tipo}`;
+    msg.textContent = texto;
+  }
+  function hideMsg() {
+    msg.className = "msg";
+    msg.textContent = "";
+  }
+});
+</script>
+</body>
+</html>

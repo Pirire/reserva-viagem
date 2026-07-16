@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>REALMETROPOLIS — Política de Privacidade e Proteção de Dados</title>
+<style>
+  :root{
+    --bg:#050505;--panel:#0d0f12;--silver:#d9dde3;--silver-2:#b8c0ca;--silver-3:#8b95a2;
+    --line:#2c323a;--line-2:#5f6874;--ok:#1cd68e;--warn:#efab51;--bad:#ff6b6b;
+    --shadow:0 22px 50px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,Arial,system-ui,sans-serif}
+  html,body{background:radial-gradient(circle at top,#111319 0%,#070708 38%,#040404 100%);color:var(--silver);min-height:100%}
+  body{padding:28px}
+  .shell{max-width:820px;margin:0 auto}
+  .card{background:linear-gradient(180deg,rgba(20,23,28,.98),rgba(10,11,14,.98));border:1px solid var(--line-2);border-radius:22px;box-shadow:var(--shadow);padding:32px 36px 44px}
+  h1{font-size:24px;font-weight:900;color:#eef2f7;margin-bottom:6px}
+  .sub{color:var(--silver-3);font-size:13px;margin-bottom:28px}
+  h2{font-size:16px;font-weight:800;color:#fff;margin:28px 0 10px;border-top:1px solid var(--line);padding-top:20px}
+  h2:first-of-type{border-top:none;padding-top:0;margin-top:8px}
+  h3{font-size:13.5px;font-weight:800;color:#fff;margin:16px 0 6px}
+  p,li{font-size:13.5px;line-height:1.7;color:var(--silver-2)}
+  ul{padding-left:20px;margin:8px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th,td{padding:9px 10px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:#fff;background:rgba(255,255,255,.04);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  td{color:var(--silver-2)}
+  .placeholder{color:#ffb4b4}
+  .note{padding:12px 14px;border-radius:12px;border:1px solid rgba(239,171,81,.3);background:rgba(239,171,81,.06);font-size:12.5px;color:#ffe3bd;margin:14px 0}
+  footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--silver-3)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="card">
+    <h1>Política de Privacidade e Proteção de Dados</h1>
+    <div class="sub">REALMETROPOLIS LDA · Última atualização: <span class="placeholder">[DATA]</span> · Conforme o Regulamento Geral sobre a Proteção de Dados (RGPD/GDPR)</div>
+
+    <h2>1. Quem trata os seus dados</h2>
+    <p>A <b>REALMETROPOLIS LDA</b>, com sede em <span class="placeholder">[endereço]</span>, NIF <span class="placeholder">[NIF]</span>, é a responsável pelo tratamento dos dados pessoais recolhidos através da plataforma REALMETROPOLIS (site, aplicações de cliente, motorista, gestor de frota e painéis administrativos).</p>
+    <p>Para questões sobre os seus dados, contacte: <span class="placeholder">[email de contacto / DPO]</span>.</p>
+
+    <h2>2. Que dados recolhemos, de quem, e porquê</h2>
+    <p>O que recolhemos depende do papel que tem na plataforma:</p>
+
+    <h3>Clientes (passageiros)</h3>
+    <table>
+      <tr><th>Dados</th><th>Finalidade</th><th>Base legal</th></tr>
+      <tr><td>Nome, email, contacto telefónico</td><td>Identificação e comunicação sobre a reserva</td><td>Execução de contrato</td></tr>
+      <tr><td>Localização de partida e destino (incl. coordenadas GPS)</td><td>Calcular rota, preço e acompanhar a viagem em tempo real</td><td>Execução de contrato</td></tr>
+      <tr><td>Localização em tempo real durante a viagem (se partilhada)</td><td>Segurança — deteção de desvios de rota e alertas</td><td>Interesse legítimo / segurança</td></tr>
+      <tr><td>Dados de pagamento (processados via Stripe)</td><td>Cobrança do serviço</td><td>Execução de contrato</td></tr>
+      <tr><td>Histórico de viagens e preferências de motorista</td><td>Melhorar futuras reservas</td><td>Interesse legítimo</td></tr>
+    </table>
+    <p>Não armazenamos os dados completos do seu cartão — os pagamentos são processados diretamente pela Stripe, que tem a sua própria política de privacidade.</p>
+
+    <h3>Motoristas</h3>
+    <table>
+      <tr><th>Dados</th><th>Finalidade</th><th>Base legal</th></tr>
+      <tr><td>Nome, contacto, email</td><td>Identificação e comunicação operacional</td><td>Execução de contrato</td></tr>
+      <tr><td>Cartão de Cidadão, carta de condução, TVDE, registo criminal, comprovativo de residência</td><td>Validação legal para exercer a atividade de transporte</td><td>Obrigação legal / execução de contrato</td></tr>
+      <tr><td>Localização GPS em tempo real durante viagens</td><td>Acompanhamento da viagem, segurança e cálculo de ETA</td><td>Execução de contrato / segurança</td></tr>
+      <tr><td>Fotografia tirada a pedido do operador de segurança, em situações de alerta</td><td>Avaliação de incidentes de segurança em tempo real</td><td>Interesse legítimo — proteção da vida e integridade física</td></tr>
+    </table>
+    <div class="note">⚠️ As fotografias de segurança só são solicitadas quando um alerta está ativo (ex: desvio de rota anómalo, veículo imobilizado sem explicação) e destinam-se exclusivamente à equipa de segurança, para decidir se o alerta é real ou um falso positivo. Não são partilhadas com terceiros nem usadas para qualquer outro fim.</div>
+
+    <h3>Veículos e empresas parceiras</h3>
+    <p>Marca, modelo, matrícula, documentos do veículo (seguro, inspeção, DUA) e fotografias, fornecidos pelo gestor de frota ou empresa parceira, para validação legal e atribuição de categoria de serviço.</p>
+
+    <h2>3. Com quem partilhamos os seus dados</h2>
+    <ul>
+      <li><b>Motoristas</b> — recebem apenas os dados estritamente necessários para realizar a viagem (nome, ponto de recolha, contacto).</li>
+      <li><b>Stripe</b> — processamento de pagamentos.</li>
+      <li><b>Empresas parceiras</b> — quando a reserva é feita através de uma empresa parceira, partilhamos o estado da reserva e validações via webhook seguro (assinado com HMAC).</li>
+      <li><b>Autoridades</b> — apenas quando legalmente exigido (ex: investigação de um incidente de segurança).</li>
+    </ul>
+    <p>Não vendemos os seus dados pessoais a terceiros, nem os usamos para publicidade.</p>
+
+    <h2>4. Quanto tempo guardamos os seus dados</h2>
+    <table>
+      <tr><th>Tipo de dado</th><th>Período de retenção</th></tr>
+      <tr><td>Dados de conta de cliente</td><td>Enquanto a conta estiver ativa, mais <span class="placeholder">[X]</span> após encerramento</td></tr>
+      <tr><td>Histórico de viagens (faturação)</td><td><span class="placeholder">[10 anos — obrigação fiscal, a confirmar]</span></td></tr>
+      <tr><td>Localização GPS em tempo real</td><td>Eliminada/anonimizada pouco depois do fim da viagem, salvo se associada a um alerta de segurança em investigação</td></tr>
+      <tr><td>Fotografias de segurança</td><td><span class="placeholder">[definir — ex: 90 dias, salvo investigação em curso]</span></td></tr>
+      <tr><td>Documentos de motoristas/veículos</td><td>Enquanto a validação/atividade estiver ativa, mais o período legal aplicável</td></tr>
+    </table>
+
+    <h2>5. Os seus direitos</h2>
+    <p>Nos termos do RGPD, tem direito a:</p>
+    <ul>
+      <li>Aceder aos dados pessoais que temos sobre si;</li>
+      <li>Corrigir dados incorretos ou incompletos;</li>
+      <li>Solicitar o apagamento dos seus dados ("direito ao esquecimento"), quando aplicável;</li>
+      <li>Limitar ou opor-se ao tratamento dos seus dados;</li>
+      <li>Portabilidade dos seus dados para outro serviço;</li>
+      <li>Retirar o consentimento, quando o tratamento se baseie nele.</li>
+    </ul>
+    <p>Para exercer estes direitos, contacte <span class="placeholder">[email de contacto]</span>. Tem também o direito de apresentar reclamação à <a href="https://www.cnpd.pt" style="color:#9ec5fe">Comissão Nacional de Proteção de Dados (CNPD)</a>.</p>
+
+    <h2>6. Segurança dos dados</h2>
+    <p>Aplicamos medidas técnicas e organizativas adequadas — sessões autenticadas por token, comunicação cifrada (HTTPS), acesso a documentos restrito por função, e webhooks assinados criptograficamente — para proteger os seus dados contra acesso não autorizado, perda ou alteração.</p>
+
+    <h2>7. Alterações a esta política</h2>
+    <p>Podemos atualizar esta política para refletir alterações ao serviço ou à lei aplicável. A data da última atualização está indicada no topo desta página.</p>
+
+    <footer>
+      REALMETROPOLIS LDA · NIF <span class="placeholder">[NIF]</span> · <span class="placeholder">[endereço da sede]</span><br>
+      Ver também a nossa <a href="/cookies.html" style="color:#9ec5fe">Política de Cookies</a>.
+    </footer>
+  </div>
+</div>
+</body>
+</html>

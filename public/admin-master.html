@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>REALMETROPOLIS — Admin Master</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#050505;--panel:#0d1015;--panel2:#151a22;--panel3:#1d2430;--line:#2c3442;--line2:#505c6e;
+  --silver:#dce1e8;--silver2:#aeb8c5;--text:#f6f8fb;--ok:#19d68b;--warn:#f2c56a;--bad:#ff6b6b;
+  --shadow:0 18px 44px rgba(0,0,0,.42);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);overflow:hidden}
+button,input,select,textarea{font:inherit}
+#map{position:fixed;inset:0;z-index:1}
+.topbar{position:fixed;top:0;left:0;right:0;height:72px;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:linear-gradient(180deg,rgba(8,8,10,.96),rgba(8,8,10,.82));border-bottom:1px solid var(--line2);backdrop-filter:blur(10px)}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}.logo{width:46px;height:46px;border-radius:14px;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;background:linear-gradient(180deg,#1b1f25,#0e1014)}
+.brand h1{font-size:15px;letter-spacing:.06em}.brand p{font-size:12px;color:var(--silver2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{min-height:42px;padding:0 14px;border-radius:14px;border:1px solid var(--line2);background:linear-gradient(180deg,#181c23,#0f1217);color:var(--silver);font-weight:900;cursor:pointer;transition:.16s ease;box-shadow:var(--shadow)}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.04)}.btn.small{min-height:36px;padding:0 12px;border-radius:12px;font-size:12px}.btn.primary{background:linear-gradient(180deg,#e2e7ee,#bec7d2);color:#000;border-color:#eef2f7}.btn.danger{background:linear-gradient(180deg,#2b1212,#170c0c);border-color:#5a2d2d;color:#ffe4e4}.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.gear{width:42px;height:42px;border-radius:14px;border:1px solid var(--line2);background:linear-gradient(180deg,#181c23,#0f1217);color:#fff;font-size:18px;font-weight:900;cursor:pointer}
+.shell{position:fixed;top:72px;left:0;right:0;bottom:0;pointer-events:none;z-index:30}
+.sidebar{position:absolute;left:14px;top:14px;bottom:14px;width:min(620px,calc(100vw - 28px));background:linear-gradient(180deg,rgba(13,15,19,.97),rgba(10,12,15,.96));border:1px solid var(--line2);border-radius:24px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;pointer-events:auto}
+.side-head{padding:14px;border-bottom:1px solid var(--line);display:grid;gap:10px}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.tabs{display:flex;gap:8px;flex-wrap:wrap}.tab{min-height:38px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:linear-gradient(180deg,#181c23,#101319);color:var(--silver);font-weight:900;cursor:pointer}.tab.active{background:linear-gradient(180deg,#e2e7ee,#bec7d2);color:#000;border-color:#eef2f7}
+.input,.select,.textarea{width:100%;padding:11px 12px;border-radius:14px;border:1px solid var(--line2);background:#0d1014;color:#fff;outline:none}.textarea{min-height:110px;resize:vertical}
+.search-row{display:flex;gap:8px}.search-row input{flex:1}.side-body{flex:1;overflow:auto;padding:12px}.section{display:none}.section.active{display:block}
+.trip-card,.driver-card,.manager-card,.summary-card,.mini-row,.doc-card{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#171b22,#101318);padding:12px}.trip-card,.manager-card,.summary-card{margin-bottom:10px}.trip-card.pending{border-left:4px solid var(--warn)}.trip-card.returned{border-left:4px solid var(--bad)}.trip-card.assigned{border-left:4px solid var(--ok)}.active-card{border-color:#e3e8ef;background:linear-gradient(180deg,#252b35,#151920)}
+.card-title{font-size:14px;font-weight:900;color:#fff}.card-sub{margin-top:6px;font-size:12px;color:var(--silver2);line-height:1.45}.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.04);font-size:11px;font-weight:900}.dot{width:8px;height:8px;border-radius:50%;display:inline-block}.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+.empty{padding:20px;border:1px dashed var(--line2);border-radius:18px;color:var(--silver2);text-align:center}.mini-list{display:grid;gap:8px;margin-top:10px}
+.details{position:absolute;right:14px;top:14px;bottom:14px;width:min(470px,calc(100vw - 28px));background:linear-gradient(180deg,rgba(13,15,19,.97),rgba(10,12,15,.96));border:1px solid var(--line2);border-radius:24px;box-shadow:var(--shadow);overflow:auto;pointer-events:auto;display:block}.details-head{padding:14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.details-body{padding:14px}
+.fs-overlay{position:fixed;inset:0;z-index:140;background:rgba(6,6,7,.985);display:none}.fs-overlay.active{display:block}.fs-wrap{position:absolute;inset:0;display:grid;grid-template-columns:320px 1fr}.fs-sidebar{background:linear-gradient(180deg,#0c0e12,#090b0e);border-right:1px solid var(--line2);padding:14px;overflow:auto}.fs-main{display:flex;flex-direction:column;overflow:hidden}.fs-head{height:72px;border-bottom:1px solid var(--line2);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px;background:linear-gradient(180deg,rgba(18,20,24,.98),rgba(12,14,18,.95))}.fs-title{font-size:15px;font-weight:900}.fs-body{flex:1;overflow:auto;padding:16px}.fs-nav-item{padding:14px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(180deg,#171b22,#101318);margin-bottom:10px;cursor:pointer}.fs-nav-item.active{border-color:#e3e8ef;background:linear-gradient(180deg,#252b35,#151920)}.fs-nav-item b{display:block;color:#fff;font-size:14px}.fs-nav-item span{display:block;color:var(--silver2);font-size:12px;margin-top:6px;line-height:1.35}.settings-section{display:none}.settings-section.active{display:block}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}.field label{font-size:12px;color:var(--silver2)}.msg{margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:linear-gradient(180deg,#181b20,#111318);color:var(--silver);font-size:13px;white-space:pre-wrap}.table-wrap{overflow:auto}
+table{width:100%;border-collapse:separate;border-spacing:0 10px}th{font-size:12px;color:var(--silver2);text-align:left;padding:0 8px;white-space:nowrap}td{background:linear-gradient(180deg,#181b20,#111318);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 8px;font-size:13px}td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}td:last-child{border-right:1px solid var(--line);border-radius:0 14px 14px 0}
+@media (max-width:980px){html,body{overflow:auto}.shell{position:static;padding-top:86px;display:block;height:auto}.sidebar,.details{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:calc(100vw - 28px);margin:14px;display:block}.fs-wrap{grid-template-columns:1fr}.grid-2,.grid-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<header class="topbar">
+  <div class="brand"><div class="logo">RM</div><div><h1>REALMETROPOLIS — ADMIN MASTER</h1><p>Painel único de despacho, mapa, atribuição e gestão central.</p></div></div>
+  <div class="top-actions"><button class="btn" id="btnRefreshAll">ATUALIZAR</button><button class="gear" id="btnOpenSettings" title="Gestão">⚙</button><button class="btn danger" id="btnLogout">SAIR</button></div>
+</header>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-head">
+      <div class="toolbar"><button class="btn small" id="btnValidationPanel">VALIDAÇÕES</button><button class="btn small" id="btnBilling">FATURAÇÃO</button></div>
+      <div class="tabs">
+        <button class="tab active" data-tab="dispatch">DESPACHO</button>
+        <button class="tab" data-tab="returned">DEVOLVIDAS</button>
+        <button class="tab" data-tab="assigned">ATRIBUÍDAS</button>
+        <button class="tab" data-tab="drivers">MOTORISTAS</button>
+        <button class="tab" data-tab="billing">FATURAÇÃO</button>
+      </div>
+      <div class="search-row"><input class="input" id="globalSearch" placeholder="Pesquisar viagem, cliente, parceiro, motorista, localidade..." /><button class="btn small" id="btnSearch">LOCALIZAR</button></div>
+      <div class="tabs" id="driverCategoryFilters"><button class="tab active" data-cat="ALL">TODOS</button><button class="tab" data-cat="ECONOMICA">ECONÓMICA</button><button class="tab" data-cat="CONFORT">CONFORTO</button><button class="tab" data-cat="EXECUTIVA">EXECUTIVA</button><button class="tab" data-cat="GRUPO">GRUPO</button></div>
+    </div>
+    <div class="side-body">
+      <section class="section active" id="section-dispatch"><div id="dispatchList"></div></section>
+      <section class="section" id="section-returned"><div id="returnedList"></div></section>
+      <section class="section" id="section-assigned"><div id="assignedList"></div></section>
+      <section class="section" id="section-drivers"><div id="driversList"></div></section>
+      <section class="section" id="section-billing"><div class="summary-card" id="billingSummary"></div><div class="toolbar" style="margin:10px 0 12px"><button class="btn small" id="btnExportPdf">EXPORTAR PDF</button></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Motorista</th><th>Origem → Destino</th><th>Categoria</th><th>Valor (€)</th><th>Pagamento</th><th>Ação</th></tr></thead><tbody id="billingTableBody"></tbody></table></div></section>
+      <div class="msg" id="sideMsg">Pronto.</div>
+    </div>
+  </aside>
+  <aside class="details" id="detailsPanel">
+    <div class="details-head"><div><div class="card-title" id="detailsTitle">Detalhes</div><div class="card-sub" id="detailsSubtitle">Selecione uma viagem para ver recolha, raio e condutores próximos.</div></div><button class="btn small" id="btnCloseDetails">LIMPAR</button></div>
+    <div class="details-body" id="detailsBody"><div class="empty">Selecione uma viagem em despacho ou devolvidas.</div></div>
+  </aside>
+</div>
+
+<div class="fs-overlay" id="settingsOverlay">
+  <div class="fs-wrap">
+    <aside class="fs-sidebar">
+      <div class="card-title" style="margin-bottom:12px">Gestão Master</div>
+      <div class="fs-nav-item active" data-settings-view="convites"><b>CONVITES</b><span>Parceiro, validador e motorista.</span></div>
+      <div class="fs-nav-item" data-settings-view="kms"><b>KMS</b><span>Base tarifária por categoria.</span></div>
+      <div class="fs-nav-item" data-settings-view="quote"><b>QUOTE</b><span>Mínimos, espera, procura e retenção.</span></div>
+      <div class="fs-nav-item" data-settings-view="parceiros"><b>PARCEIROS</b><span>Limites de veículos e motoristas.</span></div>
+      <div class="fs-nav-item" data-settings-view="colaboradores"><b>COLABORADORES</b><span>Blocos e métricas.</span></div>
+      <div class="fs-nav-item" data-settings-view="motoristas"><b>MOTORISTAS</b><span>Lista geral.</span></div>
+      <div class="fs-nav-item" data-settings-view="veiculos"><b>VEÍCULOS</b><span>Validações.</span></div>
+      <div class="fs-nav-item" data-settings-view="viagens"><b>VIAGENS</b><span>Resumo operacional.</span></div>
+      <div class="fs-nav-item" data-settings-view="audit"><b>AUDIT</b><span>Registos administrativos.</span></div>
+    </aside>
+    <div class="fs-main">
+      <div class="fs-head"><div><div class="fs-title">Painel de Gestão</div><div class="card-sub" style="margin-top:4px">Ecrã total com atualização automática a cada 15 segundos.</div></div><button class="btn" id="btnCloseSettings">FECHAR GESTÃO</button></div>
+      <div class="fs-body">
+        <section class="settings-section active" id="settings-convites">
+          <div class="toolbar" style="margin-bottom:12px"><button class="tab active" id="btnModeParceiro">CONVIDAR PARCEIRO</button><button class="tab" id="btnModeValidador">CONVIDAR VALIDADOR</button><button class="tab" id="btnModeMotorista">CONVIDAR MOTORISTA</button></div>
+          <div id="inviteParceiroBox">
+            <div class="grid-2">
+              <div class="field"><label>Empresa</label><input class="input" id="ip_empresa" /></div>
+              <div class="field"><label>Email</label><input class="input" id="ip_email" type="email" /></div>
+              <div class="field"><label>Contacto</label><input class="input" id="ip_contacto" /></div>
+              <div class="field"><label>NIF</label><input class="input" id="ip_nif" /></div>
+            </div>
+            <div class="toolbar" style="margin-top:10px"><button class="tab active selector-type" data-type="hotel">HOTEL</button><button class="tab selector-type" data-type="alojamento">ALOJAMENTO</button><button class="tab selector-type" data-type="frota">GESTOR DE FROTA</button></div>
+            <div class="toolbar" style="margin-top:12px;justify-content:flex-end"><button class="btn" id="btnInviteParceiro">ENVIAR CONVITE</button></div>
+          </div>
+          <div id="inviteValidadorBox" style="display:none">
+            <div class="field"><label>Emails</label><textarea class="textarea" id="iv_emails" placeholder="Um por linha ou separados por vírgula"></textarea></div>
+            <div class="grid-2"><div class="field"><label>Escopo</label><select class="select" id="iv_scope"><option value="motoristas">Motoristas</option><option value="veiculos">Veículos</option><option value="empresas">Empresas</option><option value="global">Global</option></select></div><div class="field"><label>Canal</label><select class="select" id="iv_channel"><option value="email">Email</option><option value="email_sms">Email + SMS</option><option value="interno">Interno</option></select></div></div>
+            <div class="field"><label>Observação</label><textarea class="textarea" id="iv_note"></textarea></div>
+            <div class="toolbar" style="margin-top:12px;justify-content:flex-end"><button class="btn" id="btnInviteValidador">ENVIAR CONVITES</button></div>
+          </div>
+          <div id="inviteMotoristaBox" style="display:none">
+            <div class="field"><label>Emails dos motoristas</label><textarea class="textarea" id="im_emails" placeholder="Um por linha ou separados por vírgula"></textarea></div>
+            <div class="card-sub">Como não recebeste aqui a rota backend de envio de email do convite do motorista, este painel gera links prontos para copiares e enviares manualmente sem mexer no resto do sistema.</div>
+            <div class="toolbar" style="margin-top:12px;justify-content:flex-end"><button class="btn" id="btnGenerateDriverLinks">GERAR LINKS</button></div>
+            <div class="msg" id="msgDriverInviteLinks" style="margin-top:10px">Pronto.</div>
+          </div>
+          <div class="msg" id="msgInvite">Pronto.</div>
+        </section>
+
+        <section class="settings-section" id="settings-kms"><div class="grid-2"><div class="summary-card"><div class="card-title">Categorias / KMS</div><div id="kmsGrid" class="mini-list" style="margin-top:10px"></div></div><div class="summary-card"><div class="card-title">Preços por categoria</div><div class="grid-2" style="margin-top:10px"><div class="field"><label>Económica</label><input class="input" type="number" step="0.01" id="kpc_economica"></div><div class="field"><label>Confort</label><input class="input" type="number" step="0.01" id="kpc_confort"></div><div class="field"><label>Executive</label><input class="input" type="number" step="0.01" id="kpc_executive"></div><div class="field"><label>Luxury</label><input class="input" type="number" step="0.01" id="kpc_luxury"></div><div class="field"><label>Grupo 6</label><input class="input" type="number" step="0.01" id="kpc_g6"></div><div class="field"><label>Grupo 8</label><input class="input" type="number" step="0.01" id="kpc_g8"></div><div class="field"><label>Grupo 17</label><input class="input" type="number" step="0.01" id="kpc_g17"></div></div><div class="toolbar" style="margin-top:10px"><button class="btn small" id="btnSeedKms">CRIAR BASE</button><button class="btn small" id="btnReloadKms">RECARREGAR</button><button class="btn small" id="btnSaveKms">GUARDAR</button></div></div></div><div class="msg" id="msgKms">Pronto.</div></section>
+        <section class="settings-section" id="settings-quote"><div class="grid-2"><div class="summary-card"><div class="card-title">Mínimos e espera</div><div class="grid-2" style="margin-top:10px"><div class="field"><label>Mínimo aeroporto</label><input class="input" type="number" step="0.01" id="qc_minAeroporto"></div><div class="field"><label>Mínimo normal</label><input class="input" type="number" step="0.01" id="qc_minNormal"></div><div class="field"><label>Minutos grátis</label><input class="input" type="number" step="1" id="qc_esperaGratis"></div><div class="field"><label>€/min extra</label><input class="input" type="number" step="0.01" id="qc_esperaMinuto"></div></div></div><div class="summary-card"><div class="card-title">Trânsito / procura / plataforma</div><div class="grid-2" style="margin-top:10px"><div class="field"><label>Portagem fixa</label><input class="input" type="number" step="0.01" id="qc_portagem"></div><div class="field"><label>Fator max trânsito</label><input class="input" type="number" step="0.01" id="qc_maxTransito"></div><div class="field"><label>Fator hora ponta</label><input class="input" type="number" step="0.01" id="qc_fatorHoraPonta"></div><div class="field"><label>Procura incremento</label><input class="input" type="number" step="0.01" id="qc_demandaStep"></div><div class="field"><label>Procura max</label><input class="input" type="number" step="0.01" id="qc_demandaMax"></div><div class="field"><label>% sistema</label><input class="input" type="number" step="0.01" id="qc_plataformaPercent"></div><div class="field"><label>Desconto colaborador %</label><input class="input" type="number" step="0.01" id="qc_descontoColaborador"></div><div class="field"><label>Hora ponta manhã início</label><input class="input" type="number" step="1" id="qc_rushMorningStart"></div><div class="field"><label>Hora ponta manhã fim</label><input class="input" type="number" step="1" id="qc_rushMorningEnd"></div><div class="field"><label>Hora ponta tarde início</label><input class="input" type="number" step="1" id="qc_rushEveningStart"></div><div class="field"><label>Hora ponta tarde fim</label><input class="input" type="number" step="1" id="qc_rushEveningEnd"></div></div><div class="toolbar" style="margin-top:10px"><button class="btn small" id="btnReloadQuote">RECARREGAR</button><button class="btn small" id="btnSaveQuote">GUARDAR</button></div></div></div><div class="msg" id="msgQuote">Pronto.</div></section>
+        <section class="settings-section" id="settings-parceiros"><div class="toolbar" style="margin-bottom:12px"><input class="input" id="qParceiros" placeholder="Pesquisar parceiro" /><button class="btn small" id="btnReloadParceiros">ATUALIZAR</button></div><div class="table-wrap"><table><thead><tr><th>Parceiro</th><th>NIF</th><th>Email</th><th>Contacto</th><th>Sem limites</th><th>Max Veículos</th><th>Max Motoristas</th><th>Ação</th></tr></thead><tbody id="tbodyParceiros"></tbody></table></div><div class="msg" id="msgParceiros">Pronto.</div></section>
+        <section class="settings-section" id="settings-colaboradores"><div class="toolbar" style="margin-bottom:12px"><select class="select" id="fColaboradores"><option value="pendente">Pendentes</option><option value="aprovado">Aprovados</option><option value="all">Todos</option></select><button class="btn small" id="btnReloadColaboradores">ATUALIZAR</button></div><div id="colaboradoresBlocks"></div><div class="msg" id="msgColaboradores">Pronto.</div></section>
+        <section class="settings-section" id="settings-motoristas"><div class="toolbar" style="margin-bottom:12px"><button class="btn small" id="btnReloadMotoristas">ATUALIZAR</button></div><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Email</th><th>Contacto</th><th>Categoria</th><th>Status</th><th>Aprovação</th></tr></thead><tbody id="tbodyMotoristas"></tbody></table></div><div class="msg" id="msgMotoristas">Pronto.</div></section>
+        <section class="settings-section" id="settings-veiculos"><div class="toolbar" style="margin-bottom:12px"><select class="select" id="fVeiculos"><option value="pendente">Pendentes</option><option value="aprovado">Aprovados</option><option value="rejeitado">Rejeitados</option><option value="all">Todos</option></select><button class="btn small" id="btnReloadVeiculos">ATUALIZAR</button></div><div class="table-wrap"><table><thead><tr><th>Matrícula</th><th>Marca</th><th>Modelo</th><th>Status</th><th>Estado</th></tr></thead><tbody id="tbodyVeiculos"></tbody></table></div><div class="msg" id="msgVeiculos">Pronto.</div></section>
+        <section class="settings-section" id="settings-viagens"><div class="toolbar" style="margin-bottom:12px"><button class="btn small" id="btnReloadViagens">ATUALIZAR</button></div><div class="table-wrap"><table><thead><tr><th>Parceiro</th><th>Quem fez</th><th>Data</th><th>Valor (€)</th></tr></thead><tbody id="tbodyViagens"></tbody></table></div><div class="msg" id="msgViagens">Pronto.</div></section>
+        <section class="settings-section" id="settings-audit"><div class="toolbar" style="margin-bottom:12px"><button class="btn small" id="btnReloadAudit">ATUALIZAR</button></div><div class="table-wrap"><table><thead><tr><th>Ação</th><th>Admin</th><th>Alvo</th><th>ID Alvo</th><th>Data</th></tr></thead><tbody id="tbodyAudit"></tbody></table></div><div class="msg" id="msgAudit">Pronto.</div></section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const API_BASE = "";
+  const ROUTES = {
+    me: ["/admin/me", "/api/admin/me"], logout:["/admin/logout", "/api/admin/logout"],
+    motoristasGet:["/admin/motoristas", "/api/admin/motoristas"], viagensGet:["/admin/viagens", "/api/admin/viagens"],
+    pagar:(id)=>[`/admin/viagens/${encodeURIComponent(id)}/pagar`, `/api/admin/viagens/${encodeURIComponent(id)}/pagar`],
+    atribuir:(id)=>[`/admin/viagens/${encodeURIComponent(id)}/atribuir`, `/api/admin/viagens/${encodeURIComponent(id)}/atribuir`],
+    atribuirFallback:["/admin/viagens/atribuir", "/api/admin/viagens/atribuir"],
+    kmsGet:["/api/admin/kms"], kmsPut:["/api/admin/kms"], quoteGet:["/admin/quote-config"], quotePut:["/admin/quote-config"],
+    parceirosGet:["/api/admin/parceiros"], parceiroPut:(nif)=>[`/api/admin/parceiros/${encodeURIComponent(nif)}`],
+    colaboradoresGet:(status)=>[`/admin/validacoes/colaboradores?status=${encodeURIComponent(status)}`],
+    veiculosGet:(status)=>[`/admin/validacoes/veiculos?status=${encodeURIComponent(status)}`],
+    auditGet:["/admin/audit"],
+    inviteParceiro:["/api/admin/parceiros/convites"],
+    inviteValidador:["/api/admin/validadores/invite"],
+    autoAtribuir:(id)=>[
+      `/admin/viagens/${encodeURIComponent(id)}/auto-atribuir`,
+      `/api/admin/viagens/${encodeURIComponent(id)}/auto-atribuir`,
+      `/admin/viagens/${encodeURIComponent(id)}/auto-assign`,
+      `/api/admin/viagens/${encodeURIComponent(id)}/auto-assign`
+    ],
+    autoAtribuirFallback:[
+      "/admin/viagens/auto-atribuir",
+      "/api/admin/viagens/auto-atribuir",
+      "/admin/viagens/auto-assign",
+      "/api/admin/viagens/auto-assign"
+    ]
+  };
+
+  const state = { drivers:[], trips:[], pendingTrips:[], returnedTrips:[], selectedTrip:null, selectedDriver:null, activeTab:'dispatch', search:'', driverCategory:'ALL', partnerInviteType:'hotel', kmsState:[], parceirosState:[], currentQuoteConfig:null };
+  const defaultKmsSeed = [{ key:'economica', label:'Económica', valorPorKm:0.85, ativo:true },{ key:'confort', label:'Conforto', valorPorKm:1.05, ativo:true },{ key:'executive', label:'Executive', valorPorKm:1.35, ativo:true },{ key:'luxury', label:'Luxury', valorPorKm:1.75, ativo:true },{ key:'grupo6', label:'Grupo 6', valorPorKm:1.20, ativo:true },{ key:'grupo8', label:'Grupo 8', valorPorKm:1.35, ativo:true },{ key:'grupo17', label:'Grupo 17', valorPorKm:1.60, ativo:true }];
+
+  const map = L.map('map', { zoomControl:true }).setView([38.7223, -9.1393], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+  const tripLayer = L.layerGroup().addTo(map), driverLayer = L.layerGroup().addTo(map), radiusLayer = L.layerGroup().addTo(map);
+
+  const $ = (s)=>document.querySelector(s);
+  const $$ = (s)=>Array.from(document.querySelectorAll(s));
+  const joinUrl = (b,p)=>String(b||'').replace(/\/$/,'') + '/' + String(p||'').replace(/^\//,'');
+  const safeText = (x)=> (x===null || x===undefined || x==='') ? '-' : String(x);
+  const num = (v)=> { const n=Number(v); return Number.isFinite(n)?n:0; };
+  const normalize = (s)=> String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+  const normalizeCat = (s)=> String(s||'').trim().toUpperCase();
+  const money = (v)=> `${num(v).toFixed(2)} €`;
+  const getId = (x)=> String(x?._id || x?.id || '');
+  const formatDate = (v)=> { if(!v) return '-'; const d = new Date(v); return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString('pt-PT'); };
+  const splitEmails = (raw)=> String(raw||'').split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean);
+  const isAvailableStatus = (v)=> normalize(v).includes('dispon') || normalize(v).includes('livre') || normalize(v)==='online';
+  const isReturnedStatus = (v)=> ['devolvida','returned'].includes(normalize(v));
+  const isAssignedStatus = (v)=> ['atribuida','atribuída','assigned'].includes(normalize(v));
+  const isCompletedStatus = (v)=> normalize(v) === 'completed';
+  const geocodeCache = new Map();
+  
+
+  let _admTok = '';
+  async function api(path, opts={}){ const h = Object.assign({}, opts.headers||{}); if(_admTok) h['Authorization']='Bearer '+_admTok; const res = await fetch(joinUrl(API_BASE, path), { credentials:'include', ...opts, headers:h }).catch(()=>null); if(!res) throw new Error('Sem ligação ao servidor.'); const txt = await res.text().catch(()=> ''); let data={}; try{ data = txt ? JSON.parse(txt) : {}; }catch{ data = { message:txt }; } if(!res.ok) throw new Error(data?.message || ('HTTP ' + res.status)); return data; }
+  async function apiTry(paths, opts={}){ let lastErr=null; for(const p of paths){ try{ return await api(p, opts); }catch(err){ lastErr=err; } } throw lastErr || new Error('Falha na API'); }
+  async function ensureAdminMasterOrRedirect(){ try{
+    const _up=new URLSearchParams(location.search),_ut=_up.get('_atok');
+    if(_ut){_admTok=_ut;_up.delete('_atok');history.replaceState(null,'',location.pathname+(_up.toString()?'?'+_up.toString():''));}
+    const me = await apiTry(ROUTES.me); if(normalize(me?.admin?.tipo) !== 'adminmaster') throw new Error('Sem permissão.'); return true; }catch{ const next = encodeURIComponent(location.pathname + location.search); location.replace(`/admin-login.html?next=${next}`); return false; } }
+
+  function getTripCoords(trip){ const lat = Number(trip?.latStart ?? trip?.pickup?.lat ?? trip?.origem?.lat ?? trip?.lat ?? trip?.fromLat ?? trip?.localizacao?.lat ?? trip?.localização?.lat); const lng = Number(trip?.lngStart ?? trip?.pickup?.lng ?? trip?.origem?.lng ?? trip?.lng ?? trip?.fromLng ?? trip?.localizacao?.lng ?? trip?.localização?.lng ?? trip?.localizacao?.lon ?? trip?.localização?.lon); return (Number.isFinite(lat)&&Number.isFinite(lng)) ? {lat,lng} : null; }
+  function getTripLocality(trip){ return String(trip?.localidade || trip?.localidadeReserva || trip?.localidadeOrigem || trip?.cidade || trip?.regiao || trip?.região || trip?.zona || trip?.pickupLocalidade || trip?.fromLocality || trip?.from || trip?.origem || '').trim(); }
+  async function resolveTripCoords(trip){ const direct = getTripCoords(trip); if(direct) return direct; const locality = getTripLocality(trip); if(!locality) return null; if(geocodeCache.has(locality)) return geocodeCache.get(locality); try{ const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=pt&q=${encodeURIComponent(locality)}`; const res = await fetch(url, { headers:{ 'Accept':'application/json' } }).catch(()=>null); if(!res || !res.ok) return null; const data = await res.json().catch(()=> []); const first = Array.isArray(data) ? data[0] : null; if(!first) return null; const out = { lat:Number(first.lat), lng:Number(first.lon) }; geocodeCache.set(locality, out); return out; }catch{ return null; } }
+  function getDriverCoords(driver){ const lat = Number(driver?.lat ?? driver?.localizacao?.lat ?? driver?.localização?.lat ?? driver?.gps?.lat); const lng = Number(driver?.lng ?? driver?.localizacao?.lng ?? driver?.localização?.lng ?? driver?.localizacao?.lon ?? driver?.localização?.lon ?? driver?.gps?.lng); return (Number.isFinite(lat)&&Number.isFinite(lng)) ? {lat,lng} : null; }
+  function getDistanceKm(lat1,lng1,lat2,lng2){ const R=6371; const dLat=(lat2-lat1)*Math.PI/180; const dLng=(lng2-lng1)*Math.PI/180; const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2; return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); }
+  function getDriverRating(d){ const v = d?.classificacao ?? d?.classificação ?? d?.rating ?? d?.avaliacao ?? d?.avaliação ?? d?.media ?? d?.nota; const n = Number(v); return Number.isFinite(n) ? n : 5; }
+  function getTripRequiredRating(t){ const v = t?.classificacaoMinima ?? t?.classificaçãoMinima ?? t?.ratingMinimo ?? t?.ratingMin ?? t?.minRating; const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  function tripCategoryMatches(driver, trip){ const tcat = normalizeCat(trip?.grupoReserva || trip?.categoria || trip?.category || trip?.tipoVeiculo || trip?.tipo); const dcat = normalizeCat(driver?.categoria || driver?.category || driver?.tipoVeiculo); if(!tcat || tcat === 'TODOS') return true; return tcat === dcat; }
+
+  function isDriverBusy(driver){
+    return !!(
+      driver?.busy ||
+      driver?.ocupado ||
+      driver?.emViagem ||
+      driver?.currentTripId ||
+      driver?.tripIdAtual
+    );
+  }
+
+  function getDriverLastUpdate(driver){
+    return driver?.lastLocationUpdateAt ||
+           driver?.updatedAt ||
+           driver?.gpsUpdatedAt ||
+           driver?.localizacao?.updatedAt ||
+           driver?.localização?.updatedAt ||
+           null;
+  }
+
+  function hasFreshDriverLocation(driver, maxAgeMinutes=10){
+    const last = getDriverLastUpdate(driver);
+    if(!last) return true;
+    const d = new Date(last);
+    if(Number.isNaN(d.getTime())) return true;
+    return (Date.now() - d.getTime()) <= maxAgeMinutes * 60 * 1000;
+  }
+
+  function isDriverEligibleForTrip(driver, trip){
+    if(!driver) return false;
+    if(!isAvailableStatus(driver.status)) return false;
+    if(isDriverBusy(driver)) return false;
+    if(!getDriverCoords(driver)) return false;
+    if(!tripCategoryMatches(driver, trip)) return false;
+    if(getDriverRating(driver) < getTripRequiredRating(trip)) return false;
+    if(!hasFreshDriverLocation(driver, 10)) return false;
+    return true;
+  }
+
+  async function getBestDriverForTrip(trip, maxKm=5){
+    const nearby = await getNearbyDrivers(trip, maxKm);
+    const eligible = nearby.filter(x => isDriverEligibleForTrip(x.driver, trip));
+
+    eligible.sort((a,b) => {
+      if(a.km !== b.km) return a.km - b.km;
+      const rdiff = getDriverRating(b.driver) - getDriverRating(a.driver);
+      if(rdiff !== 0) return rdiff;
+      const an = normalize(safeText(a.driver?.nome));
+      const bn = normalize(safeText(b.driver?.nome));
+      return an.localeCompare(bn, 'pt');
+    });
+
+    return {
+      best: eligible[0] || null,
+      candidates: eligible
+    };
+  }
+
+  async function renderMap(){ tripLayer.clearLayers(); driverLayer.clearLayers(); radiusLayer.clearLayers(); for(const trip of state.trips){ const c = await resolveTripCoords(trip); if(!c) continue; const color = isReturnedStatus(trip.status) ? '#ff6b6b' : isAssignedStatus(trip.status) ? '#19d68b' : '#f2c56a'; const marker = L.circleMarker([c.lat,c.lng], { radius:8, color, weight:2, fillOpacity:.85 }).addTo(tripLayer); marker.bindPopup(`<b>${safeText(trip.from || trip.pickup || trip.origem)}</b><br>${safeText(trip.to || trip.destination || trip.destino)}<br>${safeText(trip.status)}`); marker.on('click', ()=> selectTrip(trip)); }
+    state.drivers.forEach(driver => { const c = getDriverCoords(driver); if(!c) return; const marker = L.circleMarker([c.lat,c.lng], { radius:7, color:isAvailableStatus(driver.status) ? '#19d68b' : '#dce1e8', weight:2, fillOpacity:.85 }).addTo(driverLayer); marker.bindPopup(`<b>${safeText(driver.nome)}</b><br>${safeText(driver.categoria)}<br>${safeText(driver.status)}`); marker.on('click', ()=> selectDriver(driver)); });
+    if(state.selectedTrip){ const c = await resolveTripCoords(state.selectedTrip); if(c){ L.circle([c.lat,c.lng], { radius:5000, color:'#f2c56a', weight:2, fillOpacity:.04 }).addTo(radiusLayer); map.setView([c.lat,c.lng], 13, { animate:true }); } }
+  }
+
+  async function getNearbyDrivers(trip, maxKm=5){ const tc = await resolveTripCoords(trip); if(!tc) return []; const reqRating = getTripRequiredRating(trip); return state.drivers.map(driver => { const dc = getDriverCoords(driver); if(!dc) return null; return { driver, km:getDistanceKm(tc.lat, tc.lng, dc.lat, dc.lng), coords:dc }; }).filter(Boolean).filter(x => x.km <= maxKm).filter(x => isAvailableStatus(x.driver.status)).filter(x => tripCategoryMatches(x.driver, trip)).filter(x => getDriverRating(x.driver) >= reqRating).sort((a,b)=> a.km - b.km || getDriverRating(b.driver) - getDriverRating(a.driver)); }
+  const tripTitle = (trip)=> `${safeText(trip.from || trip.pickup || trip.origem || 'Origem')} → ${safeText(trip.to || trip.destination || trip.destino || 'Destino')}`;
+  const tripWhen = (trip)=> formatDate(trip.when || trip.dataHoraInicio || trip.createdAt || trip.data);
+
+  function renderDispatchList(){
+    const box = $('#dispatchList');
+    const term = normalize(state.search);
+    const list = state.trips
+      .filter(t => !isAssignedStatus(t.status) && !isReturnedStatus(t.status))
+      .filter(t => !term || [t.from,t.to,t.origem,t.destino,t.status,t.categoria,t.customer?.nome,t.collaborator?.empresa,getTripLocality(t)].filter(Boolean).join(' ').toLowerCase().includes(term));
+
+    if(!list.length){
+      box.innerHTML='<div class="empty">Sem viagens pendentes para despacho.</div>';
+      return;
+    }
+
+    box.innerHTML = list.map(t => `
+      <div class="trip-card pending ${getId(state.selectedTrip)===getId(t)?'active-card':''}" data-trip-id="${getId(t)}">
+        <div class="card-title">${tripTitle(t)}</div>
+        <div class="card-sub">
+          ${tripWhen(t)}<br>
+          Categoria: ${safeText(t.categoria || t.category || t.grupoReserva)}<br>
+          Parceiro: ${safeText(t.collaborator?.empresa || t.customer?.nome || t.canal)}<br>
+          Localidade: ${safeText(getTripLocality(t))}
+        </div>
+        <div class="chips">
+          <span class="chip"><span class="dot warn"></span>${safeText(t.status || 'PENDENTE')}</span>
+        </div>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="btn small quick-open-trip" data-trip-id="${getId(t)}">ABRIR</button>
+          <button class="btn small primary quick-auto-trip" data-trip-id="${getId(t)}">AUTO</button>
+        </div>
+      </div>
+    `).join('');
+
+    box.querySelectorAll('.quick-open-trip').forEach(el => {
+      el.onclick = (ev) => {
+        ev.stopPropagation();
+        const trip = list.find(x => getId(x) === el.dataset.tripId);
+        if(trip) selectTrip(trip);
+      };
+    });
+
+    box.querySelectorAll('.quick-auto-trip').forEach(el => {
+      el.onclick = async (ev) => {
+        ev.stopPropagation();
+        const trip = list.find(x => getId(x) === el.dataset.tripId);
+        if(trip) await autoAssignTrip(trip);
+      };
+    });
+
+    box.querySelectorAll('[data-trip-id]').forEach(el => {
+      el.onclick = ()=> {
+        const trip=list.find(x=>getId(x)===el.dataset.tripId);
+        if(trip) selectTrip(trip);
+      };
+    });
+  }
+
+  function renderReturnedList(){
+    const box = $('#returnedList');
+    const term = normalize(state.search);
+    const list = state.returnedTrips.filter(t => !term || [t.from,t.to,t.origem,t.destino,t.status,t.categoria,t.customer?.nome,t.collaborator?.empresa,getTripLocality(t)].filter(Boolean).join(' ').toLowerCase().includes(term));
+
+    if(!list.length){
+      box.innerHTML='<div class="empty">Sem viagens devolvidas.</div>';
+      return;
+    }
+
+    box.innerHTML = list.map(t => `<div class="trip-card returned ${getId(state.selectedTrip)===getId(t)?'active-card':''}" data-trip-id="${getId(t)}"><div class="card-title">${tripTitle(t)}</div><div class="card-sub">${tripWhen(t)}<br>Categoria: ${safeText(t.categoria || t.category || t.grupoReserva)}<br>Localidade: ${safeText(getTripLocality(t))}</div><div class="chips"><span class="chip"><span class="dot bad"></span>DEVOLVIDA</span></div></div>`).join('');
+
+    box.querySelectorAll('[data-trip-id]').forEach(el=> el.onclick = ()=> {
+      const trip=list.find(x=>getId(x)===el.dataset.tripId);
+      if(trip) selectTrip(trip);
+    });
+  }
+
+  function renderAssignedList(){ const box = $('#assignedList'); const term = normalize(state.search); const list = state.pendingTrips.filter(t => !term || [t.from,t.to,t.origem,t.destino,t.status,t.categoria,t.motorista?.nome,t.driver?.name,getTripLocality(t)].filter(Boolean).join(' ').toLowerCase().includes(term)); if(!list.length){ box.innerHTML='<div class="empty">Sem viagens atribuídas.</div>'; return; } box.innerHTML = list.map(t => `<div class="trip-card assigned ${getId(state.selectedTrip)===getId(t)?'active-card':''}" data-trip-id="${getId(t)}"><div class="card-title">${tripTitle(t)}</div><div class="card-sub">${tripWhen(t)}<br>Motorista: ${safeText(t.motorista?.nome || t.driver?.name)}<br>Categoria: ${safeText(t.categoria || t.category || t.grupoReserva)}</div><div class="chips"><span class="chip"><span class="dot ok"></span>ATRIBUÍDA</span></div></div>`).join(''); box.querySelectorAll('[data-trip-id]').forEach(el=> el.onclick = ()=> { const trip=list.find(x=>getId(x)===el.dataset.tripId); if(trip) selectTrip(trip); }); }
+  function groupDriversByManager(list){ const m = new Map(); list.forEach(d=>{ const key = String(d.gestorId || d.frotaId || d.gestorEmail || d.gestorNome || 'sem-gestor'); if(!m.has(key)) m.set(key, { id:key, nome:d.gestorNome || d.frotaNome || d.gestorEmail || 'Sem gestor', email:d.gestorEmail || '', items:[] }); m.get(key).items.push(d); }); return Array.from(m.values()).sort((a,b)=> String(a.nome).localeCompare(String(b.nome), 'pt')); }
+  function renderDriversGrouped(){ const box = $('#driversList'); const term = normalize(state.search); const groups = groupDriversByManager(state.drivers.filter(d => { const categoryOk = state.driverCategory==='ALL' || normalizeCat(d.categoria)===state.driverCategory; const hay=[d.nome,d.email,d.contacto,d.gestorNome,d.gestorEmail,d.categoria].filter(Boolean).join(' ').toLowerCase(); return categoryOk && (!term || hay.includes(term)); })); if(!groups.length){ box.innerHTML='<div class="empty">Sem motoristas.</div>'; return; } box.innerHTML = groups.map((g,idx)=> `<div class="manager-card" data-manager="${idx}"><div class="card-title">${safeText(g.nome)}</div><div class="card-sub">${safeText(g.email || 'Sem email')}<br>Motoristas: ${g.items.length}</div><div class="chips"><span class="chip">ABRIR LISTA</span></div><div class="mini-list" id="managerItems_${idx}" style="display:none;margin-top:10px">${g.items.map(d=> `<div class="mini-row driver-row" data-driver-id="${getId(d)}"><b>${safeText(d.nome)}</b><br><span class="card-sub">${safeText(d.email)} • ${safeText(d.categoria)} • ${safeText(d.status)} • ${getDriverRating(d).toFixed(1)}★</span></div>`).join('')}</div></div>`).join(''); box.querySelectorAll('[data-manager]').forEach(el=> el.onclick = (ev)=> { if(ev.target.closest('.driver-row')) return; const listEl = document.getElementById(`managerItems_${el.dataset.manager}`); if(listEl) listEl.style.display = listEl.style.display === 'none' ? '' : 'none'; }); box.querySelectorAll('.driver-row').forEach(el=> el.onclick = (ev)=> { ev.stopPropagation(); const d=state.drivers.find(x=>getId(x)===el.dataset.driverId); if(d) selectDriver(d); }); }
+  function renderBilling(){ const summary = $('#billingSummary'); const tbody = $('#billingTableBody'); const totals={}; state.trips.forEach(t=>{ const mot = t.motorista || t.driver || null; if(!mot) return; const id=getId(mot); if(!id) return; if(!totals[id]) totals[id]={ nome: mot.nome || mot.name || 'Motorista', total:0, nViagens:0 }; totals[id].total += num(t.valor || t.quote?.total || t.paymentPlan?.customerDue); totals[id].nViagens += 1; }); const rows = Object.values(totals); summary.innerHTML = `<div class="card-title">Resumo financeiro</div>` + (rows.length ? rows.map(x=> `<div class="card-sub" style="margin-top:8px">${x.nome}: ${x.nViagens} viagens • ${money(x.total)}</div>`).join('') : '<div class="card-sub" style="margin-top:8px">Sem dados.</div>'); tbody.innerHTML = state.trips.map(t=> `<tr><td>${safeText(formatDate(t.data || t.when || t.createdAt))}</td><td>${safeText(t.motorista?.nome || t.driver?.name)}</td><td>${safeText(t.from || t.pickup || t.origem)} → ${safeText(t.to || t.destination || t.destino)}</td><td>${safeText(t.categoria || t.category || t.grupoReserva)}</td><td>${num(t.valor || t.quote?.total || t.paymentPlan?.customerDue).toFixed(2)}</td><td>${safeText(t.statusPagamento || t.paymentStatus)}</td><td><button class="btn small btn-pay" data-id="${getId(t)}">MARCAR PAGO</button></td></tr>`).join(''); tbody.querySelectorAll('.btn-pay').forEach(btn=> btn.onclick = ()=> marcarPago(btn.dataset.id)); }
+  function openDetails(title, subtitle, html){ $('#detailsTitle').textContent=title; $('#detailsSubtitle').textContent=subtitle; $('#detailsBody').innerHTML=html; }
+  function clearDetails(){ openDetails('Detalhes', 'Selecione uma viagem para ver recolha, raio e condutores próximos.', '<div class="empty">Selecione uma viagem em despacho ou devolvidas.</div>'); state.selectedTrip=null; renderMap(); renderDispatchList(); renderReturnedList(); renderAssignedList(); }
+  function selectDriver(driver){ state.selectedDriver = driver; const c=getDriverCoords(driver); if(c) map.setView([c.lat,c.lng], 14, { animate:true }); openDetails(safeText(driver.nome), `${safeText(driver.categoria)} • ${safeText(driver.status)}`, `<div class="summary-card"><div class="card-title">Dados do motorista</div><div class="card-sub">Email: ${safeText(driver.email)}<br>Contacto: ${safeText(driver.contacto)}<br>Gestor: ${safeText(driver.gestorNome || driver.frotaNome || driver.gestorEmail)}<br>Classificação: ${getDriverRating(driver).toFixed(1)}</div></div>`); }
+
+  async function selectTrip(trip){
+    state.selectedTrip = trip;
+    await renderMap();
+    renderDispatchList();
+    renderReturnedList();
+    renderAssignedList();
+
+    const nearby = await getNearbyDrivers(trip, 5);
+    const { best } = await getBestDriverForTrip(trip, 5);
+    const tc = await resolveTripCoords(trip);
+
+    openDetails(
+      tripTitle(trip),
+      `${tripWhen(trip)} • ${safeText(trip.status)}${tc ? ` • ${tc.lat.toFixed(5)}, ${tc.lng.toFixed(5)}` : ''}`,
+      `
+      <div class="summary-card">
+        <div class="card-title">Dados da viagem</div>
+        <div class="card-sub">
+          Origem: ${safeText(trip.from || trip.pickup || trip.origem)}<br>
+          Destino: ${safeText(trip.to || trip.destination || trip.destino)}<br>
+          Parceiro: ${safeText(trip.collaborator?.empresa || trip.customer?.nome || trip.canal)}<br>
+          Categoria: ${safeText(trip.categoria || trip.category || trip.grupoReserva)}<br>
+          Localidade: ${safeText(getTripLocality(trip))}<br>
+          Estado: ${safeText(trip.status)}
+        </div>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="btn primary small" id="btnAutoAssignTrip">AUTO ATRIBUIR</button>
+        </div>
+      </div>
+
+      <div class="summary-card" style="margin-top:10px">
+        <div class="card-title">Melhor sugestão automática</div>
+        ${
+          best ? `
+          <div class="card-sub" style="margin-top:8px">
+            ${safeText(best.driver.nome)}<br>
+            ${safeText(best.driver.categoria)} • ${safeText(best.driver.status)} • ${best.km.toFixed(2)} km • ${getDriverRating(best.driver).toFixed(1)}★
+          </div>
+          <div class="toolbar" style="margin-top:8px">
+            <button class="btn small assign-best-btn" data-driver-id="${getId(best.driver)}">ATRIBUIR SUGESTÃO</button>
+            <button class="btn small center-driver-btn" data-driver-id="${getId(best.driver)}">VER NO MAPA</button>
+          </div>
+          ` : `
+          <div class="empty" style="margin-top:8px">Sem sugestão elegível para auto-dispatch.</div>
+          `
+        }
+      </div>
+
+      <div class="summary-card" style="margin-top:10px">
+        <div class="card-title">Condutores no raio de 5 km</div>
+        <div class="mini-list">
+          ${
+            nearby.length ? nearby.map(x => `
+              <div class="mini-row ${best && getId(best.driver)===getId(x.driver) ? 'active-card' : ''}">
+                <b>${safeText(x.driver.nome)}</b><br>
+                <span class="card-sub">
+                  ${safeText(x.driver.categoria)} • ${safeText(x.driver.status)} • ${x.km.toFixed(2)} km • ${getDriverRating(x.driver).toFixed(1)}★
+                  ${best && getId(best.driver)===getId(x.driver) ? '<br><b>Melhor candidato automático</b>' : ''}
+                </span>
+                <div class="toolbar" style="margin-top:8px">
+                  <button class="btn small assign-btn" data-driver-id="${getId(x.driver)}">ATRIBUIR</button>
+                  <button class="btn small center-driver-btn" data-driver-id="${getId(x.driver)}">VER NO MAPA</button>
+                </div>
+              </div>
+            `).join('') : '<div class="empty">Sem condutores disponíveis perto desta recolha.</div>'
+          }
+        </div>
+      </div>
+
+      <div class="summary-card" style="margin-top:10px">
+        <div class="card-title">Substituição manual</div>
+        <div class="card-sub">Pode trocar manualmente o motorista. A troca de veículo fica apenas preparada na interface porque não recebeste aqui a rota backend para substituir veículo numa viagem.</div>
+        <div class="grid-2" style="margin-top:10px">
+          <div class="field"><label>Novo motorista (ID)</label><input class="input" id="manualDriverId" placeholder="Cole o ID do motorista"></div>
+          <div class="field"><label>Novo veículo (ID / matrícula)</label><input class="input" id="manualVehicleId" placeholder="Preparado para rota de veículo"></div>
+        </div>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="btn small" id="btnManualDriverReplace">SUBSTITUIR MOTORISTA</button>
+          <button class="btn small" id="btnManualVehicleReplace">SUBSTITUIR VEÍCULO</button>
+          <button class="btn small" id="btnManualBothReplace">SUBSTITUIR OS DOIS</button>
+        </div>
+        <div class="msg" id="msgManualReplace" style="margin-top:10px">Pronto.</div>
+      </div>
+      `
+    );
+
+    $('#btnAutoAssignTrip').onclick = async ()=> {
+      await autoAssignTrip(trip);
+    };
+
+    $$('.assign-btn').forEach(btn=> btn.onclick = ()=> {
+      const d = state.drivers.find(x=>getId(x)===btn.dataset.driverId);
+      if(d) assignTrip(d);
+    });
+
+    $$('.assign-best-btn').forEach(btn=> btn.onclick = ()=> {
+      const d = state.drivers.find(x=>getId(x)===btn.dataset.driverId);
+      if(d) assignTrip(d);
+    });
+
+    $$('.center-driver-btn').forEach(btn=> btn.onclick = ()=> {
+      const d = state.drivers.find(x=>getId(x)===btn.dataset.driverId);
+      if(!d) return;
+      const c = getDriverCoords(d);
+      if(c) map.setView([c.lat,c.lng], 15, { animate:true });
+    });
+
+    $('#btnManualDriverReplace').onclick = async ()=> {
+      const id = String($('#manualDriverId').value || '').trim();
+      const d = state.drivers.find(x=>getId(x)===id);
+      if(!d){
+        $('#msgManualReplace').textContent='❌ Motorista não encontrado no painel.';
+        return;
+      }
+      await replaceDriver(d);
+    };
+
+    $('#btnManualVehicleReplace').onclick = ()=> {
+      const v = String($('#manualVehicleId').value || '').trim();
+      $('#msgManualReplace').textContent = v ? '⚠️ Interface pronta. Falta a rota backend para substituir veículo na viagem.' : '❌ Indique um veículo.';
+    };
+
+    $('#btnManualBothReplace').onclick = async ()=> {
+      const did = String($('#manualDriverId').value || '').trim();
+      const d = state.drivers.find(x=>getId(x)===did);
+      if(!d){
+        $('#msgManualReplace').textContent='❌ Motorista não encontrado para substituição conjunta.';
+        return;
+      }
+      await replaceDriver(d);
+      if(String($('#manualVehicleId').value || '').trim()){
+        $('#msgManualReplace').textContent += '\n⚠️ Motorista trocado. Veículo continua pendente porque não existe rota backend para a troca do veículo.';
+      }
+    };
+  }
+
+  async function assignTrip(driver){ if(!state.selectedTrip) return; try{ $('#sideMsg').textContent='A atribuir viagem...'; const body={ motorista:getId(driver), motoristaId:getId(driver) }; try{ await apiTry(ROUTES.atribuir(getId(state.selectedTrip)), { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }); }catch{ await apiTry(ROUTES.atribuirFallback, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ viagemId:getId(state.selectedTrip), ...body }) }); } $('#sideMsg').textContent='✅ Viagem atribuída com sucesso.'; await loadOperational(); clearDetails(); }catch(e){ $('#sideMsg').textContent='❌ ' + (e?.message || e); } }
+
+  async function autoAssignTrip(trip){
+    if(!trip) return;
+
+    try{
+      $('#sideMsg').textContent = 'A calcular motorista ideal...';
+
+      try{
+        const data = await apiTry(ROUTES.autoAtribuir(getId(trip)), {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ viagemId:getId(trip) })
+        });
+
+        const nome =
+          data?.driver?.name ||
+          data?.driver?.nome ||
+          data?.motorista?.nome ||
+          'Motorista';
+
+        $('#sideMsg').textContent =
+          `✅ Auto-atribuição concluída: ${nome}`;
+
+        await loadOperational();
+        clearDetails();
+        return;
+
+      }catch(_backendErr){
+      }
+
+      const { best } = await getBestDriverForTrip(trip, 5);
+
+      if(!best){
+        throw new Error('Sem motorista elegível no raio de 5 km.');
+      }
+
+      state.selectedTrip = trip;
+      await assignTrip(best.driver);
+
+      $('#sideMsg').textContent =
+        `✅ Auto-atribuição local: ${safeText(best.driver.nome)}`;
+
+    }catch(e){
+      $('#sideMsg').textContent =
+        '❌ ' + (e?.message || e);
+    }
+  }
+
+  async function replaceDriver(driver){ if(!state.selectedTrip) return; const msg = $('#msgManualReplace'); try{ msg.textContent='A substituir motorista...'; const body={ motorista:getId(driver), motoristaId:getId(driver) }; try{ await apiTry(ROUTES.atribuir(getId(state.selectedTrip)), { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }); }catch{ await apiTry(ROUTES.atribuirFallback, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ viagemId:getId(state.selectedTrip), ...body }) }); } await loadOperational(); msg.textContent='✅ Motorista substituído com sucesso. A viagem sai do motorista anterior e passa a mostrar o novo motorista.'; $('#sideMsg').textContent='✅ Motorista substituído com sucesso.'; const fresh = state.trips.find(t=>getId(t)===getId(state.selectedTrip)) || state.selectedTrip; await selectTrip(fresh); }catch(e){ const err='❌ ' + (e?.message || e); msg.textContent=err; $('#sideMsg').textContent=err; } }
+  async function marcarPago(tripId){ try{ $('#sideMsg').textContent='A marcar como pago...'; await apiTry(ROUTES.pagar(tripId), { method:'POST' }); await loadTrips(); renderBilling(); $('#sideMsg').textContent='✅ Marcado como pago.'; }catch(e){ $('#sideMsg').textContent='❌ ' + (e?.message || e); } }
+
+  async function loadDrivers(){ const data = await apiTry(ROUTES.motoristasGet); state.drivers = Array.isArray(data?.motoristas) ? data.motoristas : []; renderDriversGrouped(); }
+  async function loadTrips(){ const data = await apiTry(ROUTES.viagensGet); state.trips = Array.isArray(data?.viagens) ? data.viagens : []; state.pendingTrips = state.trips.filter(t=> isAssignedStatus(t.status)); state.returnedTrips = state.trips.filter(t=> isReturnedStatus(t.status)); renderDispatchList(); renderReturnedList(); renderAssignedList(); renderBilling(); }
+  async function loadOperational(){ await Promise.all([loadDrivers(), loadTrips()]); await renderMap(); }
+
+  function renderKms(){ const grid=$('#kmsGrid'); grid.innerHTML = state.kmsState.map((c,idx)=> `<div class="mini-row"><div class="field"><label>Key</label><input class="input" data-kms-idx="${idx}" data-kms-key="key" value="${safeText(c.key)}"></div><div class="field"><label>Label</label><input class="input" data-kms-idx="${idx}" data-kms-key="label" value="${safeText(c.label)}"></div><div class="grid-2"><div class="field"><label>€/km</label><input class="input" type="number" step="0.01" data-kms-idx="${idx}" data-kms-key="valorPorKm" value="${num(c.valorPorKm)}"></div><div class="field"><label>Estado</label><select class="select" data-kms-idx="${idx}" data-kms-key="ativo"><option value="true" ${c.ativo !== false ? 'selected' : ''}>ATIVO</option><option value="false" ${c.ativo === false ? 'selected' : ''}>INATIVO</option></select></div></div></div>`).join(''); grid.querySelectorAll('[data-kms-idx]').forEach(el=> { el.addEventListener('input', onKmsFieldChange); el.addEventListener('change', onKmsFieldChange); }); fillKmCategoryPricesFromState(); }
+  function onKmsFieldChange(ev){ const idx=Number(ev.target.dataset.kmsIdx); const key=ev.target.dataset.kmsKey; if(!Number.isFinite(idx) || !state.kmsState[idx]) return; if(key==='valorPorKm') state.kmsState[idx].valorPorKm = num(ev.target.value); else if(key==='ativo') state.kmsState[idx].ativo = String(ev.target.value) === 'true'; else state.kmsState[idx][key] = String(ev.target.value || '').trim(); }
+  function fillKmCategoryPricesFromState(){ const byKey=Object.fromEntries(state.kmsState.map(x=> [normalize(x.key), x])); $('#kpc_economica').value=num(byKey.economica?.valorPorKm ?? 0.85); $('#kpc_confort').value=num(byKey.confort?.valorPorKm ?? 1.05); $('#kpc_executive').value=num(byKey.executive?.valorPorKm ?? 1.35); $('#kpc_luxury').value=num(byKey.luxury?.valorPorKm ?? 1.75); $('#kpc_g6').value=num(byKey.grupo6?.valorPorKm ?? 1.20); $('#kpc_g8').value=num(byKey.grupo8?.valorPorKm ?? 1.35); $('#kpc_g17').value=num(byKey.grupo17?.valorPorKm ?? 1.60); }
+  function syncKmPricesToState(){ const priceMap={ economica:num($('#kpc_economica').value), confort:num($('#kpc_confort').value), executive:num($('#kpc_executive').value), luxury:num($('#kpc_luxury').value), grupo6:num($('#kpc_g6').value), grupo8:num($('#kpc_g8').value), grupo17:num($('#kpc_g17').value) }; Object.entries(priceMap).forEach(([k,v])=> { const row=state.kmsState.find(x=> normalize(x.key)===k); if(row) row.valorPorKm=v; }); }
+  async function loadKms(){ const msg=$('#msgKms'); msg.textContent='A carregar...'; try{ const data=await apiTry(ROUTES.kmsGet); const list=Array.isArray(data?.categorias) ? data.categorias : []; state.kmsState = list.length ? list.map(x=> ({ key:String(x.key||'').trim(), label:String(x.label||'').trim(), valorPorKm:num(x.valorPorKm), ativo:x.ativo !== false })) : JSON.parse(JSON.stringify(defaultKmsSeed)); renderKms(); msg.textContent = list.length ? '✅ KMS carregados.' : '⚠️ Sem categorias. Pode criar base.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+  async function saveKms(){ const msg=$('#msgKms'); msg.textContent='A guardar...'; try{ syncKmPricesToState(); await apiTry(ROUTES.kmsPut, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ updates:state.kmsState }) }); await loadKms(); msg.textContent='✅ Guardado com sucesso.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+  async function seedKms(){ const msg=$('#msgKms'); msg.textContent='A criar base...'; try{ await apiTry(ROUTES.kmsPut, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ updates:defaultKmsSeed }) }); await loadKms(); msg.textContent='✅ Base criada.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+
+  function fillQuoteForm(cfg){ state.currentQuoteConfig = cfg || {}; $('#qc_minAeroporto').value=num(cfg?.minimos?.aeroporto ?? 15); $('#qc_minNormal').value=num(cfg?.minimos?.normal ?? 10); $('#qc_esperaGratis').value=num(cfg?.espera?.minutosGratis ?? 10); $('#qc_esperaMinuto').value=num(cfg?.espera?.valorPorMinExtra ?? 0.8); $('#qc_portagem').value=num(cfg?.portagem?.valorFixo ?? 2.1); $('#qc_maxTransito').value=num(cfg?.transito?.fatorMax ?? 1.3); $('#qc_fatorHoraPonta').value=num(cfg?.horaPonta?.fator ?? 1.1); $('#qc_rushMorningStart').value=num(cfg?.horaPonta?.manhaInicio ?? 7); $('#qc_rushMorningEnd').value=num(cfg?.horaPonta?.manhaFim ?? 10); $('#qc_rushEveningStart').value=num(cfg?.horaPonta?.tardeInicio ?? 17); $('#qc_rushEveningEnd').value=num(cfg?.horaPonta?.tardeFim ?? 20); $('#qc_demandaStep').value=num(cfg?.procura?.incrementoPorExcesso ?? 0.15); $('#qc_demandaMax').value=num(cfg?.procura?.fatorMax ?? 1.5); $('#qc_plataformaPercent').value=num(cfg?.plataformaPercent ?? 0.15); $('#qc_descontoColaborador').value=num(cfg?.descontoColaboradorPercent ?? 0); }
+  function getQuoteFormData(){ return { minimos:{ aeroporto:num($('#qc_minAeroporto').value), normal:num($('#qc_minNormal').value) }, espera:{ minutosGratis:num($('#qc_esperaGratis').value), valorPorMinExtra:num($('#qc_esperaMinuto').value) }, portagem:{ valorFixo:num($('#qc_portagem').value) }, transito:{ fatorMax:num($('#qc_maxTransito').value) }, horaPonta:{ fator:num($('#qc_fatorHoraPonta').value), manhaInicio:num($('#qc_rushMorningStart').value), manhaFim:num($('#qc_rushMorningEnd').value), tardeInicio:num($('#qc_rushEveningStart').value), tardeFim:num($('#qc_rushEveningEnd').value) }, procura:{ incrementoPorExcesso:num($('#qc_demandaStep').value), fatorMax:num($('#qc_demandaMax').value) }, plataformaPercent:num($('#qc_plataformaPercent').value), descontoColaboradorPercent:num($('#qc_descontoColaborador').value) }; }
+  async function loadQuote(){ const msg=$('#msgQuote'); msg.textContent='A carregar...'; try{ const data=await apiTry(ROUTES.quoteGet); fillQuoteForm(data?.config || data); msg.textContent='✅ Configuração carregada.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+  async function saveQuote(){ const msg=$('#msgQuote'); msg.textContent='A guardar...'; try{ await apiTry(ROUTES.quotePut, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ config:{ ...(state.currentQuoteConfig || {}), ...getQuoteFormData() } }) }); await loadQuote(); msg.textContent='✅ Configuração guardada.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+
+  async function loadParceiros(){ const msg=$('#msgParceiros'); msg.textContent='A carregar...'; try{ const data=await apiTry(ROUTES.parceirosGet); state.parceirosState = Array.isArray(data?.parceiros) ? data.parceiros : []; renderParceiros(); msg.textContent='✅ Parceiros carregados.'; }catch(e){ $('#tbodyParceiros').innerHTML='<tr><td colspan="8">Endpoint não disponível.</td></tr>'; msg.textContent='❌ ' + (e?.message || e); } }
+  function renderParceiros(){ const tbody=$('#tbodyParceiros'); const q=normalize($('#qParceiros').value); const list=state.parceirosState.filter(p=> !q || [p.nome,p.empresa,p.email,p.nif,p.contacto].filter(Boolean).join(' ').toLowerCase().includes(q)); if(!list.length){ tbody.innerHTML='<tr><td colspan="8">Sem parceiros.</td></tr>'; return; } tbody.innerHTML=''; list.forEach(p=>{ const nif=String(p.nif || '').trim(); const tr=document.createElement('tr'); tr.innerHTML=`<td>${safeText(p.nome || p.empresa)}</td><td><b>${safeText(p.nif)}</b></td><td>${safeText(p.email)}</td><td>${safeText(p.contacto)}</td><td><select class="select" data-k="semLimites"><option value="false" ${p.semLimites ? '' : 'selected'}>NÃO</option><option value="true" ${p.semLimites ? 'selected' : ''}>SIM</option></select></td><td><input class="input" type="number" data-k="maxVeiculos" value="${num(p.maxVeiculos)}"></td><td><input class="input" type="number" data-k="maxMotoristas" value="${num(p.maxMotoristas)}"></td><td><button class="btn small" ${!nif ? 'disabled' : ''}>GUARDAR</button></td>`; tr.querySelector('button').onclick = async ()=> { const msg=$('#msgParceiros'); try{ msg.textContent='A guardar...'; await apiTry(ROUTES.parceiroPut(nif), { method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ semLimites: tr.querySelector('[data-k="semLimites"]').value === 'true', maxVeiculos:num(tr.querySelector('[data-k="maxVeiculos"]').value), maxMotoristas:num(tr.querySelector('[data-k="maxMotoristas"]').value) }) }); await loadParceiros(); msg.textContent='✅ Parceiro atualizado.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }; tbody.appendChild(tr); }); }
+  async function loadColaboradores(){ const msg=$('#msgColaboradores'), box=$('#colaboradoresBlocks'); msg.textContent='A carregar...'; box.innerHTML=''; try{ const [colabData,motoristasData,viagensData,quoteData] = await Promise.all([ apiTry(ROUTES.colaboradoresGet($('#fColaboradores').value)), apiTry(ROUTES.motoristasGet), apiTry(ROUTES.viagensGet), apiTry(ROUTES.quoteGet).catch(()=> ({ config:{} })) ]); const colaboradores = Array.isArray(colabData?.colaboradores) ? colabData.colaboradores : []; const motoristas = Array.isArray(motoristasData?.motoristas) ? motoristasData.motoristas : []; const viagens = Array.isArray(viagensData?.viagens) ? viagensData.viagens : []; const plataformaPercent = num(quoteData?.config?.plataformaPercent ?? .15); if(!colaboradores.length){ box.innerHTML='<div class="empty">Sem colaboradores.</div>'; msg.textContent='✅ Sem registos.'; return; } box.innerHTML = colaboradores.map(colab=> { const colabId=getId(colab); const drivers = motoristas.filter(m=> String(m?.frotaId || '') === colabId); const driversHtml = drivers.length ? drivers.map(m=> { const motoristaId=getId(m); const trips = viagens.filter(v=> String(v?.driver?.driverId || v?.motorista?._id || '') === motoristaId); const bruto = trips.reduce((acc,v)=> acc + num(v?.quote?.total ?? v?.paymentPlan?.customerDue), 0); const liquido = bruto - (bruto * plataformaPercent); return `<div class="mini-row"><b>${safeText(m.nome)}</b><br><span class="card-sub">${safeText(m.email)} • ${safeText(m.categoria)} • IBAN: ${safeText(m.iban || m.IBAN || m.dadosBancarios?.iban)}<br>Finalizadas: ${trips.filter(t=> isCompletedStatus(t.status)).length} • Canceladas: ${trips.filter(t=> normalize(t.status)==='cancelled').length} • Bruto: ${money(bruto)} • Líquido: ${money(liquido)}</span></div>`; }).join('') : '<div class="empty">Sem motoristas associados.</div>'; return `<div class="summary-card"><div class="card-title">${safeText(colab.empresa)} — ${safeText(colab.nome)}</div><div class="card-sub">Email: ${safeText(colab.email)}<br>Contacto: ${safeText(colab.contacto)}<br>Tipo: ${safeText(colab.tipo)} • Estado: ${colab.aprovado ? 'Aprovado' : 'Pendente'}</div><div class="mini-list" style="margin-top:10px">${driversHtml}</div></div>`; }).join(''); msg.textContent='✅ Colaboradores carregados.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+  async function loadMotoristasSettings(){ const msg=$('#msgMotoristas'), tbody=$('#tbodyMotoristas'); msg.textContent='A carregar...'; tbody.innerHTML=''; try{ const data=await apiTry(ROUTES.motoristasGet); const list=Array.isArray(data?.motoristas) ? data.motoristas : []; tbody.innerHTML = list.length ? list.map(m=> `<tr><td>${safeText(m.nome)}</td><td>${safeText(m.email)}</td><td>${safeText(m.contacto)}</td><td>${safeText(m.categoria)}</td><td>${safeText(m.status)}</td><td>${safeText(m.aprovacao)}</td></tr>`).join('') : '<tr><td colspan="6">Sem motoristas.</td></tr>'; msg.textContent='✅ Motoristas carregados.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+  async function loadVeiculos(){ const msg=$('#msgVeiculos'), tbody=$('#tbodyVeiculos'); msg.textContent='A carregar...'; tbody.innerHTML=''; try{ const data=await apiTry(ROUTES.veiculosGet($('#fVeiculos').value)); const list=Array.isArray(data?.veiculos) ? data.veiculos : []; tbody.innerHTML = list.length ? list.map(v=> `<tr><td><b>${safeText(v.matricula)}</b></td><td>${safeText(v.marca)}</td><td>${safeText(v.modelo)}</td><td>${safeText(v.validacao?.status || v.aprovacao || 'pendente')}</td><td>${safeText(v.estado)}</td></tr>`).join('') : '<tr><td colspan="5">Sem veículos.</td></tr>'; msg.textContent='✅ Veículos carregados.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+  async function loadViagensSettings(){ const msg=$('#msgViagens'), tbody=$('#tbodyViagens'); msg.textContent='A carregar...'; tbody.innerHTML=''; try{ const data=await apiTry(ROUTES.viagensGet); const list=Array.isArray(data?.viagens) ? data.viagens : []; tbody.innerHTML = list.length ? list.map(v=> `<tr><td>${safeText(v?.collaborator?.empresa || v?.customer?.nome || v?.canal)}</td><td>${safeText(v?.customer?.nome || v?.customer?.email || v?.collaborator?.empresa)}</td><td>${formatDate(v?.when || v?.createdAt)}</td><td><b>${num(v?.quote?.total ?? v?.paymentPlan?.customerDue).toFixed(2)}</b></td></tr>`).join('') : '<tr><td colspan="4">Sem viagens.</td></tr>'; msg.textContent='✅ Viagens carregadas.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+  async function loadAudit(){ const msg=$('#msgAudit'), tbody=$('#tbodyAudit'); msg.textContent='A carregar...'; tbody.innerHTML=''; try{ const data=await apiTry(ROUTES.auditGet); const list=Array.isArray(data?.logs) ? data.logs : []; tbody.innerHTML = list.length ? list.map(a=> `<tr><td>${safeText(a.action)}</td><td>${safeText(a.actorAdminName)}</td><td>${safeText(a.targetType)}</td><td>${safeText(a.targetId)}</td><td>${formatDate(a.createdAt)}</td></tr>`).join('') : '<tr><td colspan="5">Sem logs.</td></tr>'; msg.textContent='✅ Audit carregado.'; }catch(e){ msg.textContent='❌ ' + (e?.message || e); } }
+
+  function setInviteMode(mode){ $('#inviteParceiroBox').style.display = mode==='parceiro' ? '' : 'none'; $('#inviteValidadorBox').style.display = mode==='validador' ? '' : 'none'; $('#inviteMotoristaBox').style.display = mode==='motorista' ? '' : 'none'; $('#btnModeParceiro').classList.toggle('active', mode==='parceiro'); $('#btnModeValidador').classList.toggle('active', mode==='validador'); $('#btnModeMotorista').classList.toggle('active', mode==='motorista'); }
+  async function sendPartnerInvite(){ const btn=$('#btnInviteParceiro'); const msg=$('#msgInvite'); try{ const body={ empresa:$('#ip_empresa').value.trim(), email:$('#ip_email').value.trim(), contacto:$('#ip_contacto').value.trim(), nif:$('#ip_nif').value.trim(), tipo:state.partnerInviteType }; if(!body.empresa || !body.email || !body.contacto || !body.nif) throw new Error('Preencha empresa, email, contacto e nif.'); btn.disabled=true; msg.textContent='A enviar convite...'; const data = await apiTry(ROUTES.inviteParceiro, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }); msg.textContent='✅ ' + (data?.message || 'Convite enviado.') + (data?.activationLink ? `\n\nLink: ${data.activationLink}` : ''); }catch(e){ msg.textContent='❌ ' + (e?.message || e); btn.disabled=false; } }
+  async function sendValidatorInvites(){ const msg=$('#msgInvite'); const emails=splitEmails($('#iv_emails').value).map(x=>x.toLowerCase()); if(!emails.length){ msg.textContent='❌ Indique pelo menos um email.'; return; } const scope=$('#iv_scope').value, channel=$('#iv_channel').value, note=$('#iv_note').value.trim(); let ok=0, fail=0; const fails=[]; msg.textContent='A enviar convites...'; for(const email of emails){ try{ await apiTry(ROUTES.inviteValidador, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ email, scope, channel, note }) }); ok++; }catch(e){ fail++; fails.push(`${email}: ${e?.message || e}`); } } msg.textContent=`✅ Convites enviados: ${ok}\n❌ Falhas: ${fail}` + (fails.length ? `\n\n${fails.join('\n')}` : ''); }
+  function generateDriverInviteLinks(){ const emails=splitEmails($('#im_emails').value).map(x=>x.toLowerCase()); const msg=$('#msgDriverInviteLinks'); if(!emails.length){ msg.textContent='❌ Indique pelo menos um email.'; return; } const unique=[...new Set(emails)]; const lines=unique.map(email=> { const token=(Math.random().toString(36).slice(2)+Date.now().toString(36)); const url=`${location.origin}/convite-motorista.html?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`; return `${email}\n${url}`; }); msg.textContent='✅ Links gerados para envio manual:\n\n' + lines.join('\n\n'); }
+
+  function exportPdf(){ const { jsPDF } = window.jspdf; const doc = new jsPDF(); let y = 10; state.trips.forEach(t=>{ const line=`Data:${formatDate(t.data || t.when || t.createdAt)} Motorista:${safeText(t.motorista?.nome || t.driver?.name)} ${safeText(t.from || t.pickup || t.origem)}→${safeText(t.to || t.destination || t.destino)} Valor:${num(t.valor || t.quote?.total || t.paymentPlan?.customerDue).toFixed(2)}`; doc.text(line.slice(0,180), 10, y); y += 10; if(y > 280){ doc.addPage(); y = 10; } }); doc.save('faturacao.pdf'); }
+  function setActiveTab(tab){ state.activeTab=tab; $$('.tab[data-tab]').forEach(el=> el.classList.toggle('active', el.dataset.tab===tab)); $$('.section').forEach(sec=> sec.classList.remove('active')); $(`#section-${tab}`).classList.add('active'); }
+  function setSettingsView(view){ $$('.fs-nav-item').forEach(el=> el.classList.toggle('active', el.dataset.settingsView===view)); $$('.settings-section').forEach(sec=> sec.classList.remove('active')); $(`#settings-${view}`).classList.add('active'); }
+
+  $('#btnRefreshAll').onclick = async ()=> { $('#sideMsg').textContent='A atualizar...'; await loadAll(); $('#sideMsg').textContent='✅ Painel atualizado.'; };
+  $('#btnLogout').onclick = async ()=> { try{ await apiTry(ROUTES.logout, { method:'POST' }); }catch{} location.replace('/admin-login.html'); };
+  $('#btnOpenSettings').onclick = ()=> location.href = 'admin-gestao.html';
+  $('#btnCloseSettings').onclick = ()=> $('#settingsOverlay').classList.remove('active');
+  $('#btnCloseDetails').onclick = clearDetails;
+  $('#btnBilling').onclick = ()=> setActiveTab('billing');
+  $('#btnValidationPanel').onclick = ()=> location.href = 'validacao.html';
+  $('#btnExportPdf').onclick = exportPdf;
+  $('#btnSearch').onclick = ()=> { state.search = $('#globalSearch').value; renderDispatchList(); renderReturnedList(); renderAssignedList(); renderDriversGrouped(); };
+  $('#globalSearch').addEventListener('input', ()=> { state.search = $('#globalSearch').value; renderDispatchList(); renderReturnedList(); renderAssignedList(); renderDriversGrouped(); });
+  $$('.tab[data-tab]').forEach(btn=> btn.onclick = ()=> setActiveTab(btn.dataset.tab));
+  $$('#driverCategoryFilters .tab[data-cat]').forEach(btn=> btn.onclick = ()=> { state.driverCategory = btn.dataset.cat; $$('#driverCategoryFilters .tab[data-cat]').forEach(x=> x.classList.remove('active')); btn.classList.add('active'); renderDriversGrouped(); });
+  $$('.fs-nav-item').forEach(item=> item.onclick = ()=> setSettingsView(item.dataset.settingsView));
+  $('#btnReloadKms').onclick = loadKms; $('#btnSaveKms').onclick = saveKms; $('#btnSeedKms').onclick = seedKms; $('#btnReloadQuote').onclick = loadQuote; $('#btnSaveQuote').onclick = saveQuote; $('#btnReloadParceiros').onclick = loadParceiros; $('#qParceiros').oninput = renderParceiros; $('#btnReloadColaboradores').onclick = loadColaboradores; $('#fColaboradores').onchange = loadColaboradores; $('#btnReloadMotoristas').onclick = loadMotoristasSettings; $('#btnReloadVeiculos').onclick = loadVeiculos; $('#fVeiculos').onchange = loadVeiculos; $('#btnReloadViagens').onclick = loadViagensSettings; $('#btnReloadAudit').onclick = loadAudit; $('#btnModeParceiro').onclick = ()=> setInviteMode('parceiro'); $('#btnModeValidador').onclick = ()=> setInviteMode('validador'); $('#btnModeMotorista').onclick = ()=> setInviteMode('motorista'); $$('.selector-type').forEach(btn=> btn.onclick = ()=> { state.partnerInviteType=btn.dataset.type; $$('.selector-type').forEach(x=> x.classList.remove('active')); btn.classList.add('active'); }); $('#btnInviteParceiro').onclick = sendPartnerInvite; $('#btnInviteValidador').onclick = sendValidatorInvites; $('#btnGenerateDriverLinks').onclick = generateDriverInviteLinks;
+
+  setInviteMode('parceiro');
+  async function loadAll(){ await Promise.allSettled([loadOperational(), loadKms(), loadQuote(), loadParceiros(), loadColaboradores(), loadMotoristasSettings(), loadVeiculos(), loadViagensSettings(), loadAudit()]); }
+  (async ()=>{ const ok = await ensureAdminMasterOrRedirect(); if(!ok) return; $('#sideMsg').textContent='A carregar painel...'; await loadAll(); $('#sideMsg').textContent='✅ Painel carregado.'; setInterval(async ()=> { try{ await loadAll(); $('#sideMsg').textContent = `✅ Atualização automática: ${new Date().toLocaleTimeString('pt-PT')}`; }catch{} }, 15000); })();
+})();
+</script>
+</body>
+</html>

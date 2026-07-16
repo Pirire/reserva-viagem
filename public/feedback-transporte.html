@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avaliação do Transporte</title>
+  <style>
+    :root {
+      --bg: #0b0b0d;
+      --bg-2: #121317;
+      --card: linear-gradient(180deg, #17181d 0%, #111216 100%);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --line: rgba(255,255,255,.08);
+      --silver: #c0c4cc;
+      --silver-2: #8f96a3;
+      --accent: #d7dbe3;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --shadow: 0 24px 60px rgba(0,0,0,.45);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(192,196,204,.10), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(255,255,255,.05), transparent 24%),
+        linear-gradient(180deg, var(--bg) 0%, #09090b 100%);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+
+    .shell {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 26px 24px 18px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),
+        linear-gradient(180deg, #181a20 0%, #111216 100%);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--silver);
+      background: rgba(255,255,255,.04);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(26px, 4vw, 38px);
+      line-height: 1.05;
+      letter-spacing: -.03em;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .content {
+      padding: 20px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .info {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .info-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--silver-2);
+      margin-bottom: 8px;
+    }
+
+    .info-value {
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+    }
+
+    .panel h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+      letter-spacing: -.02em;
+    }
+
+    .rating-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .rating-row {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .rating-title {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      width: 100%;
+    }
+
+    .options.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      max-width: 420px;
+    }
+
+    .opt {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px;
+      padding: 14px 12px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: .18s ease;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      color: var(--silver);
+      font-weight: 700;
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    .opt:hover {
+      transform: translateY(-1px);
+      border-color: rgba(215,219,227,.45);
+      color: #fff;
+    }
+
+    .opt.active {
+      background: linear-gradient(180deg, #dfe3ea 0%, #b8bec9 100%);
+      color: #0d1117;
+      border-color: transparent;
+      box-shadow: 0 10px 24px rgba(192,196,204,.20);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 130px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+      color: #fff;
+      padding: 16px;
+      font-size: 15px;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea::placeholder {
+      color: #868d98;
+    }
+
+    textarea:focus {
+      border-color: rgba(215,219,227,.35);
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 580px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 18px;
+      padding: 15px 22px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .01em;
+      cursor: pointer;
+      color: #0d1117;
+      background: linear-gradient(180deg, #eceff4 0%, #c3c9d4 100%);
+      box-shadow: 0 12px 28px rgba(192,196,204,.18);
+      transition: .18s ease;
+      min-width: 210px;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .msg {
+      display: none;
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .msg.ok {
+      display: block;
+      color: #bbf7d0;
+      background: rgba(34,197,94,.12);
+      border-color: rgba(34,197,94,.2);
+    }
+
+    .msg.err {
+      display: block;
+      color: #fecaca;
+      background: rgba(239,68,68,.12);
+      border-color: rgba(239,68,68,.2);
+    }
+
+    .loading {
+      color: var(--muted);
+      font-weight: 700;
+      padding: 16px 4px 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 920px) {
+      .info {
+        grid-template-columns: 1fr;
+      }
+
+      .rating-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .options.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app {
+        padding: 14px 10px 28px;
+      }
+
+      .hero {
+        padding: 22px 16px 16px;
+      }
+
+      .content {
+        padding: 14px;
+      }
+
+      .panel,
+      .info-card {
+        padding: 14px;
+      }
+
+      .options,
+      .options.two {
+        grid-template-columns: 1fr;
+      }
+
+      .opt {
+        white-space: normal;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .footer-actions {
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="shell">
+      <div class="hero">
+        <div class="badge">Real Metropolis • Avaliação Premium</div>
+        <h1>Avalie a qualidade do transporte</h1>
+        <p class="sub">
+          A sua opinião ajuda-nos a melhorar continuamente o serviço prestado.
+          Esta avaliação poderá ser partilhada com o parceiro responsável pela reserva,
+          de forma transparente e profissional.
+        </p>
+      </div>
+
+      <div class="content">
+        <div id="loading" class="loading">A carregar avaliação...</div>
+
+        <div id="formArea" class="hidden">
+          <div class="info" id="tripInfoCards">
+            <div class="info-card">
+              <div class="info-label">Parceiro</div>
+              <div class="info-value" id="partnerName">—</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Tipo</div>
+              <div class="info-value" id="partnerType">—</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Hóspede</div>
+              <div class="info-value" id="guestName">—</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Classificação do serviço</h2>
+            <div class="rating-list" id="ratingGroup"></div>
+          </div>
+
+          <div class="panel">
+            <h2>Comentário adicional</h2>
+            <textarea
+              id="comentario"
+              placeholder="Se desejar, deixe aqui um comentário sobre a experiência de transporte."
+            ></textarea>
+
+            <div class="footer-actions">
+              <div class="note">
+                As classificações ajudam a melhorar a experiência do hóspede e a manter total transparência com hotéis, alojamentos e empresas parceiras.
+              </div>
+              <button id="submitBtn">Enviar avaliação</button>
+            </div>
+
+            <div id="msgBox" class="msg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ratingDefinitions = [
+      { key: "pontualidade", label: "Pontualidade", options: ["Excelente", "Boa", "Regular", "Fraca"] },
+      { key: "conducao", label: "Condução", options: ["Excelente", "Boa", "Regular", "Fraca"] },
+      { key: "simpatia", label: "Simpatia", options: ["Excelente", "Boa", "Regular", "Fraca"] },
+      { key: "limpeza", label: "Limpeza do veículo", options: ["Excelente", "Boa", "Regular", "Fraca"] },
+      { key: "qualidadeGeral", label: "Qualidade geral", options: ["Excelente", "Boa", "Regular", "Fraca"] },
+      { key: "recomendaria", label: "Voltaria a usar este serviço?", options: ["Sim", "Não"], twoCols: true }
+    ];
+
+    const state = {
+      token: null,
+      feedback: null,
+      ratings: {}
+    };
+
+    const loadingEl = document.getElementById("loading");
+    const formAreaEl = document.getElementById("formArea");
+    const ratingGroupEl = document.getElementById("ratingGroup");
+    const msgBoxEl = document.getElementById("msgBox");
+    const submitBtnEl = document.getElementById("submitBtn");
+    const comentarioEl = document.getElementById("comentario");
+
+    const partnerNameEl = document.getElementById("partnerName");
+    const partnerTypeEl = document.getElementById("partnerType");
+    const guestNameEl = document.getElementById("guestName");
+
+    function showMessage(type, text) {
+      msgBoxEl.className = `msg ${type}`;
+      msgBoxEl.textContent = text;
+    }
+
+    function getTokenFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("token");
+    }
+
+    function renderRatingBlocks() {
+      ratingGroupEl.innerHTML = "";
+
+      ratingDefinitions.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "rating-row";
+
+        const title = document.createElement("div");
+        title.className = "rating-title";
+        title.textContent = item.label;
+
+        const options = document.createElement("div");
+        options.className = `options ${item.twoCols ? "two" : ""}`;
+
+        item.options.forEach((option) => {
+          const btn = document.createElement("div");
+          btn.className = "opt";
+          btn.textContent = option;
+
+          if (state.ratings[item.key] === option) {
+            btn.classList.add("active");
+          }
+
+          btn.addEventListener("click", () => {
+            state.ratings[item.key] = option;
+            renderRatingBlocks();
+          });
+
+          options.appendChild(btn);
+        });
+
+        row.appendChild(title);
+        row.appendChild(options);
+        ratingGroupEl.appendChild(row);
+      });
+    }
+
+    async function carregarFeedback() {
+      state.token = getTokenFromUrl();
+
+      if (!state.token) {
+        loadingEl.textContent = "";
+        showMessage("err", "Token de avaliação não encontrado.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/feedback/token/${state.token}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || "Não foi possível carregar a avaliação.");
+        }
+
+        state.feedback = data.feedback;
+
+        partnerNameEl.textContent = state.feedback.partnerName || "—";
+        partnerTypeEl.textContent = state.feedback.partnerType || "—";
+        guestNameEl.textContent = state.feedback.guestName || "—";
+
+        loadingEl.classList.add("hidden");
+        formAreaEl.classList.remove("hidden");
+        renderRatingBlocks();
+      } catch (err) {
+        loadingEl.textContent = "";
+        showMessage("err", err.message || "Erro ao carregar feedback.");
+      }
+    }
+
+    function validarFormulario() {
+      const obrigatorios = [
+        "pontualidade",
+        "conducao",
+        "simpatia",
+        "limpeza",
+        "qualidadeGeral",
+        "recomendaria"
+      ];
+
+      const labels = {
+        pontualidade: "Pontualidade",
+        conducao: "Condução",
+        simpatia: "Simpatia",
+        limpeza: "Limpeza do veículo",
+        qualidadeGeral: "Qualidade geral",
+        recomendaria: "Voltaria a usar este serviço?"
+      };
+
+      for (const campo of obrigatorios) {
+        if (!state.ratings[campo]) {
+          return `Por favor, selecione uma opção em "${labels[campo]}".`;
+        }
+      }
+
+      return null;
+    }
+
+    async function enviarFeedback() {
+      const erro = validarFormulario();
+      if (erro) {
+        showMessage("err", erro);
+        return;
+      }
+
+      submitBtnEl.disabled = true;
+      showMessage("ok", "A enviar avaliação...");
+
+      try {
+        const res = await fetch(`/api/feedback/token/${state.token}/respond`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ratings: state.ratings,
+            comentario: comentarioEl.value || ""
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || "Não foi possível enviar a avaliação.");
+        }
+
+        showMessage("ok", "A sua avaliação foi enviada com sucesso. Obrigado.");
+        submitBtnEl.disabled = true;
+        comentarioEl.disabled = true;
+      } catch (err) {
+        submitBtnEl.disabled = false;
+        showMessage("err", err.message || "Erro ao enviar avaliação.");
+      }
+    }
+
+    submitBtnEl.addEventListener("click", enviarFeedback);
+    carregarFeedback();
+  </script>
+</body>
+</html>

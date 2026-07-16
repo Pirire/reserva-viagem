@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Avaliar Viagem — REALMETROPOLIS</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#0a0a0b; --surface:#141518; --silver:#c4c9d4; --silver-dim:#8b95a2;
+    --white:#f4f6f8; --line:rgba(255,255,255,.1); --green:#7fffc4; --red:#ff8888; --gold:#f4c56b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--white); font-family:Arial,Helvetica,sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:20px;
+    padding:32px 26px; max-width:400px; width:100%; text-align:center;
+  }
+  .brand{font-weight:900; letter-spacing:.12em; color:var(--silver); font-size:14px; margin-bottom:24px}
+  .icon{font-size:40px;margin-bottom:14px}
+  h1{font-size:19px; margin-bottom:8px}
+  .sub{color:var(--silver-dim); font-size:13px; margin-bottom:28px; line-height:1.5}
+
+  .estrelas{display:flex; justify-content:center; gap:8px; margin-bottom:8px}
+  .estrela{
+    font-size:38px; cursor:pointer; color:rgba(255,255,255,.15); transition:color .15s, transform .1s;
+    line-height:1; user-select:none;
+  }
+  .estrela.on{color:var(--gold)}
+  .estrela:active{transform:scale(0.9)}
+  .estrela-label{font-size:12px; color:var(--silver-dim); min-height:16px; margin-bottom:22px}
+
+  textarea{
+    width:100%; min-height:80px; padding:12px 14px; border-radius:12px;
+    border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--white);
+    font-family:inherit; font-size:13px; resize:vertical; margin-bottom:20px;
+  }
+  textarea::placeholder{color:var(--silver-dim)}
+
+  button{
+    width:100%; padding:16px; border:none; border-radius:12px;
+    background:var(--silver); color:#0a0a0b; font-weight:800; font-size:14px;
+    letter-spacing:.03em; cursor:pointer; font-family:inherit;
+  }
+  button:disabled{opacity:.5;cursor:not-allowed}
+  #msg{margin-top:14px; font-size:13px; min-height:18px}
+  #estado-final{display:none}
+  #estado-final .icon{color:var(--green)}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">REALMETROPOLIS</div>
+
+  <div id="estado-inicial">
+    <div class="icon">⭐</div>
+    <h1>Como foi a sua viagem?</h1>
+    <div class="sub" id="infoTxt">A carregar detalhes…</div>
+
+    <div class="estrelas" id="estrelas">
+      <span class="estrela" data-val="1">★</span>
+      <span class="estrela" data-val="2">★</span>
+      <span class="estrela" data-val="3">★</span>
+      <span class="estrela" data-val="4">★</span>
+      <span class="estrela" data-val="5">★</span>
+    </div>
+    <div class="estrela-label" id="estrelaLabel">Toque numa estrela</div>
+
+    <textarea id="comentario" placeholder="Quer deixar um comentário? (opcional)"></textarea>
+
+    <button type="button" id="btnEnviar" disabled>ENVIAR AVALIAÇÃO</button>
+    <div id="msg"></div>
+  </div>
+
+  <div id="estado-final">
+    <div class="icon">✅</div>
+    <h1>Obrigado!</h1>
+    <p style="color:var(--silver-dim);font-size:13px;margin-top:8px">A sua avaliação foi registada. Já pode fechar esta página.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const codigo = (params.get('codigo') || '').trim().toUpperCase();
+
+  const infoTxt      = document.getElementById('infoTxt');
+  const estrelas      = document.querySelectorAll('.estrela');
+  const estrelaLabel  = document.getElementById('estrelaLabel');
+  const comentario    = document.getElementById('comentario');
+  const btnEnviar     = document.getElementById('btnEnviar');
+  const msg           = document.getElementById('msg');
+  const estadoInicial = document.getElementById('estado-inicial');
+  const estadoFinal   = document.getElementById('estado-final');
+
+  const LABELS = { 1: 'Fraco', 2: 'Insatisfatório', 3: 'Razoável', 4: 'Bom', 5: 'Excelente' };
+  let notaSelecionada = 0;
+
+  if (!codigo) {
+    infoTxt.textContent = 'Link inválido — falta o código da reserva.';
+    btnEnviar.disabled = true;
+    estrelas.forEach(e => e.style.pointerEvents = 'none');
+    return;
+  }
+
+  infoTxt.textContent = 'Reserva ' + codigo + ' — avalie o seu motorista.';
+
+  function pintarEstrelas(ate) {
+    estrelas.forEach(e => {
+      e.classList.toggle('on', Number(e.dataset.val) <= ate);
+    });
+  }
+
+  estrelas.forEach(e => {
+    e.addEventListener('mouseenter', () => pintarEstrelas(Number(e.dataset.val)));
+    e.addEventListener('mouseleave', () => pintarEstrelas(notaSelecionada));
+    e.addEventListener('click', () => {
+      notaSelecionada = Number(e.dataset.val);
+      pintarEstrelas(notaSelecionada);
+      estrelaLabel.textContent = LABELS[notaSelecionada] || '';
+      btnEnviar.disabled = false;
+    });
+  });
+
+  btnEnviar.addEventListener('click', async () => {
+    if (!notaSelecionada) return;
+    btnEnviar.disabled = true;
+    btnEnviar.textContent = 'A ENVIAR…';
+    msg.style.color = 'var(--silver-dim)';
+    msg.textContent = '';
+    try {
+      const r = await fetch('/api/reservas/avaliar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo, rating: notaSelecionada, comentario: comentario.value }),
+      });
+      const d = await r.json();
+      if (d && d.ok) {
+        estadoInicial.style.display = 'none';
+        estadoFinal.style.display = 'block';
+      } else {
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = 'ENVIAR AVALIAÇÃO';
+        msg.style.color = 'var(--red)';
+        msg.textContent = (d && d.message) || 'Não foi possível enviar. Tente novamente.';
+      }
+    } catch (err) {
+      btnEnviar.disabled = false;
+      btnEnviar.textContent = 'ENVIAR AVALIAÇÃO';
+      msg.style.color = 'var(--red)';
+      msg.textContent = 'Erro de rede. Tente novamente.';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

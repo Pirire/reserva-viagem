@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>REALMETROPOLIS — Formulário de Registo Motorista</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+  :root{
+    --bg:      #05060a;
+    --surface: #09090e;
+    --surface2:#0d0f15;
+    --surface3:#11131a;
+    --silver:  #ccd3de;
+    --silver2: #8a95a5;
+    --silver3: #4a5464;
+    --line:    rgba(200,210,230,.08);
+    --line2:   rgba(200,210,230,.16);
+    --line3:   rgba(200,210,230,.30);
+    --ok:      #1fc97d;
+    --bad:     #f05050;
+  }
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  html,body{
+    min-height:100vh;
+    font-family:'DM Sans',sans-serif;
+    background:var(--bg);
+    color:var(--silver);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  body{
+    background-image:
+      radial-gradient(ellipse 70% 40% at 50% 0%, rgba(200,210,230,.04) 0%, transparent 65%),
+      url("data:image/svg+xml,%3Csvg width='48' height='48' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='.6' fill='rgba(200,210,230,.04)'/%3E%3C/svg%3E");
+    background-size:auto,48px 48px;
+    padding:40px 20px 80px;
+  }
+
+  .shell{max-width:980px;margin:0 auto}
+
+  /* ── HEADER ── */
+  .header{
+    display:flex;align-items:center;gap:18px;
+    margin-bottom:36px;padding-bottom:28px;
+    border-bottom:1px solid var(--line2);
+  }
+  .rm-ring{
+    width:54px;height:54px;border-radius:50%;flex:0 0 auto;
+    border:2px solid rgba(200,210,230,.55);
+    background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+    box-shadow:0 0 0 5px rgba(200,210,230,.06),inset 0 1px 0 rgba(255,255,255,.15);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Playfair Display',serif;font-size:15px;font-weight:900;
+    color:#fff;letter-spacing:.04em;
+  }
+  .header h1{
+    font-family:'Playfair Display',serif;
+    font-size:26px;font-weight:900;color:#fff;letter-spacing:.01em;
+  }
+
+  /* ── SECTION ── */
+  .section{
+    margin-bottom:14px;
+    border:1px solid var(--line);
+    border-radius:22px;
+    background:linear-gradient(160deg,var(--surface),var(--surface2));
+    overflow:visible;
+    transition:border-color .25s;
+  }
+  .section:focus-within{border-color:var(--line2)}
+  .section h2{
+    font-family:'Playfair Display',serif;
+    font-size:15px;font-weight:700;color:#fff;
+    padding:20px 24px 0;letter-spacing:.01em;
+  }
+  .section .desc{display:none}
+
+  /* ── GRIDS ── */
+  .grid-5{display:grid;grid-template-columns:1.15fr .8fr .9fr 1fr 1fr;gap:14px;padding:16px 24px 22px;padding-top:20px}
+  .grid-3{display:grid;grid-template-columns:1.4fr 2fr 1fr;gap:14px;padding:0 24px 22px}
+  .grid-docs{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:4px 24px 24px}
+  .doc-grid{display:block}
+  .doc-grid>*{min-width:0;width:100%}
+  .date-inside{margin-top:10px}
+  .date-inside label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--silver3);display:block;margin-bottom:6px}
+  .date-inside input[type="date"]{all:unset;box-sizing:border-box;display:block;width:100%;min-height:44px;padding:10px 13px;border-radius:12px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:#edf0f5;font-size:13px;font-family:'DM Sans',sans-serif;transition:border-color .18s,box-shadow .18s}
+  .date-inside input[type="date"]:focus{border-color:rgba(200,210,230,.45);box-shadow:0 0 0 3px rgba(200,210,230,.07)}
+  .field,.doc-card{display:flex;flex-direction:column;gap:7px;min-width:0;overflow:hidden}
+
+  /* ── LABELS ── */
+  label{
+    font-size:10px;font-weight:700;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--silver3);
+  }
+  .req{color:var(--silver2);margin-left:2px}
+
+  /* ── INPUTS ── */
+  input,select{
+    width:100%;min-width:0;min-height:48px;padding:12px 15px;
+    border-radius:13px;
+    border:1px solid var(--line2);
+    background:rgba(255,255,255,.03);
+    color:#edf0f5;font-size:14px;font-weight:500;
+    font-family:'DM Sans',sans-serif;
+    outline:none;transition:border-color .18s,box-shadow .18s,background .18s;
+    box-sizing:border-box;
+  }
+  input:hover,select:hover{border-color:var(--line3);background:rgba(255,255,255,.04)}
+  input:focus,select:focus{
+    border-color:rgba(200,210,230,.45);
+    box-shadow:0 0 0 3px rgba(200,210,230,.07);
+    background:rgba(255,255,255,.05);
+  }
+  input::placeholder{color:var(--silver3);font-weight:400}
+  select option{background:#0d0f15;color:#edf0f5}
+
+  /* ── FILE WRAP ── */
+  .file-wrap{
+    border:1px solid var(--line);border-radius:15px;
+    background:rgba(255,255,255,.015);padding:12px;
+    transition:border-color .2s;
+    width:100%;overflow:hidden;
+  }
+  .file-wrap:hover{border-color:var(--line2)}
+  .file-top{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .upload-box{
+    border:1px dashed rgba(200,210,230,.14);border-radius:12px;
+    padding:11px;background:rgba(255,255,255,.015);
+    transition:border-color .2s,background .2s;
+    overflow:hidden;width:100%;box-sizing:border-box;
+  }
+  .upload-box:hover{border-color:rgba(200,210,230,.28);background:rgba(255,255,255,.03)}
+  .upload-box.single{grid-column:1/-1}
+  .upload-box small{
+    display:block;font-size:9px;font-weight:700;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--silver3);margin-bottom:7px;
+  }
+  .upload-box input[type="file"]{
+    min-height:auto;padding:6px 8px;font-size:11px;
+    background:transparent;border:none;color:var(--silver2);cursor:pointer;
+    width:100%;max-width:100%;overflow:hidden;display:block;
+  }
+  .file-meta{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:8px}
+
+  /* ── CHIP ── */
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:5px 10px;border-radius:20px;
+    border:1px solid var(--line);background:rgba(255,255,255,.03);
+    font-size:11px;color:var(--silver2);font-weight:500;
+    max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .preview-link{
+    display:inline-flex;align-items:center;justify-content:center;
+    height:30px;padding:0 12px;border-radius:20px;
+    border:1px solid var(--line2);color:var(--silver);text-decoration:none;
+    background:rgba(255,255,255,.05);font-weight:700;font-size:11px;
+    letter-spacing:.06em;transition:.18s;
+  }
+  .preview-link:hover{background:rgba(255,255,255,.10);border-color:var(--line3)}
+
+  /* ── ACTIONS ── */
+  .actions{
+    display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;
+    padding:18px 24px;border-top:1px solid var(--line);
+    background:rgba(0,0,0,.25);
+  }
+
+  /* ── BUTTONS ── */
+  .btn{
+    min-height:48px;padding:0 22px;
+    border:1px solid var(--line2);border-radius:13px;
+    background:rgba(255,255,255,.05);color:var(--silver);
+    font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;letter-spacing:.04em;
+    cursor:pointer;transition:.18s;
+  }
+  .btn:hover:not(:disabled){background:rgba(255,255,255,.09);border-color:var(--line3)}
+  .btn:active{transform:scale(.98)}
+  .btn:disabled{opacity:.28;cursor:not-allowed;transform:none}
+  .btn.submit{
+    background:linear-gradient(180deg,#e2e6ee,#b8c0cc);
+    border-color:transparent;color:#06070c;
+    box-shadow:0 4px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.6);
+    letter-spacing:.07em;
+  }
+  .btn.submit:hover:not(:disabled){
+    background:linear-gradient(180deg,#edf0f6,#c8d0da);
+    transform:translateY(-1px);
+    box-shadow:0 6px 24px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  .btn.rm-gestor{display:inline-flex;align-items:center;gap:10px}
+  .btn .mini-ring{
+    width:26px;height:26px;border-radius:50%;
+    border:1.5px solid rgba(200,210,230,.5);
+    background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:900;color:#fff;flex:0 0 auto;
+  }
+
+  /* ── MSG ── */
+  .msg{
+    margin:0 24px 20px;padding:11px 15px;border-radius:12px;
+    font-size:12px;font-weight:600;line-height:1.5;white-space:pre-wrap;
+    border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--silver2);
+  }
+  .msg.ok{border-color:rgba(31,201,125,.22);background:rgba(31,201,125,.05);color:#86efac}
+  .msg.err{border-color:rgba(240,80,80,.22);background:rgba(240,80,80,.05);color:#fca5a5}
+
+  /* ── OVERLAY ── */
+  #ovErro{
+    display:none;position:fixed;inset:0;z-index:9999;
+    background:rgba(5,6,10,.88);backdrop-filter:blur(20px);
+    align-items:center;justify-content:center;padding:20px;
+  }
+  #ovErro.open{display:flex;animation:fadeOv .2s ease}
+  .ov-erro-card{
+    width:100%;max-width:400px;
+    background:var(--surface2);border:1px solid rgba(240,80,80,.22);border-radius:20px;
+    padding:26px 22px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
+  }
+  .ov-erro-icon{font-size:36px}
+  .ov-erro-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#fff}
+  .ov-erro-msg{font-size:12px;color:var(--silver2);line-height:1.6;max-width:320px}
+  .ov-erro-detail{
+    background:rgba(240,80,80,.05);border:1px solid rgba(240,80,80,.18);
+    border-radius:10px;padding:8px 13px;font-size:11px;color:#fca5a5;font-weight:600;width:100%;
+  }
+  .ov-erro-btn{
+    height:42px;width:100%;border-radius:11px;
+    border:1px solid var(--line2);background:rgba(255,255,255,.05);color:#e8eaed;
+    font-size:11px;font-weight:700;letter-spacing:.08em;
+    cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s;margin-top:4px;
+  }
+  .ov-erro-btn:hover{background:rgba(255,255,255,.10)}
+  @keyframes fadeOv{from{opacity:0}to{opacity:1}}
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:1100px){
+    .grid-5,.grid-3{grid-template-columns:1fr 1fr;padding:16px 18px 20px}
+    .grid-docs{padding:0 18px 20px}
+  }
+  @media(max-width:660px){
+    body{padding:20px 12px 60px}
+    .header{margin-bottom:24px;padding-bottom:20px}
+    .header h1{font-size:20px}
+    .rm-ring{width:44px;height:44px;font-size:12px}
+    .grid-5,.grid-3,.file-top{grid-template-columns:1fr}
+    .grid-docs{grid-template-columns:1fr}
+    .actions{padding:16px 18px}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="card">
+    <div class="header">
+      <div class="rm-ring">RM</div>
+      <div>
+        <h1>Formulário de Registo Motorista</h1>
+        
+      </div>
+    </div>
+
+    <div class="body">
+      <form id="formMotorista" novalidate>
+        <div class="section">
+          <h2>Dados pessoais</h2>
+          <div class="desc">Primeira linha com todos os dados principais lado a lado.</div>
+
+          <div class="grid-5">
+            <div class="field">
+              <label for="nome">Nome <span class="req">*</span></label>
+              <input id="nome" name="nome" type="text" required />
+            </div>
+
+            <div class="field">
+              <label for="nif">NIF <span class="req">*</span></label>
+              <input id="nif" name="nif" type="text" required />
+            </div>
+
+            <div class="field">
+              <label for="contacto">Contacto <span class="req">*</span></label>
+              <input id="contacto" name="contacto" type="text" required />
+            </div>
+
+            <div class="field">
+              <label for="email">Email <span class="req">*</span></label>
+              <input id="email" name="email" type="email" required />
+            </div>
+
+            <div class="field">
+              <label for="iban">IBAN <span class="req">*</span></label>
+              <input id="iban" name="iban" type="text" required />
+              <div class="file-wrap">
+                <label class="upload-box single" for="ibanComprovativo">
+                  <small>Upload comprovativo do IBAN</small>
+                  <input id="ibanComprovativo" name="ibanComprovativo" type="file" accept=".pdf,image/*" required />
+                  <div class="file-meta">
+                    <span class="chip" id="ibanComprovativoName">Nenhum ficheiro</span>
+                    <a class="preview-link" onclick="event.stopPropagation()" id="ibanComprovativoPreview" href="#" target="_blank" style="display:none">Ver documento</a>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-3" style="margin-top:16px">
+            <div class="field">
+              <label for="endereco">Endereço <span class="req">*</span></label>
+              <input id="endereco" name="endereco" type="text" required />
+            </div>
+
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Documentos obrigatórios</h2>
+          <div class="desc">O botão enviar para validar só ativa quando os uploads e datas obrigatórias estiverem preenchidos.</div>
+
+          <div class="grid-docs">
+            <div class="doc-card">
+              <div class="doc-grid">
+                <div class="field">
+                  <label for="documentoTipo2">Documento de Identificação <span class="req">*</span></label>
+                  <select id="documentoTipo2" name="documentoTipo2" required style="width:100%;min-height:54px;padding:14px 16px;border-radius:16px;border:1px solid var(--line-2);background:#0d1014;color:#f7f8fb;font-size:16px;outline:none;margin-bottom:8px">
+                    <option value="">Selecionar tipo</option>
+                    <option value="cc">CC — Cartão de Cidadão</option>
+                    <option value="titulo_residencia">Título de Residência</option>
+                    <option value="passaporte">Passaporte</option>
+                  </select>
+                  <div class="file-wrap">
+                    <div class="file-top">
+                      <label class="upload-box" for="docObgIdFrente">
+                        <small>Frente</small>
+                        <input id="docObgIdFrente" name="docObgIdFrente" type="file" accept=".pdf,image/*" required />
+                        <div class="file-meta">
+                          <span class="chip" id="docObgIdFrenteName">Nenhum ficheiro</span>
+                          <a class="preview-link" onclick="event.stopPropagation()" id="docObgIdFrentePreview" href="#" target="_blank" style="display:none">Ver frente</a>
+                        </div>
+                      </label>
+
+                      <label class="upload-box" for="docObgIdVerso">
+                        <small>Verso</small>
+                        <input id="docObgIdVerso" name="docObgIdVerso" type="file" accept=".pdf,image/*" required />
+                        <div class="file-meta">
+                          <span class="chip" id="docObgIdVersoName">Nenhum ficheiro</span>
+                          <a class="preview-link" onclick="event.stopPropagation()" id="docObgIdVersoPreview" href="#" target="_blank" style="display:none">Ver verso</a>
+                        </div>
+                      </label>
+                    </div>
+                  
+                  <div class="date-inside">
+                    <label for="docObgIdValidade">Validade <span class="req">*</span></label>
+                    <input id="docObgIdValidade" name="docObgIdValidade" type="date" required />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-grid">
+                <div class="field">
+                  <label>Carta de condução <span class="req">*</span></label>
+                  <div class="file-wrap">
+                    <div class="file-top">
+                      <label class="upload-box" for="cartaFrente">
+                        <small>Frente</small>
+                        <input id="cartaFrente" name="cartaFrente" type="file" accept=".pdf,image/*" required />
+                        <div class="file-meta">
+                          <span class="chip" id="cartaFrenteName">Nenhum ficheiro</span>
+                          <a class="preview-link" onclick="event.stopPropagation()" id="cartaFrentePreview" href="#" target="_blank" style="display:none">Ver frente</a>
+                        </div>
+                      </label>
+
+                      <label class="upload-box" for="cartaVerso">
+                        <small>Verso</small>
+                        <input id="cartaVerso" name="cartaVerso" type="file" accept=".pdf,image/*" required />
+                        <div class="file-meta">
+                          <span class="chip" id="cartaVersoName">Nenhum ficheiro</span>
+                          <a class="preview-link" onclick="event.stopPropagation()" id="cartaVersoPreview" href="#" target="_blank" style="display:none">Ver verso</a>
+                        </div>
+                      </label>
+                    </div>
+                  
+                  <div class="date-inside">
+                    <label for="cartaValidade">Validade <span class="req">*</span></label>
+                    <input id="cartaValidade" name="cartaValidade" type="date" required />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-grid">
+                <div class="field">
+                  <label>IMTT TVDE</label>
+                  <div class="file-wrap">
+                    <label class="upload-box single" for="imttTvde">
+                      <small>Upload documento</small>
+                      <input id="imttTvde" name="imttTvde" type="file" accept=".pdf,image/*" />
+                      <div class="file-meta">
+                        <span class="chip" id="imttTvdeName">Nenhum ficheiro</span>
+                        <a class="preview-link" onclick="event.stopPropagation()" id="imttTvdePreview" href="#" target="_blank" style="display:none">Ver documento</a>
+                      </div>
+                    </label>
+                  
+                  <div class="date-inside">
+                    <label for="imttTvdeValidade">Validade</label>
+                    <input id="imttTvdeValidade" name="imttTvdeValidade" type="date" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-grid">
+                <div class="field">
+                  <label>Registo Criminal <span class="req">*</span></label>
+                  <div class="file-wrap">
+                    <label class="upload-box single" for="registoCriminal">
+                      <small>Upload documento</small>
+                      <input id="registoCriminal" name="registoCriminal" type="file" accept=".pdf,image/*" required />
+                      <div class="file-meta">
+                        <span class="chip" id="registoCriminalName">Nenhum ficheiro</span>
+                        <a class="preview-link" onclick="event.stopPropagation()" id="registoCriminalPreview" href="#" target="_blank" style="display:none">Ver documento</a>
+                      </div>
+                    </label>
+                  
+                  <div class="date-inside">
+                    <label for="registoCriminalValidade">Validade <span class="req">*</span></label>
+                    <input id="registoCriminalValidade" name="registoCriminalValidade" type="date" required />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="doc-card">
+              <div class="doc-grid">
+                <div class="field">
+                  <label>Foto do rosto <span class="req">*</span></label>
+                  <div class="file-wrap">
+                    <label class="upload-box single" for="fotoRosto">
+                      <small>Upload fotografia</small>
+                      <input id="fotoRosto" name="fotoRosto" type="file" accept="image/*" required />
+                      <div class="file-meta">
+                        <span class="chip" id="fotoRostoName">Nenhum ficheiro</span>
+                        <a class="preview-link" onclick="event.stopPropagation()" id="fotoRostoPreview" href="#" target="_blank" style="display:none">Ver foto</a>
+                      </div>
+                    </label>
+                  
+                  <div class="date-inside">
+                    <label for="fotoRostoData">Data do registo <span class="req">*</span></label>
+                    <input id="fotoRostoData" name="fotoRostoData" type="date" required />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn rm-gestor" type="button" id="btnRmGestor">
+              <span class="mini-ring">RM</span>
+              <span>Gestor</span>
+            </button>
+            <button class="btn submit" type="button" id="btnEnviar" disabled>Enviar para validar</button>
+          </div>
+
+          <div class="msg" id="msg">Preencha os campos obrigatórios e carregue todos os documentos pedidos.</div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY DE ERRO -->
+<div id="ovErro" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);backdrop-filter:blur(18px);align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:440px;background:#111318;border:1px solid rgba(240,80,80,.3);border-radius:22px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+    <div style="font-size:40px">⚠️</div>
+    <div style="font-size:16px;font-weight:800;color:#fff" id="ovErroTitle">Erro</div>
+    <div style="font-size:13px;color:#8a939f;line-height:1.6" id="ovErroMsg">Erro ao submeter.</div>
+    <div style="background:rgba(240,80,80,.07);border:1px solid rgba(240,80,80,.22);border-radius:11px;padding:10px 16px;font-size:12px;color:#ff9999;font-weight:600;width:100%;display:none" id="ovErroDetail"></div>
+    <button id="ovErroBtnFechar" onclick="document.getElementById('ovErro').style.display='none'" style="height:44px;width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#e8eaed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">CORRIGIR E TENTAR NOVAMENTE</button>
+  </div>
+</div>
+
+<script>
+// ── Variáveis globais ──────────────────────────────────────
+var isSubmitting = false;
+var previewUrls  = {};
+
+var requiredFields = [
+  "nome","nif","contacto","email","iban","endereco",
+  
+  "documentoTipo2","docObgIdFrente","docObgIdVerso","docObgIdValidade",
+  "cartaFrente","cartaVerso","cartaValidade",
+  "registoCriminal","registoCriminalValidade","fotoRosto","fotoRostoData"
+];
+
+var fileIds = [
+  "ibanComprovativo","docObgIdFrente","docObgIdVerso",
+  "cartaFrente","cartaVerso","imttTvde","registoCriminal","fotoRosto"
+];
+
+function setMessage(type, text) {
+  var msg = document.getElementById("msg");
+  if (!msg) return;
+  msg.className = "msg" + (type ? " " + type : "");
+  msg.textContent = text;
+}
+
+function isFilled(id) {
+  var el = document.getElementById(id);
+  if (!el) return false;
+  if (el.type === "file") return !!(el.files && el.files.length);
+  return String(el.value || "").trim() !== "";
+}
+
+function validateForm() {
+  var btnEnviar = document.getElementById("btnEnviar");
+  if (!btnEnviar) return;
+  var faltando = requiredFields.filter(function(id) { return !isFilled(id); });
+  var ok = faltando.length === 0;
+  btnEnviar.disabled = !ok || isSubmitting;
+  if (ok) {
+    setMessage("ok", "Tudo pronto para enviar para validação.");
+  } else {
+    setMessage("err", "Faltam: " + faltando.join(", "));
+  }
+}
+
+function fileToDataUrl(file) {
+  return new Promise(function(resolve) {
+    if (!file) return resolve(null);
+    var reader = new FileReader();
+    reader.onload = function() {
+      resolve({ nome: file.name, tipo: file.type, conteudo: reader.result });
+    };
+    reader.onerror = function() { resolve(null); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function getVal(id) {
+  var el = document.getElementById(id);
+  return el ? el.value : "";
+}
+
+function getFile(id) {
+  var el = document.getElementById(id);
+  return (el && el.files && el.files[0]) ? el.files[0] : null;
+}
+
+async function enviar() {
+  if (isSubmitting) return;
+  validateForm();
+  var btnEnviar = document.getElementById("btnEnviar");
+  if (!btnEnviar || btnEnviar.disabled) return;
+
+  isSubmitting = true;
+  btnEnviar.disabled = true;
+  btnEnviar.textContent = "A enviar…";
+  setMessage("", "A enviar para validação...");
+
+  try {
+    var docs = {
+      fotoRosto:        await fileToDataUrl(getFile("fotoRosto")),
+      ibanComprovativo: await fileToDataUrl(getFile("ibanComprovativo")),
+                  docObgIdFrente:   await fileToDataUrl(getFile("docObgIdFrente")),
+      docObgIdVerso:    await fileToDataUrl(getFile("docObgIdVerso")),
+      cartaFrente:      await fileToDataUrl(getFile("cartaFrente")),
+      cartaVerso:       await fileToDataUrl(getFile("cartaVerso")),
+      imttTvde:         await fileToDataUrl(getFile("imttTvde")),
+      registoCriminal:  await fileToDataUrl(getFile("registoCriminal")),
+    };
+
+    var payload = {
+      nome:          getVal("nome").trim(),
+      nif:           getVal("nif").trim(),
+      contacto:      getVal("contacto").trim(),
+      email:         getVal("email").trim(),
+      iban:          getVal("iban").trim(),
+      endereco:      getVal("endereco").trim(),
+      documentoTipo: getVal("documentoTipo2"),
+      validades: {
+        docIdValidade:            getVal("docIdValidade"),
+        docObgIdValidade:         getVal("docObgIdValidade"),
+        cartaValidade:            getVal("cartaValidade"),
+        imttTvdeValidade:         getVal("imttTvdeValidade"),
+        registoCriminalValidade:  getVal("registoCriminalValidade"),
+        fotoRostoData:            getVal("fotoRostoData"),
+      },
+      documentos: docs,
+    };
+
+    var res = await fetch("/api/admin/motoristas/registo", {
+      method:      "POST",
+      credentials: "include",
+      headers:     { "Content-Type": "application/json" },
+      body:        JSON.stringify(payload),
+    });
+
+    var raw  = await res.text();
+    var data = {};
+    try { data = raw ? JSON.parse(raw) : {}; } catch(e) { data = { message: raw }; }
+
+    if (!res.ok) throw new Error(data.message || "Erro ao registar motorista.");
+
+    setMessage("ok", data.message || "Motorista enviado para validação com sucesso.");
+    document.getElementById("formMotorista").reset();
+    validateForm();
+    setTimeout(function() { window.location.href = "/validacao.html"; }, 1500);
+
+  } catch(err) {
+    var ov = document.getElementById("ovErro");
+    var ovMsg = document.getElementById("ovErroMsg");
+    if (ov && ovMsg) {
+      ovMsg.textContent = err.message || "Erro ao enviar o formulário.";
+      ov.style.display = "flex";
+    } else {
+      alert(err.message || "Erro ao enviar.");
+    }
+    setMessage("err", err.message || "Erro.");
+  } finally {
+    isSubmitting = false;
+    var btnEnviar = document.getElementById("btnEnviar");
+    if (btnEnviar) {
+      btnEnviar.disabled = false;
+      btnEnviar.textContent = "Enviar para validar";
+    }
+    validateForm();
+  }
+}
+
+// ── Init quando o DOM estiver pronto ──────────────────────
+document.addEventListener("DOMContentLoaded", function() {
+  // Bind file previews
+  fileIds.forEach(function(id) {
+    var input = document.getElementById(id);
+    var chip  = document.getElementById(id + "Name");
+    var link  = document.getElementById(id + "Preview");
+    if (!input) return;
+    input.addEventListener("change", function() {
+      var file = input.files && input.files[0];
+      if (chip) chip.textContent = file ? file.name : "Nenhum ficheiro";
+      if (link) {
+        if (file) {
+          link.href = URL.createObjectURL(file);
+          link.style.display = "inline-flex";
+        } else {
+          link.style.display = "none";
+        }
+      }
+      validateForm();
+    });
+  });
+
+  // Bind form inputs
+  var form = document.getElementById("formMotorista");
+  if (form) {
+    form.addEventListener("input",  validateForm);
+    form.addEventListener("change", validateForm);
+  }
+
+  // Bind submit button
+  var btnEnviar = document.getElementById("btnEnviar");
+  if (btnEnviar) {
+    btnEnviar.addEventListener("click", enviar);
+  }
+
+  validateForm();
+  console.log("✅ motorista-registo.html pronto");
+});
+</script>
+</body>
+</html>

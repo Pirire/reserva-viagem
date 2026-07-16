@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Aguardando Aprovação</title>
+  <style>
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: radial-gradient(1200px 600px at 20% 10%, rgba(200,205,213,.05), transparent 60%),
+                  radial-gradient(900px 500px at 80% 90%, rgba(200,205,213,.04), transparent 55%),
+                  linear-gradient(135deg,#050505,#0d0f12,#000);
+      font-family: "Segoe UI", Arial, sans-serif;
+      color:#d9dde3;
+      padding: 20px;
+    }
+    .card{
+      width: min(560px, 100%);
+      border-radius: 18px;
+      background: linear-gradient(180deg,#111318,#0a0b0d);
+      border: 1px solid #2c323a;
+      box-shadow: 0 30px 90px rgba(0,0,0,.65);
+      padding: 34px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .glow{
+      position:absolute;
+      inset:-2px;
+      background: radial-gradient(500px 180px at 50% 0%, rgba(200,205,213,.06), transparent 70%);
+      pointer-events:none;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(200,205,213,.05);
+      border: 1px solid #2c323a;
+      color:#b8c0ca;
+      font-weight: 600;
+      letter-spacing: .2px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    h1{
+      margin: 0 0 10px 0;
+      font-size: 24px;
+      line-height: 1.2;
+      color: #eef2f7;
+      letter-spacing: .3px;
+    }
+    .divider{
+      height:1px;
+      background: linear-gradient(90deg, transparent, #2c323a, transparent);
+      margin: 18px 0;
+    }
+    .hint{
+      background: rgba(0,0,0,.25);
+      border: 1px solid #2c323a;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 14px;
+      font-size: 14px;
+      color: #8b95a2;
+      line-height: 1.6;
+    }
+    .actions{
+      display:flex;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    button{
+      flex: 1;
+      min-width: 160px;
+      padding: 13px 14px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all .2s;
+    }
+    .btnPrimary{
+      background: linear-gradient(180deg,#e3e8ef,#bfc7d2);
+      color:#000;
+    }
+    .btnPrimary:hover{ transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.3); }
+    .btnGhost{
+      background: transparent;
+      color: #b8c0ca;
+      border: 1px solid #2c323a;
+    }
+    .btnGhost:hover{ background: rgba(255,255,255,.04); border-color: #5f6874; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="glow"></div>
+    <div class="badge">🚦 Conta em análise</div>
+    <h1>Registo concluído com sucesso, a aguardar aprovação.</h1>
+    <div class="divider"></div>
+    <div class="hint">
+      Assim que a conta for aprovada, será notificado e poderá entrar normalmente na área do motorista.
+      Se tiver dúvidas, contacte o seu gestor de frota ou o suporte REALMETROPOLIS.
+    </div>
+    <div class="actions">
+      <button class="btnPrimary" type="button" onclick="logout()">Sair</button>
+      <button class="btnGhost" type="button" onclick="goLogin()">Ir para login</button>
+    </div>
+  </div>
+  <script>
+    async function logout(){
+      try { await fetch("/api/motorista/logout", { method: "POST", credentials: "include" }); } catch {}
+      window.location.href = "/index.html";
+    }
+    function goLogin(){
+      window.location.href = "/motorista-login.html";
+    }
+  </script>
+</body>
+</html>
