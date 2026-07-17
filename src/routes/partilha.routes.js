@@ -1665,6 +1665,28 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
         return res.status(400).json({ ok: false, message: `Destino em falta para ${p.nome}.` });
       }
     }
+
+    // Contactos repetidos — cada participante precisa de um contacto
+    // ÚNICO nesta reserva. O ShareInvite tem índice único {shareId,
+    // contactoNorm}, por isso dois participantes com o mesmo número
+    // colidiriam e o segundo seria rejeitado silenciosamente (ficava
+    // uma reserva a meio, com o ShareTrip criado mas participantes a
+    // menos). Validar aqui, ANTES de criar nada, e avisar o hotel.
+    {
+      const vistos = new Map();  // contactoNorm -> nome do 1º que o usou
+      for (const p of lista) {
+        const cn = normContact(String(p.contacto).trim());
+        if (cn && vistos.has(cn)) {
+          return res.status(409).json({
+            ok: false,
+            code: "CONTACTO_REPETIDO",
+            message: `O contacto ${p.contacto} está repetido (usado por ${vistos.get(cn)} e ${p.nome}). Cada participante precisa de um contacto diferente.`,
+          });
+        }
+        if (cn) vistos.set(cn, p.nome);
+      }
+    }
+
     if (!partida?.lat || !partida?.lng || !partida?.address) {
       return res.status(400).json({ ok: false, message: "partida (lat, lng, address) obrigatório." });
     }
@@ -1709,6 +1731,12 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
       const emailP = String(p.email || "").trim().toLowerCase();
       const valorP = Number(p.valor || 0);
 
+      // OTP de confirmação — o participante recebe este código por
+      // SMS/email e usa-o para confirmar a participação. Guardado com
+      // hash (nunca em claro) e com validade, igual aos outros fluxos.
+      const otp     = genOtp6();
+      const otpHash = await bcrypt.hash(otp, 10);
+
       await ShareInvite.create({
         inviteId,
         shareId,
@@ -1716,6 +1744,8 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
         contactoNorm: normContact(contactoP) || contactoP,
         nome: nomeP,
         email: emailP,
+        otpHash,
+        otpExpiresAt: Date.now() + 30 * 60 * 1000,   // 30 min para confirmar
         attempts: 0,
         usedAt: null,
         status: "pendente",
@@ -1746,7 +1776,7 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
 
       criados.push({
         inviteId, token: inviteToken, nome: nomeP, contacto: contactoP, email: emailP,
-        valor: valorP, codigo: `EVT-${inviteId}`,
+        valor: valorP, codigo: `EVT-${inviteId}`, otp,
         link: `${publicBase}/hotel-dashboard.html?invite=${encodeURIComponent(inviteToken)}&shareId=${encodeURIComponent(shareId)}&evt=1`,
       });
     }
@@ -1772,12 +1802,14 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
       for (const c of criados) {
         const smsBody =
           `De Realmetropolis.\nOlá ${c.nome}, a sua viagem foi reservada!\n` +
+          `Código de confirmação: ${c.otp}\n` +
           `Toque no link para pagar a sua parte:\n${c.link}`;
         const emailHtml = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;background:#f5f5f5;color:#222">
           <div style="background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
             <p style="margin:0 0 4px;font-size:12px;color:#888;text-align:center">De Realmetropolis</p>
             <h2 style="margin:0 0 12px;font-size:20px;color:#050507;text-align:center">Olá ${c.nome} ✅</h2>
-            <p style="margin:0 0 20px;font-size:14px;line-height:1.5;text-align:center">A sua viagem foi reservada. Toque no botão para pagar a sua parte.</p>
+            <p style="margin:0 0 8px;font-size:14px;line-height:1.5;text-align:center">A sua viagem foi reservada. Toque no botão para pagar a sua parte.</p>
+            <p style="margin:0 0 20px;font-size:14px;text-align:center">Código de confirmação: <b style="font-family:monospace;font-size:16px;letter-spacing:.05em">${c.otp}</b></p>
             <div style="text-align:center">
               <a href="${c.link}" style="display:inline-block;padding:14px 32px;background:#050507;color:#c4c9d4;font-weight:800;font-size:14px;border-radius:10px;text-decoration:none">PAGAR A MINHA PARTE</a>
             </div>
