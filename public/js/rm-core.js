@@ -750,6 +750,11 @@
         <input class="field" placeholder="Destino deste participante" data-campo="destinoTexto" autocomplete="off">
         <div class="nm-dropdown" data-campo="destinoDropdown"></div>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
+        <input type="checkbox" class="rm-eupago-check" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
+        <span>Eu pago (escolher quem)</span>
+      </label>
+      <div class="rm-eupago-lista" style="display:none;flex-wrap:wrap;gap:6px;padding:8px 0 2px"></div>
     `;
     wrap.appendChild(linha);
 
@@ -789,7 +794,83 @@
     inputDestino.addEventListener('blur', () => setTimeout(() => { dropDestino.style.display = 'none'; }, 200));
   }
 
-  document.getElementById('btnConvidarMaisPessoas')?.addEventListener('click', adicionarParticipanteExtra);
+  // ══ FEATURE "EU PAGO" ═══════════════════════════════════════
+  // Renumera todos os participantes e reconstrói as listas "Eu pago"
+  // aplicando a regra anti-conflito: cada participante só pode ser
+  // pago por UM pagador (o primeiro a marcá-lo). Chamada sempre que
+  // se adiciona/remove um participante ou se mexe numa caixa.
+  function _rmAtualizarEuPago() {
+    // O hóspede principal é o Nº1; os extra seguem a ordem no DOM.
+    const linhas = Array.from(document.querySelectorAll('#rmParticipantesExtra .rm-participante-extra'));
+    // Lista de todos os participantes: [{num, nome, linhaEl|null}]
+    const todos = [{ num: 1, nome: (document.getElementById('inputNomeHospede')?.value.trim() || 'Hóspede (1)'), linhaEl: null }];
+    linhas.forEach((linha, i) => {
+      const num = i + 2; // principal é 1, extras começam em 2
+      linha.dataset.num = num;
+      const nome = linha.querySelector('[data-campo="nome"]')?.value.trim() || `Participante ${num}`;
+      todos.push({ num, nome, linhaEl: linha });
+      // Badge com o número
+      let badge = linha.querySelector('.rm-num-badge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.className = 'rm-num-badge';
+        badge.style.cssText = 'position:absolute;top:8px;left:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#c4c9d4;opacity:.7';
+        linha.insertBefore(badge, linha.firstChild);
+      }
+      badge.textContent = `Nº ${num}`;
+    });
+
+    // Descobrir quem já está "assumido" por quem (regra anti-conflito)
+    // assumidoPor[num] = num do pagador que já o cobre
+    const assumidoPor = {};
+    // 1º passo: quem sou o pagador e quem selecionei
+    const pagadores = []; // {num, selecionados:Set}
+    document.querySelectorAll('.rm-eupago-check').forEach(chk => {
+      const linha = chk.closest('.rm-participante-extra');
+      const meuNum = Number(linha?.dataset.num);
+      if (!meuNum) return;
+      if (chk.checked) {
+        const sel = new Set();
+        linha.querySelectorAll('.rm-eupago-opt:checked').forEach(o => sel.add(Number(o.value)));
+        sel.add(meuNum); // pagar "eu pago" inclui sempre a própria
+        pagadores.push({ num: meuNum, selecionados: sel });
+        sel.forEach(n => { if (assumidoPor[n] == null) assumidoPor[n] = meuNum; });
+      }
+    });
+
+    // Reconstruir a lista de opções de cada pagador (com anti-conflito)
+    document.querySelectorAll('.rm-eupago-check').forEach(chk => {
+      const linha = chk.closest('.rm-participante-extra');
+      const meuNum = Number(linha?.dataset.num);
+      const listaEl = linha.querySelector('.rm-eupago-lista');
+      if (!listaEl) return;
+      if (!chk.checked) { listaEl.style.display = 'none'; listaEl.innerHTML = ''; return; }
+      listaEl.style.display = 'flex';
+      // Guardar seleção atual antes de reconstruir
+      const jaSel = new Set();
+      listaEl.querySelectorAll('.rm-eupago-opt:checked').forEach(o => jaSel.add(Number(o.value)));
+      listaEl.innerHTML = '';
+      todos.forEach(p => {
+        if (p.num === meuNum) return; // a própria já está incluída implicitamente
+        // anti-conflito: se já está assumido por OUTRO pagador, bloquear
+        const dono = assumidoPor[p.num];
+        const bloqueado = dono != null && dono !== meuNum;
+        const wrap = document.createElement('label');
+        wrap.style.cssText = `display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid rgba(196,201,212,.15);cursor:${bloqueado?'not-allowed':'pointer'};opacity:${bloqueado?'.4':'1'}`;
+        wrap.innerHTML = `<input type="checkbox" class="rm-eupago-opt" value="${p.num}" ${jaSel.has(p.num)?'checked':''} ${bloqueado?'disabled':''} style="cursor:inherit;accent-color:#c4c9d4"><span>Nº ${p.num} ${bloqueado?'(já assumido)':''}</span>`;
+        wrap.querySelector('input').addEventListener('change', _rmAtualizarEuPago);
+        listaEl.appendChild(wrap);
+      });
+    });
+  }
+
+  document.getElementById('btnConvidarMaisPessoas')?.addEventListener('click', () => {
+    adicionarParticipanteExtra();
+    // Ligar a nova caixa "Eu pago" ao atualizador e renumerar
+    const ultima = document.querySelector('#rmParticipantesExtra .rm-participante-extra:last-child .rm-eupago-check');
+    if (ultima) ultima.addEventListener('change', _rmAtualizarEuPago);
+    _rmAtualizarEuPago();
+  });
 
   /* Lê todas as linhas de participante extra do DOM, já com
      coordenadas — devolve só as que têm destino escolhido da lista
