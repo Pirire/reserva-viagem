@@ -721,6 +721,21 @@
     const wrap = document.getElementById('rmParticipantesExtra');
     if (!wrap) return;
     wrap.style.display = 'flex';
+
+    // Caixa "Todos no mesmo veículo" — criada uma única vez, aparece
+    // assim que há pelo menos um convidado. Marcada = uma só viagem
+    // partilhada; desmarcada = cada participante o seu próprio carro.
+    if (!document.getElementById('rmMesmoVeiculoWrap')) {
+      const mv = document.createElement('label');
+      mv.id = 'rmMesmoVeiculoWrap';
+      mv.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;border:1px solid rgba(196,201,212,.15);cursor:pointer;font-size:13px;color:var(--silver-2)';
+      mv.innerHTML = `
+        <input type="checkbox" id="rmMesmoVeiculo" style="width:18px;height:18px;cursor:pointer;accent-color:#c4c9d4">
+        <span>Todos no mesmo veículo (viagem partilhada)</span>
+      `;
+      wrap.parentNode.insertBefore(mv, wrap);
+    }
+
     const idx = _rmParticipantesExtraCount++;
     const linha = document.createElement('div');
     linha.className = 'rm-hospede-row rm-participante-extra';
@@ -931,10 +946,12 @@
           datahora: new Date(datahora).toISOString(),
           valor,
           requisitosEspeciais: requisitosEspeciaisLidos,
-          // Só vai preenchido quando "+ Convidar mais pessoas" foi
-          // usado — nesse caso, o backend ignora os campos soltos
-          // acima e usa esta lista completa em vez disso.
+          // Só vai preenchido quando "+ Convidado" foi usado — nesse
+          // caso, o backend ignora os campos soltos acima e usa esta
+          // lista completa em vez disso.
           participantes: participantesPayload,
+          // Todos no mesmo veículo (viagem partilhada) vs cada um o seu.
+          mesmoVeiculo: !!document.getElementById('rmMesmoVeiculo')?.checked,
         })
       });
       if (!resp.ok) throw new Error(resp.message || 'Erro ao criar reserva.');
@@ -958,6 +975,9 @@
       // sempre limpa, como já acontecia com o hóspede principal.
       const _wrapExtra = document.getElementById('rmParticipantesExtra');
       if (_wrapExtra) { _wrapExtra.innerHTML = ''; _wrapExtra.style.display = 'none'; }
+      const _mvWrap = document.getElementById('rmMesmoVeiculoWrap');
+      if (_mvWrap) _mvWrap.remove();
+      _rmParticipantesExtraCount = 0;
 
       // Vários participantes — cada um já recebeu o próprio link de
       // pagamento por SMS/email (o backend trata disso). Não há
