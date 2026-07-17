@@ -1428,6 +1428,14 @@ function setActiveShareCard(idx) {
           Ao tocar no botão abaixo, um motorista da REALMETROPOLIS será atribuído e enviado ao seu ponto de recolha.
         </div>
 
+        <!-- Campo do codigo de confirmacao -->
+        <div style="margin-bottom:24px;text-align:left">
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.06em;color:#8b95a2;margin-bottom:8px;text-align:center">
+            CODIGO DE CONFIRMACAO (recebido por SMS/email)
+          </label>
+          <input id="evtCodigoPronto" type="text" inputmode="numeric" maxlength="6" placeholder="------" style="width:100%;padding:16px;text-align:center;background:#0a0b0d;color:#f4f6f8;font-family:monospace;font-size:24px;letter-spacing:.4em;font-weight:700;border:1.5px solid #2a2e35;border-radius:12px;outline:none" autocomplete="one-time-code">
+        </div>
+
         <!-- Botão ESTOU PRONTO -->
         <button id="btnEstouPronto" type="button" style="
           width:100%;padding:18px;
@@ -1459,6 +1467,16 @@ function setActiveShareCard(idx) {
 
   async function _evtDispararEstouPronto() {
     if (_evtProntoEmAndamento) return;
+
+    // Ler e validar o código ANTES de bloquear/chamar o backend.
+    const campoCodigo = document.getElementById('evtCodigoPronto');
+    const codigo = (campoCodigo?.value || '').trim();
+    if (!codigo) {
+      showToast('Introduza o código de confirmação que recebeu por SMS/email.', 4000);
+      if (campoCodigo) campoCodigo.focus();
+      return;
+    }
+
     _evtProntoEmAndamento = true;
 
     const btn = document.getElementById('btnEstouPronto');
@@ -1475,6 +1493,7 @@ function setActiveShareCard(idx) {
         body: JSON.stringify({
           token:    _evtInviteInfo.token,
           inviteId: _evtInviteInfo.inviteId,
+          codigo,
         })
       });
       // Sucesso — passar para ecrã "A procurar motorista"

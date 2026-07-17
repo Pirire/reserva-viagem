@@ -2323,6 +2323,14 @@ async function confirmarPagamentoEvento(shareId, inviteId, provider, ref, io, to
   invite.payProvider = String(provider || "");
   invite.payRef      = String(ref || "");
   invite.despachadoEm = null;      // ainda NÃO despachado — só quando clicar ESTOU PRONTO
+
+  // Código de confirmação para "chamar o motorista" — gerado só
+  // agora (no pagamento), para o hóspede ter de o introduzir antes
+  // de acionar a recolha. Evita toques acidentais no link e garante
+  // que é mesmo o hóspede. Guardado com hash; validade de 24h.
+  const codigoPronto     = genOtp6();
+  invite.prontoOtpHash   = await bcrypt.hash(codigoPronto, 10);
+  invite.prontoOtpExpira = Date.now() + 24 * 60 * 60 * 1000;
   await invite.save();
 
   // Notificar organizador em tempo real
@@ -2375,7 +2383,8 @@ async function confirmarPagamentoEvento(shareId, inviteId, provider, ref, io, to
 
   const smsBody =
     `REALMETROPOLIS — Reserva Flexível confirmada, ${invite.nome}!\n` +
-    `Quando estiver pronto, toque no link abaixo e enviaremos o seu motorista:\n${linkPronto}` +
+    `Código para chamar o motorista: ${codigoPronto}\n` +
+    `Quando estiver pronto, toque no link e introduza o código:\n${linkPronto}` +
     smsValidade;
 
   const emailHtml =
@@ -2389,7 +2398,11 @@ async function confirmarPagamentoEvento(shareId, inviteId, provider, ref, io, to
           A sua <b>Reserva Flexível</b> foi confirmada.
         </p>
         <p style="margin:0 0 16px;font-size:14px;line-height:1.5">
-          <b>Quando estiver pronto, clique no botão abaixo e enviaremos o seu motorista.</b>
+          <b>Quando estiver pronto, clique no botão abaixo e introduza o código para enviarmos o seu motorista.</b>
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.5;text-align:center">
+          Código para chamar o motorista:<br>
+          <b style="font-family:monospace;font-size:22px;letter-spacing:.1em;color:#050507">${codigoPronto}</b>
         </p>
         <div style="text-align:center;margin:24px 0">
           <a href="${linkPronto}" style="display:inline-block;padding:14px 32px;background:#050507;color:#c4c9d4;font-weight:800;font-size:15px;border-radius:10px;text-decoration:none;letter-spacing:.02em;border:1px solid #c4c9d4">
@@ -2658,6 +2671,27 @@ router.post("/evento/estou-pronto", async (req, res) => {
     if (!invite) return res.status(404).json({ ok: false, message: "Convite não encontrado." });
     if (!invite.pago) {
       return res.status(409).json({ ok: false, message: "Este bilhete ainda não foi pago." });
+    }
+
+    // Validação do código de confirmação — o hóspede tem de introduzir
+    // o código que recebeu por SMS/email após o pagamento. Evita toques
+    // acidentais no link e confirma a identidade. Só se aplica se ainda
+    // não foi despachado (a seguir a idempotência devolve o tripId sem
+    // pedir código de novo).
+    if (!invite.tripRefId) {
+      const codigoRecebido = String(req.body?.codigo || "").trim();
+      if (!codigoRecebido) {
+        return res.status(400).json({ ok: false, code: "CODIGO_OBRIGATORIO", message: "Introduza o código de confirmação que recebeu." });
+      }
+      if (invite.prontoOtpExpira && Date.now() > invite.prontoOtpExpira) {
+        return res.status(410).json({ ok: false, code: "CODIGO_EXPIRADO", message: "O código expirou. Contacte o suporte." });
+      }
+      const codigoOk = invite.prontoOtpHash
+        ? await bcrypt.compare(codigoRecebido, invite.prontoOtpHash)
+        : false;
+      if (!codigoOk) {
+        return res.status(400).json({ ok: false, code: "CODIGO_INVALIDO", message: "Código incorreto. Verifique o SMS/email que recebeu." });
+      }
     }
 
     // Idempotência: já foi despachado, devolvemos o tripId

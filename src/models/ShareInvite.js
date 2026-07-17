@@ -22,6 +22,13 @@ const ShareInviteSchema = new mongoose.Schema(
     // OTP
     otpHash:         { type: String, default: "" },
     otpExpiresAt:    { type: Number, default: null },
+
+    // Código de confirmação para "chamar o motorista" (Reserva
+    // Flexível) — gerado no momento do pagamento, validado no
+    // /evento/estou-pronto antes de despachar. Distinto do otpHash
+    // acima (que é o da confirmação de participação na criação).
+    prontoOtpHash:   { type: String, default: "" },
+    prontoOtpExpira: { type: Number, default: null },
     inviteExpiresAt: { type: Number, default: null },
     usedAt:          { type: Number, default: null },
     attempts:        { type: Number, default: 0 },
