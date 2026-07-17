@@ -75,7 +75,7 @@ import { paypalRefundCapture } from "./payments.routes.js";
 
 // ✅ IMPORT "safe" (não quebra se teu smsTwilio.js não exportar canSendSms)
 import * as smsModule from "../modules/notifications/smsTwilio.js";
-import { requireCliente } from "../utils/clienteAuth.js";
+import { requireCliente, requireClienteOuParceiro } from "../utils/clienteAuth.js";
 
 const router = Router();
 console.log("✅ partilha.routes.js carregado");
@@ -1638,7 +1638,7 @@ router.post("/calc", async (req, res) => {
    está a criar (grava em organizadorId, para as Classificações e o
    Relatório SLA conseguirem encontrar esta viagem depois).
 ══════════════════════════════════════════════════════════════ */
-router.post("/reserva-simples/criar", requireCliente, async (req, res) => {
+router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res) => {
   try {
     const {
       nomeHospede, contactoHospede, emailHospede, destino, valor, requisitosEspeciais,

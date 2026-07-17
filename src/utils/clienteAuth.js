@@ -62,3 +62,37 @@ export function requireCliente(req, res, next) {
   req.clienteEmail = p.email || null;
   next();
 }
+
+/**
+ * Middleware — aceita sessão de CLIENTE ou de PARCEIRO/HOTEL.
+ * O hotel-dashboard autentica com cookie rm_parceiro_token (typ "parceiro"),
+ * que o requireCliente normal rejeita. Este aceita ambos e preenche
+ * req.clienteId/req.clienteEmail da mesma forma, para as rotas que já os usam.
+ */
+export function requireClienteOuParceiro(req, res, next) {
+  // 1) sessão de cliente (lógica existente)
+  const pc = getClientePayload(req);
+  if (pc?.id) {
+    req.clienteId    = pc.id;
+    req.clienteEmail = pc.email || null;
+    return next();
+  }
+
+  // 2) sessão de parceiro/hotel (rm_parceiro_token, typ "parceiro")
+  try {
+    const secret = String(process.env.JWT_SECRET || "").trim();
+    const tokenP = req.cookies?.rm_parceiro_token || req.cookies?.parceiro_token || "";
+    if (tokenP && secret) {
+      const p = jwt.verify(tokenP, secret);
+      if (String(p?.typ || "").toLowerCase() === "parceiro" && p?.id) {
+        req.clienteId       = p.id;
+        req.clienteEmail    = p.email || null;
+        req.parceiroId      = p.id;
+        req.parceiroEmpresa = p.empresa || null;
+        return next();
+      }
+    }
+  } catch (_) {}
+
+  return res.status(401).json({ ok: false, code: "UNAUTHORIZED", message: "Sessão necessária." });
+}
