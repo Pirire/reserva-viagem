@@ -283,6 +283,15 @@
             <input class="field rm-hospede-field" id="inputNomeHospede" type="text" placeholder="Nome do hóspede" autocomplete="off">
             <input class="field rm-hospede-field" id="inputContactoHospede" type="tel" placeholder="Contacto do hóspede (para SMS)" autocomplete="off">
             <input class="field rm-hospede-field" id="inputEmailHospede" type="email" placeholder="Email do hóspede (para o email de confirmação)" autocomplete="off">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
+              <input type="checkbox" id="rmEuPagoPrincipal" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
+              <span>Eu pago (escolher quem)</span>
+            </label>
+            <div class="rm-eupago-lista-principal" style="display:none;flex-wrap:wrap;gap:6px;padding:8px 0 2px"></div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
+              <input type="checkbox" id="rmBloquearPrincipal" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
+              <span>Bloquear viagem (destino fixo, o hóspede não pode mudar)</span>
+            </label>
           </div>
 
           <!-- Janela de validade — o hóspede escolhe até quando o bilhete
@@ -3206,7 +3215,7 @@
   </script>
 
   <!-- ══ MÓDULOS JS (ordem de dependência) ══════════════════ -->
-  <script src="js/rm-core.js?v=4"></script>
+  <script src="js/rm-core.js?v=5"></script>
   <script src="js/rm-requisitos.js"></script>
   <script src="js/rm-map.js"></script>
   <script src="/socket.io/socket.io.js"></script>

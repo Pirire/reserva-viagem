@@ -782,6 +782,10 @@
         <span>Eu pago (escolher quem)</span>
       </label>
       <div class="rm-eupago-lista" style="display:none;flex-wrap:wrap;gap:6px;padding:8px 0 2px"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
+        <input type="checkbox" class="rm-bloquear-check" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
+        <span>Bloquear viagem (destino fixo)</span>
+      </label>
     `;
     wrap.appendChild(linha);
 
@@ -826,70 +830,68 @@
   // aplicando a regra anti-conflito: cada participante só pode ser
   // pago por UM pagador (o primeiro a marcá-lo). Chamada sempre que
   // se adiciona/remove um participante ou se mexe numa caixa.
-  function _rmAtualizarEuPago() {
-    // O hóspede principal é o Nº1; os extra seguem a ordem no DOM.
+  // Pagadores no ecrã: principal (nº1) + convidados extra.
+  function _rmPagadores() {
+    const out = [];
+    const chkP = document.getElementById('rmEuPagoPrincipal');
+    if (chkP) out.push({ num: 1, chk: chkP, listaEl: document.querySelector('.rm-eupago-lista-principal'), linhaEl: null });
     const linhas = Array.from(document.querySelectorAll('#rmParticipantesExtra .rm-participante-extra'));
-    // Lista de todos os participantes: [{num, nome, linhaEl|null}]
-    const todos = [{ num: 1, nome: (document.getElementById('inputNomeHospede')?.value.trim() || 'Hóspede (1)'), linhaEl: null }];
     linhas.forEach((linha, i) => {
-      const num = i + 2; // principal é 1, extras começam em 2
-      linha.dataset.num = num;
-      const nome = linha.querySelector('[data-campo="nome"]')?.value.trim() || `Participante ${num}`;
-      todos.push({ num, nome, linhaEl: linha });
-      // Badge com o número
-      let badge = linha.querySelector('.rm-num-badge');
+      linha.dataset.num = i + 2;
+      out.push({ num: i + 2, chk: linha.querySelector('.rm-eupago-check'), listaEl: linha.querySelector('.rm-eupago-lista'), linhaEl: linha });
+    });
+    return out;
+  }
+
+  function _rmAtualizarEuPago() {
+    const pagadoresUI = _rmPagadores();
+    const todos = pagadoresUI.map(p => ({ num: p.num }));
+
+    // Badges nos convidados extra
+    pagadoresUI.forEach(p => {
+      if (!p.linhaEl) return;
+      let badge = p.linhaEl.querySelector('.rm-num-badge');
       if (!badge) {
         badge = document.createElement('div');
         badge.className = 'rm-num-badge';
         badge.style.cssText = 'position:absolute;top:8px;left:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#c4c9d4;opacity:.7';
-        linha.insertBefore(badge, linha.firstChild);
+        p.linhaEl.insertBefore(badge, p.linhaEl.firstChild);
       }
-      badge.textContent = `Nº ${num}`;
+      badge.textContent = `Nº ${p.num}`;
     });
 
-    // Descobrir quem já está "assumido" por quem (regra anti-conflito)
-    // assumidoPor[num] = num do pagador que já o cobre
+    // Anti-conflito
     const assumidoPor = {};
-    // 1º passo: quem sou o pagador e quem selecionei
-    const pagadores = []; // {num, selecionados:Set}
-    document.querySelectorAll('.rm-eupago-check').forEach(chk => {
-      const linha = chk.closest('.rm-participante-extra');
-      const meuNum = Number(linha?.dataset.num);
-      if (!meuNum) return;
-      if (chk.checked) {
-        const sel = new Set();
-        linha.querySelectorAll('.rm-eupago-opt:checked').forEach(o => sel.add(Number(o.value)));
-        sel.add(meuNum); // pagar "eu pago" inclui sempre a própria
-        pagadores.push({ num: meuNum, selecionados: sel });
-        sel.forEach(n => { if (assumidoPor[n] == null) assumidoPor[n] = meuNum; });
-      }
+    pagadoresUI.forEach(p => {
+      if (!p.chk || !p.chk.checked || !p.listaEl) return;
+      const sel = new Set();
+      p.listaEl.querySelectorAll('.rm-eupago-opt:checked').forEach(o => sel.add(Number(o.value)));
+      sel.add(p.num);
+      sel.forEach(n => { if (assumidoPor[n] == null) assumidoPor[n] = p.num; });
     });
 
-    // Reconstruir a lista de opções de cada pagador (com anti-conflito)
-    document.querySelectorAll('.rm-eupago-check').forEach(chk => {
-      const linha = chk.closest('.rm-participante-extra');
-      const meuNum = Number(linha?.dataset.num);
-      const listaEl = linha.querySelector('.rm-eupago-lista');
-      if (!listaEl) return;
-      if (!chk.checked) { listaEl.style.display = 'none'; listaEl.innerHTML = ''; return; }
-      listaEl.style.display = 'flex';
-      // Guardar seleção atual antes de reconstruir
+    // Reconstruir listas
+    pagadoresUI.forEach(p => {
+      if (!p.chk || !p.listaEl) return;
+      if (!p.chk.checked) { p.listaEl.style.display = 'none'; p.listaEl.innerHTML = ''; return; }
+      p.listaEl.style.display = 'flex';
       const jaSel = new Set();
-      listaEl.querySelectorAll('.rm-eupago-opt:checked').forEach(o => jaSel.add(Number(o.value)));
-      listaEl.innerHTML = '';
-      todos.forEach(p => {
-        if (p.num === meuNum) return; // a própria já está incluída implicitamente
-        // anti-conflito: se já está assumido por OUTRO pagador, bloquear
-        const dono = assumidoPor[p.num];
-        const bloqueado = dono != null && dono !== meuNum;
+      p.listaEl.querySelectorAll('.rm-eupago-opt:checked').forEach(o => jaSel.add(Number(o.value)));
+      p.listaEl.innerHTML = '';
+      todos.forEach(t => {
+        if (t.num === p.num) return;
+        const dono = assumidoPor[t.num];
+        const bloqueado = dono != null && dono !== p.num;
         const wrap = document.createElement('label');
         wrap.style.cssText = `display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid rgba(196,201,212,.15);cursor:${bloqueado?'not-allowed':'pointer'};opacity:${bloqueado?'.4':'1'}`;
-        wrap.innerHTML = `<input type="checkbox" class="rm-eupago-opt" value="${p.num}" ${jaSel.has(p.num)?'checked':''} ${bloqueado?'disabled':''} style="cursor:inherit;accent-color:#c4c9d4"><span>Nº ${p.num} ${bloqueado?'(já assumido)':''}</span>`;
+        wrap.innerHTML = `<input type="checkbox" class="rm-eupago-opt" value="${t.num}" ${jaSel.has(t.num)?'checked':''} ${bloqueado?'disabled':''} style="cursor:inherit;accent-color:#c4c9d4"><span>Nº ${t.num} ${bloqueado?'(já assumido)':''}</span>`;
         wrap.querySelector('input').addEventListener('change', _rmAtualizarEuPago);
-        listaEl.appendChild(wrap);
+        p.listaEl.appendChild(wrap);
       });
     });
   }
+
+  document.getElementById('rmEuPagoPrincipal')?.addEventListener('change', _rmAtualizarEuPago);
 
   document.getElementById('btnConvidarMaisPessoas')?.addEventListener('click', () => {
     adicionarParticipanteExtra();
@@ -911,8 +913,9 @@
       const email = linha.querySelector('[data-campo="email"]')?.value.trim();
       const destinoInput = linha.querySelector('[data-campo="destinoTexto"]');
       if (!nome || !contacto || !destinoInput?.dataset.lat) return; // linha incompleta, ignora
+      const bloqueado = !!linha.querySelector('.rm-bloquear-check')?.checked;
       out.push({
-        nome, contacto, email,
+        nome, contacto, email, bloqueado,
         destino: { address: destinoInput.value.trim(), lat: Number(destinoInput.dataset.lat), lng: Number(destinoInput.dataset.lng) },
       });
     });
@@ -1010,7 +1013,7 @@
       }
       // Participante principal + extras, todos no mesmo formato
       participantesPayload = [
-        { nome: nomeHospede || currentUser.nomeCompleto, contacto: contactoHospede, email: emailHospede || currentUser.email, destino: { address: destino, lat: Number(dLat), lng: Number(dLng) }, valor, requisitosEspeciais: null },
+        { nome: nomeHospede || currentUser.nomeCompleto, contacto: contactoHospede, email: emailHospede || currentUser.email, destino: { address: destino, lat: Number(dLat), lng: Number(dLng) }, valor, requisitosEspeciais: null, bloqueado: !!document.getElementById('rmBloquearPrincipal')?.checked },
         ...comPreco,
       ];
     }
