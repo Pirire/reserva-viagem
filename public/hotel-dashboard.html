@@ -105,6 +105,45 @@
       background:#c4c9d4 !important;color:#0a0b0e !important;border-color:#c4c9d4 !important;
     }
     .rm-validade-btn.rm-validade-ativo *{color:#0a0b0e !important;}
+
+    .rm-campo-bloqueado{ position:relative; }
+    /* A borda LARANJA vai para o próprio input (mantém os cantos
+       arredondados do .field). Sem borda no wrapper -> sem moldura dupla. */
+    .rm-campo-bloqueado input{
+      border:1.5px solid #ef9f27 !important;
+      border-radius:12px !important;
+      color:#ef9f27 !important;
+      font-weight:600 !important;
+      background:rgba(239,159,39,.06) !important;
+      padding-right:70px !important; /* espaço para o "FIXO" */
+    }
+    .rm-campo-bloqueado::after{
+      content:"🔒 FIXO";
+      position:absolute;right:14px;top:50%;transform:translateY(-50%);
+      font-size:10px;letter-spacing:.1em;color:#ef9f27;font-weight:700;
+      pointer-events:none;z-index:3;
+    }
+
+    /* Barras de endereço compridas — largura inteira, como o campo do hóspede */
+    .nm-wrap { width: 100% !important; display: block !important; }
+    .nm-wrap > input.field,
+    .nm-wrap > .field {
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    /* Barra de destino dentro de cada convidado e do principal */
+    .rm-participante-extra .nm-wrap,
+    .rm-hospede-row .nm-wrap { width: 100% !important; }
+    .rm-participante-extra .nm-wrap > input,
+    .rm-hospede-row .nm-wrap > input {
+      width: 100% !important; box-sizing: border-box !important;
+    }
+
+    /* Barra de destino do principal e convidados — dimensão igual ao campo do email */
+    .rm-hospede-destino { width: 100% !important; display: block !important; }
+    .rm-hospede-destino > input { width: 100% !important; box-sizing: border-box !important; }
+    .rm-participante-extra .nm-wrap > input.rm-hospede-field,
+    .rm-hospede-row .nm-wrap > input.rm-hospede-field { width: 100% !important; box-sizing: border-box !important; }
 </style>
 
 <!-- Overlay dedicado ao convite de partilha — único, sem cabeçalho
@@ -198,7 +237,7 @@
   <!-- MAPA DE FUNDO -->
   <div id="map" style="position:fixed;inset:0;z-index:0"></div>
   <!-- OVERLAY ESCURO sobre o mapa, abaixo da UI -->
-  <div id="mapOverlay" style="position:fixed;inset:0;z-index:1;background:rgba(2,3,5,.55);pointer-events:none"></div>
+  <div id="mapOverlay" style="position:fixed;inset:0;z-index:1;background:rgba(2,3,5,.35);pointer-events:none"></div>
 
   <!-- TOPBAR -->
   <header class="topbar">
@@ -3215,11 +3254,11 @@
   </script>
 
   <!-- ══ MÓDULOS JS (ordem de dependência) ══════════════════ -->
-  <script src="js/rm-core.js?v=5"></script>
+  <script src="js/rm-core.js?v=13"></script>
   <script src="js/rm-requisitos.js"></script>
   <script src="js/rm-map.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="js/rm-share.js?v=22"></script>
+  <script src="js/rm-share.js?v=24"></script>
   <script src="js/rm-activity.js"></script>
   <script src="js/rm-ticket.js"></script>
   <script src="js/rm-stats.js"></script>

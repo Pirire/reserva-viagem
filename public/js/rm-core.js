@@ -11,6 +11,62 @@
     return API_BASE.replace(/\/+$/, '') + API_PREFIX + (path.startsWith('/') ? path : '/' + path);
   }
 
+  // ══ Localização para o autocomplete de endereços ═══════════════
+  // Guarda { countryCode, lat, lng } para dar prioridade à zona do
+  // utilizador e limitar ao país onde ele está.
+  // 1) tenta geolocalização (GPS) → 2) se recusada, país pelo IP.
+  let _rmGeo = { countryCode: null, lat: null, lng: null, pronto: false };
+
+  async function _rmDetectarLocal() {
+    if (_rmGeo.pronto) return _rmGeo;
+    // 1) Geolocalização do browser
+    const viaGps = await new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { timeout: 6000, maximumAge: 600000 }
+      );
+    });
+    if (viaGps) {
+      _rmGeo.lat = viaGps.lat; _rmGeo.lng = viaGps.lng;
+      // descobrir o país a partir das coordenadas (reverse)
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${viaGps.lat}&lon=${viaGps.lng}&format=json&accept-language=pt`, { headers: { 'User-Agent': 'RMReservaSimples/1.0' } });
+        const j = await r.json();
+        _rmGeo.countryCode = (j?.address?.country_code || '').toLowerCase() || null;
+      } catch (_) {}
+      _rmGeo.pronto = true;
+      return _rmGeo;
+    }
+    // 2) País pelo IP (sem permissão) — usa um serviço gratuito
+    try {
+      const r = await fetch('https://ipapi.co/json/');
+      const j = await r.json();
+      if (j?.country_code) _rmGeo.countryCode = String(j.country_code).toLowerCase();
+      if (j?.latitude && j?.longitude) { _rmGeo.lat = j.latitude; _rmGeo.lng = j.longitude; }
+    } catch (_) {}
+    _rmGeo.pronto = true;
+    return _rmGeo;
+  }
+
+  // Constrói os parâmetros extra do Nominatim (país + viewbox à volta
+  // do utilizador) a partir da localização detetada.
+  function _rmNominatimExtra() {
+    let extra = '';
+    if (_rmGeo.countryCode) extra += `&countrycodes=${_rmGeo.countryCode}`;
+    if (_rmGeo.lat != null && _rmGeo.lng != null) {
+      const d = 0.6; // ~60km à volta, para priorizar a zona
+      const left = _rmGeo.lng - d, right = _rmGeo.lng + d;
+      const top = _rmGeo.lat + d, bottom = _rmGeo.lat - d;
+      extra += `&viewbox=${left},${top},${right},${bottom}&bounded=0`;
+    }
+    return extra;
+  }
+
+  // Disparar a deteção assim que a página carrega (não bloqueia nada)
+  _rmDetectarLocal();
+
   function escapeHtml(text) {
     return String(text ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   }
@@ -774,7 +830,7 @@
       <input class="field rm-hospede-field" type="tel" placeholder="Contacto" data-campo="contacto">
       <input class="field rm-hospede-field" type="email" placeholder="Email (opcional)" data-campo="email">
       <div class="nm-wrap" style="position:relative">
-        <input class="field" placeholder="Destino deste participante" data-campo="destinoTexto" autocomplete="off">
+        <input class="field rm-hospede-field" placeholder="Destino sugestivo" data-campo="destinoTexto" autocomplete="off">
         <div class="nm-dropdown" data-campo="destinoDropdown"></div>
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
@@ -795,6 +851,30 @@
     // evento, com IDs únicos por linha (não tem id fixo, por isso
     // liga-se directamente aos elementos, não por getElementById).
     const inputDestino = linha.querySelector('[data-campo="destinoTexto"]');
+    // Ligar o efeito visual de bloqueio no campo de destino do convidado
+    const _chkBloq = linha.querySelector('.rm-bloquear-check');
+    const _wrapBloq = inputDestino ? inputDestino.closest('.nm-wrap') : null;
+    if (_chkBloq && _wrapBloq) {
+      _chkBloq.addEventListener('change', () => {
+        const _inpBloq = _wrapBloq.querySelector('input');
+        if (_chkBloq.checked) {
+          _wrapBloq.classList.add('rm-campo-bloqueado');
+          if (_inpBloq) {
+            _inpBloq.style.setProperty('border', '1.5px solid #ef9f27', 'important');
+            _inpBloq.style.setProperty('border-radius', '12px', 'important');
+            _inpBloq.style.setProperty('color', '#ef9f27', 'important');
+            _inpBloq.style.setProperty('background', 'rgba(239,159,39,.06)', 'important');
+            _inpBloq.style.setProperty('font-weight', '600', 'important');
+            _inpBloq.style.setProperty('padding-right', '70px', 'important');
+          }
+        } else {
+          _wrapBloq.classList.remove('rm-campo-bloqueado');
+          if (_inpBloq) {
+            ['border','border-radius','color','background','font-weight','padding-right'].forEach(p => _inpBloq.style.removeProperty(p));
+          }
+        }
+      });
+    }
     const dropDestino = linha.querySelector('[data-campo="destinoDropdown"]');
     let timerBusca;
     inputDestino.addEventListener('input', () => {
@@ -803,7 +883,8 @@
       if (q.length < 3) { dropDestino.style.display = 'none'; return; }
       timerBusca = setTimeout(async () => {
         try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=pt`, { headers: { 'User-Agent': 'RMReservaSimples/1.0' } });
+          await _rmDetectarLocal();
+          const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=pt${_rmNominatimExtra()}`, { headers: { 'User-Agent': 'RMReservaSimples/1.0' } });
           const items = await r.json();
           dropDestino.innerHTML = '';
           items.forEach(it => {
@@ -892,6 +973,44 @@
   }
 
   document.getElementById('rmEuPagoPrincipal')?.addEventListener('change', _rmAtualizarEuPago);
+
+
+
+  // ── Efeito visual "bloqueado" (laranja) no campo de destino ──
+  function _rmAplicarBloqueio(chk, campoWrap){
+    if (!chk || !campoWrap) return;
+    const inp = campoWrap.querySelector('input');
+    if (chk.checked) {
+      campoWrap.classList.add('rm-campo-bloqueado');
+      if (inp) {
+        inp.style.setProperty('border', '1.5px solid #ef9f27', 'important');
+        inp.style.setProperty('border-radius', '12px', 'important');
+        inp.style.setProperty('color', '#ef9f27', 'important');
+        inp.style.setProperty('background', 'rgba(239,159,39,.06)', 'important');
+        inp.style.setProperty('font-weight', '600', 'important');
+        inp.style.setProperty('padding-right', '70px', 'important');
+      }
+    } else {
+      campoWrap.classList.remove('rm-campo-bloqueado');
+      if (inp) {
+        inp.style.removeProperty('border');
+        inp.style.removeProperty('border-radius');
+        inp.style.removeProperty('color');
+        inp.style.removeProperty('background');
+        inp.style.removeProperty('font-weight');
+        inp.style.removeProperty('padding-right');
+      }
+    }
+  }
+  // Principal: caixa rmBloquearPrincipal -> wrapper do inputDestino
+  (function(){
+    const chk = document.getElementById('rmBloquearPrincipal');
+    const dest = document.getElementById('inputDestino');
+    const wrap = dest ? dest.closest('.nm-wrap') : null;
+    if (chk && wrap) {
+      chk.addEventListener('change', () => _rmAplicarBloqueio(chk, wrap));
+    }
+  })();
 
   document.getElementById('btnConvidarMaisPessoas')?.addEventListener('click', () => {
     adicionarParticipanteExtra();

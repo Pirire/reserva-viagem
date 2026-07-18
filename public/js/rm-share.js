@@ -1,6 +1,6 @@
 // rm-share.js — Partilha de viagem, polling, rota ao vivo
 // ─────────────────────────────────────────────────────────────
-console.log("✅ rm-share.js VERSÃO 2026-07-02-EVT-V21-FASE2 carregado");
+console.log("✅ rm-share.js VERSÃO 2026-07-18-PRONTO-SEM-OTP-V23 carregado");
 
 // Ligação Socket.io dedicada aos eventos em tempo real da partilha
 // (pagamento falhado, recálculo, cancelamento, finalização). Criada
@@ -1128,12 +1128,19 @@ function setActiveShareCard(idx) {
         if (p)  p.textContent  = 'Introduza o código recebido por SMS para entrar na partilha.';
       }
     }
+    if (window._rmModoProto && inviteToken) {
+      // Modo "chamar motorista" (pós-pagamento): NÃO pede OTP.
+      // O link já traz o token válido; o hóspede só precisa de
+      // introduzir o código pronto no ecrã ESTOU PRONTO (validado
+      // pela rota /evento/estou-pronto contra o prontoOtpHash).
+      _evtInviteInfo = { token: inviteToken, inviteId: null };
+      _evtMostrarEcraProto();
+      return;
+    }
     if (inviteToken && inviteShareId) {
-      const legenda = window._rmModoProto
-        ? `Introduza o código para confirmar o embarque.`
-        : (window._rmModoEvento
+      const legenda = window._rmModoEvento
             ? `Este é o seu bilhete do evento. Introduza o código recebido para validar.`
-            : `Convite de partilha: ${inviteShareId}. Introduza o código SMS para entrar.`);
+            : `Convite de partilha: ${inviteShareId}. Introduza o código SMS para entrar.`;
       showInviteBar(legenda);
       openPopup(els.inviteVerifyPopup);
     }
@@ -1424,17 +1431,17 @@ function setActiveShareCard(idx) {
         <div style="font-size:22px;font-weight:900;color:#f4f6f8;line-height:1.32;letter-spacing:.02em;margin-bottom:12px">
           Confirme agora e enviaremos<br>o seu motorista
         </div>
-        <div style="font-size:12.5px;color:#8b95a2;line-height:1.5;margin-bottom:44px">
-          Ao tocar no botão abaixo, um motorista da REALMETROPOLIS será atribuído e enviado ao seu ponto de recolha.
+        <div style="font-size:12.5px;color:#8b95a2;line-height:1.5;margin-bottom:32px">
+          Introduza o código que recebeu por SMS/email e toque no botão — um motorista será atribuído e enviado ao seu ponto de recolha.
         </div>
 
-        <!-- Campo do codigo de confirmacao -->
-        <div style="margin-bottom:24px;text-align:left">
-          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.06em;color:#8b95a2;margin-bottom:8px;text-align:center">
-            CODIGO DE CONFIRMACAO (recebido por SMS/email)
-          </label>
-          <input id="evtCodigoPronto" type="text" inputmode="numeric" maxlength="6" placeholder="------" style="width:100%;padding:16px;text-align:center;background:#0a0b0d;color:#f4f6f8;font-family:monospace;font-size:24px;letter-spacing:.4em;font-weight:700;border:1.5px solid #2a2e35;border-radius:12px;outline:none" autocomplete="one-time-code">
-        </div>
+        <!-- Campo do código de confirmação -->
+        <input id="evtCodigoPronto" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+          style="width:100%;max-width:240px;text-align:center;font-size:28px;font-weight:800;
+          letter-spacing:.28em;padding:16px;margin-bottom:24px;border-radius:12px;background:#0b0d11;
+          border:1.5px solid rgba(196,201,212,.25);color:#fff;font-family:inherit;outline:none"
+          onfocus="this.style.borderColor='#c4c9d4'"
+          onblur="this.style.borderColor='rgba(196,201,212,.25)'">
 
         <!-- Botão ESTOU PRONTO -->
         <button id="btnEstouPronto" type="button" style="
@@ -1467,16 +1474,6 @@ function setActiveShareCard(idx) {
 
   async function _evtDispararEstouPronto() {
     if (_evtProntoEmAndamento) return;
-
-    // Ler e validar o código ANTES de bloquear/chamar o backend.
-    const campoCodigo = document.getElementById('evtCodigoPronto');
-    const codigo = (campoCodigo?.value || '').trim();
-    if (!codigo) {
-      showToast('Introduza o código de confirmação que recebeu por SMS/email.', 4000);
-      if (campoCodigo) campoCodigo.focus();
-      return;
-    }
-
     _evtProntoEmAndamento = true;
 
     const btn = document.getElementById('btnEstouPronto');
@@ -1488,13 +1485,21 @@ function setActiveShareCard(idx) {
     }
 
     try {
+      const _codigoEl = document.getElementById('evtCodigoPronto');
+      const _codigo = _codigoEl ? _codigoEl.value.trim() : '';
+      if (!_codigo) {
+        showToast('Introduza o código que recebeu por SMS/email.', 4000);
+        _evtProntoEmAndamento = false;
+        if (btn) { btn.disabled = false; btn.textContent = 'ESTOU PRONTO'; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+        if (_codigoEl) _codigoEl.focus();
+        return;
+      }
       const data = await fetchJson(url('/partilha/evento/estou-pronto'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token:    _evtInviteInfo.token,
-          inviteId: _evtInviteInfo.inviteId,
-          codigo,
-        })
+        body: JSON.stringify(Object.assign(
+          { token: _evtInviteInfo.token, codigo: _codigo },
+          _evtInviteInfo.inviteId ? { inviteId: _evtInviteInfo.inviteId } : {}
+        ))
       });
       // Sucesso — passar para ecrã "A procurar motorista"
       _evtMostrarEcraProcurandoMotorista(data);

@@ -2154,7 +2154,10 @@ router.post("/evento/confirmar-otp", async (req, res) => {
     const { inviteId, eventoId } = payload;
     const invite = await ShareInvite.findOne({ inviteId, shareId: eventoId });
     if (!invite) return res.status(404).json({ ok: false, message: "Convite não encontrado." });
-    if (invite.usedAt) return res.status(409).json({ ok: false, message: "Convite já utilizado." });
+    // Só bloqueia a reentrada quando a viagem JÁ FOI DESPACHADA (tripRefId).
+    // O usedAt é marcado no pagamento, mas o hóspede pode fechar/reabrir a
+    // página livremente até o motorista ser mesmo despachado.
+    if (invite.tripRefId) return res.status(409).json({ ok: false, message: "Esta viagem já foi iniciada — o motorista já foi requisitado." });
 
     if ((invite.attempts || 0) >= 5) {
       return res.status(429).json({ ok: false, message: "Demasiadas tentativas. Contacte o organizador." });
@@ -2225,7 +2228,10 @@ router.post("/evento/definir-destino", async (req, res) => {
     const { inviteId, eventoId } = payload;
     const invite = await ShareInvite.findOne({ inviteId, shareId: eventoId });
     if (!invite) return res.status(404).json({ ok: false, message: "Convite não encontrado." });
-    if (invite.usedAt) return res.status(409).json({ ok: false, message: "Convite já utilizado." });
+    // Só bloqueia a reentrada quando a viagem JÁ FOI DESPACHADA (tripRefId).
+    // O usedAt é marcado no pagamento, mas o hóspede pode fechar/reabrir a
+    // página livremente até o motorista ser mesmo despachado.
+    if (invite.tripRefId) return res.status(409).json({ ok: false, message: "Esta viagem já foi iniciada — o motorista já foi requisitado." });
 
     // Calcular preço via OSRM (partida do evento → destino do participante)
     const partida = invite.partidaEvento;
@@ -2669,9 +2675,9 @@ router.post("/invite/pagar-pelo-hotel", requireCliente, async (req, res) => {
 ────────────────────────────────────────────────────────────────── */
 router.post("/evento/estou-pronto", async (req, res) => {
   try {
-    const { token, inviteId } = req.body || {};
-    if (!token || !inviteId) {
-      return res.status(400).json({ ok: false, message: "token e inviteId obrigatórios." });
+    const { token } = req.body || {};
+    if (!token) {
+      return res.status(400).json({ ok: false, message: "token obrigatório." });
     }
 
     const secret = getInviteSecret();
@@ -2681,6 +2687,14 @@ router.post("/evento/estou-pronto", async (req, res) => {
 
     if (payload?.typ !== "evento_invite") {
       return res.status(400).json({ ok: false, message: "Tipo de convite inválido." });
+    }
+
+    // inviteId: do body se vier, senão do próprio token (payload).
+    // Assim o modo "chamar motorista" não precisa de passar pelo OTP —
+    // o token do link já identifica o convite.
+    const inviteId = String(req.body?.inviteId || payload.inviteId || "").trim();
+    if (!inviteId) {
+      return res.status(400).json({ ok: false, message: "Convite inválido." });
     }
 
     const invite = await ShareInvite.findOne({ inviteId, shareId: payload.eventoId });
@@ -2853,9 +2867,9 @@ router.post("/evento/estou-pronto", async (req, res) => {
 ────────────────────────────────────────────────────────────────── */
 router.get("/evento/motorista-atribuido", async (req, res) => {
   try {
-    const { token, inviteId } = req.query || {};
-    if (!token || !inviteId) {
-      return res.status(400).json({ ok: false, message: "token e inviteId obrigatórios." });
+    const { token } = req.query || {};
+    if (!token) {
+      return res.status(400).json({ ok: false, message: "token obrigatório." });
     }
 
     const secret = getInviteSecret();
@@ -2863,8 +2877,13 @@ router.get("/evento/motorista-atribuido", async (req, res) => {
     try { payload = jwt.verify(token, secret); }
     catch { return res.status(401).json({ ok: false, message: "Token inválido ou expirado." }); }
 
-    if (payload?.typ !== "evento_invite" || payload.inviteId !== inviteId) {
-      return res.status(403).json({ ok: false, message: "Token não corresponde ao bilhete." });
+    if (payload?.typ !== "evento_invite") {
+      return res.status(400).json({ ok: false, message: "Tipo de convite inválido." });
+    }
+    // inviteId: do query se vier, senão do token
+    const inviteId = String(req.query?.inviteId || payload.inviteId || "").trim();
+    if (!inviteId) {
+      return res.status(400).json({ ok: false, message: "Convite inválido." });
     }
 
     const invite = await ShareInvite.findOne({ inviteId, shareId: payload.eventoId }).lean();
