@@ -717,6 +717,33 @@
      isto, o RESERVAR continua exactamente como sempre foi. ── */
   let _rmParticipantesExtraCount = 0;
 
+  // ── Janela de validade (botões +1h..+4h). Default 2h. ──
+  let _rmValidadeHoras = 2;
+  (function _initValidadeBtns(){
+    const btns = document.querySelectorAll('.rm-validade-btn');
+    if (!btns.length) return;
+    function marcar(horas){
+      _rmValidadeHoras = horas;
+      btns.forEach(b => b.classList.toggle('rm-validade-ativo', Number(b.dataset.horas) === horas));
+    }
+    btns.forEach(b => b.addEventListener('click', () => marcar(Number(b.dataset.horas))));
+    marcar(2); // por omissão +2h
+  })();
+
+  // Calcula o validUntil (ISO) = hora da reserva + horas escolhidas,
+  // limitado a máx 4h e ao fim do dia. Devolve null se não houver data.
+  function _rmCalcValidUntil(dateTimeStr){
+    if (!dateTimeStr) return null;
+    const base = new Date(dateTimeStr);
+    if (isNaN(base.getTime())) return null;
+    const horas = Math.min(Math.max(_rmValidadeHoras || 2, 1), 4); // 1..4
+    const vu = new Date(base.getTime() + horas * 60 * 60 * 1000);
+    // não passar do fim do mesmo dia
+    const fimDia = new Date(base); fimDia.setHours(23, 59, 0, 0);
+    if (vu > fimDia) return fimDia.toISOString();
+    return vu.toISOString();
+  }
+
   function adicionarParticipanteExtra() {
     const wrap = document.getElementById('rmParticipantesExtra');
     if (!wrap) return;
@@ -1033,6 +1060,8 @@
           participantes: participantesPayload,
           // Todos no mesmo veículo (viagem partilhada) vs cada um o seu.
           mesmoVeiculo: !!document.getElementById('rmMesmoVeiculo')?.checked,
+          // Janela de validade escolhida (ISO). Backend valida o limite de 4h.
+          validUntil: _rmCalcValidUntil(new Date(datahora).toISOString()),
         })
       });
       if (!resp.ok) throw new Error(resp.message || 'Erro ao criar reserva.');

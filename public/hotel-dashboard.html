@@ -92,6 +92,19 @@
   html.guest-invite-mode #inviteBar {
     display: none !important; /* substituído por #conviteOverlay, abaixo */
   }
+
+    .rm-validade-btn{
+      padding:9px 16px;border-radius:9px;cursor:pointer;
+      background:transparent;color:var(--silver-2);
+      border:1px solid rgba(196,201,212,.25);
+      font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.02em;
+      transition:all .18s;
+    }
+    .rm-validade-btn:hover{border-color:var(--silver-2);color:#f4f6f8}
+    .rm-validade-btn.rm-validade-ativo{
+      background:#c4c9d4 !important;color:#0a0b0e !important;border-color:#c4c9d4 !important;
+    }
+    .rm-validade-btn.rm-validade-ativo *{color:#0a0b0e !important;}
 </style>
 
 <!-- Overlay dedicado ao convite de partilha — único, sem cabeçalho
@@ -270,6 +283,20 @@
             <input class="field rm-hospede-field" id="inputNomeHospede" type="text" placeholder="Nome do hóspede" autocomplete="off">
             <input class="field rm-hospede-field" id="inputContactoHospede" type="tel" placeholder="Contacto do hóspede (para SMS)" autocomplete="off">
             <input class="field rm-hospede-field" id="inputEmailHospede" type="email" placeholder="Email do hóspede (para o email de confirmação)" autocomplete="off">
+          </div>
+
+          <!-- Janela de validade — o hóspede escolhe até quando o bilhete
+               é válido (máx 4h após a hora da reserva). Por omissão +2h. -->
+          <div id="rmValidadeWrap" style="margin-top:12px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--silver-2);margin-bottom:8px">
+              VÁLIDO POR (até chamar o motorista)
+            </div>
+            <div id="rmValidadeBtns" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="rm-validade-btn" data-horas="1">+1h</button>
+              <button type="button" class="rm-validade-btn" data-horas="2">+2h</button>
+              <button type="button" class="rm-validade-btn" data-horas="3">+3h</button>
+              <button type="button" class="rm-validade-btn" data-horas="4">+4h</button>
+            </div>
           </div>
 
           <!-- "+ Convidar mais pessoas" — opcional, escondido por
@@ -3179,7 +3206,7 @@
   </script>
 
   <!-- ══ MÓDULOS JS (ordem de dependência) ══════════════════ -->
-  <script src="js/rm-core.js?v=3"></script>
+  <script src="js/rm-core.js?v=4"></script>
   <script src="js/rm-requisitos.js"></script>
   <script src="js/rm-map.js"></script>
   <script src="/socket.io/socket.io.js"></script>
