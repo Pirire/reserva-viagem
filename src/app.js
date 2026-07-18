@@ -44,6 +44,7 @@ import partnerKeysRoutes             from "./routes/partnerKeys.routes.js";
 import validationSubmissionsRoutes   from "./routes/validationSubmissions.routes.js";
 import vehicleCategoryRoutes         from "./routes/vehicleCategory.routes.js";
 import convidadoRoutes               from "./routes/convidado.routes.js";
+import shortlinkRoutes               from "./routes/shortlink.js";
 
 const app = express();
 
@@ -118,6 +119,10 @@ app.get("/api/__health", (_req, res) => {
 app.get("/", (_req, res) =>
   res.sendFile(path.join(PUBLIC_DIR, "index.html"))
 );
+
+/* Link curto:  BASE/v/A7K9F  → redireciona para o link longo real.
+   Montado SEM /api, e antes das rotas /api, para o /v/ ser curto. */
+app.use("/", shortlinkRoutes);
 
 /* ==============================
    ROTAS ORGANIZADAS

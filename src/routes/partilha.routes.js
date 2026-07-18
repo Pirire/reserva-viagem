@@ -71,6 +71,7 @@ async function distanciaComFallback(pontosLatLng) {
 import { finalizeSharedTrip } from "../services/shareFinalize.service.js";
 import { criarEDespacharViagem } from "../services/criarEDespacharViagem.service.js";
 import { notificarConvite } from "../services/notificarConvite.service.js";
+import { criarShortLink } from "./shortlink.js";
 import { paypalRefundCapture } from "./payments.routes.js";
 
 // ✅ IMPORT "safe" (não quebra se teu smsTwilio.js não exportar canSendSms)
@@ -2353,7 +2354,22 @@ async function confirmarPagamentoEvento(shareId, inviteId, provider, ref, io, to
 
   // Enviar SMS/email ao convidado com o link "ESTOU PRONTO"
   const publicBase = getPublicBaseUrl();
-  const linkPronto = `${publicBase}/hotel-dashboard.html?invite=${encodeURIComponent(token)}&shareId=${encodeURIComponent(shareId)}&evt=1&pronto=1`;
+  const linkProntoLongo = `${publicBase}/hotel-dashboard.html?invite=${encodeURIComponent(token)}&shareId=${encodeURIComponent(shareId)}&evt=1&pronto=1`;
+  // Encurtar o link (BASE/v/A7K9F). Se falhar, usa o link longo — o
+  // hóspede nunca fica sem link. Expira com o convite (24h).
+  let linkPronto = linkProntoLongo;
+  try {
+    const short = await criarShortLink({
+      destino: linkProntoLongo,
+      shareId,
+      inviteId: invite.inviteId,
+      expiraEm: invite.inviteExpiresAt || (Date.now() + 24 * 60 * 60 * 1000),
+      baseUrl: publicBase,
+    });
+    linkPronto = short.url;
+  } catch (e) {
+    console.warn("⚠️ [shortlink] falhou, a usar link longo:", e?.message);
+  }
 
   // Formatar data de validade (só mostra se o concierge definiu)
   let blocoValidadeHtml = "";
