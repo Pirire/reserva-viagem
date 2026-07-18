@@ -216,7 +216,10 @@ function parseDateTime(dtRaw) {
 }
 
 function requireMin1h(tMillis) {
-  const min = Date.now() + 60 * 60 * 1000;
+  // ⚠️⚠️⚠️ MODO DE TESTE — limite baixado de 1 HORA para 1 MINUTO ⚠️⚠️⚠️
+  // Para testar o despacho sem esperar 1 hora. REPOR ANTES DE PRODUÇÃO:
+  //   const min = Date.now() + 60 * 60 * 1000;   // <-- valor REAL (1 hora)
+  const min = Date.now() + 1 * 60 * 1000;         // <-- TESTE (1 minuto)
   return tMillis >= min;
 }
 
@@ -1643,7 +1646,7 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
   try {
     const {
       nomeHospede, contactoHospede, emailHospede, destino, valor, requisitosEspeciais,
-      partida, categoria, datahora, participantes,
+      partida, categoria, datahora, participantes, validUntil: validUntilRaw,
     } = req.body || {};
 
     // Compatibilidade — se não vier "participantes" (array), monta
@@ -1694,6 +1697,20 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
     const t = parseDateTime(datahora);
     if (!t) return res.status(400).json({ ok: false, message: "datahora obrigatória (formato ISO)." });
 
+    // Prazo de validade (janela): o hóspede escolhe "válido por" (máx 4h
+    // após a hora da viagem). Sem isto, a reserva nunca expira.
+    let validUntil = validUntilRaw ? parseDateTime(validUntilRaw) : null;
+    if (validUntil) {
+      if (validUntil <= t) {
+        return res.status(400).json({ ok: false, message: "O prazo de validade deve ser depois da hora da viagem." });
+      }
+      const MAX_MS = 4 * 60 * 60 * 1000; // 4 horas
+      if (validUntil - t > MAX_MS) {
+        // Limita ao máximo de 4h em vez de rejeitar (mais tolerante).
+        validUntil = new Date(t.getTime() + MAX_MS);
+      }
+    }
+
     const cat = String(categoria || "economica");
     const secret = getInviteSecret();
     const shareId = genShareId();
@@ -1712,7 +1729,7 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
       categoria: cat,
       status: "active",
       scheduledAt: t,
-      validUntil: null,
+      validUntil: validUntil,
       notifMethod: "ambos",
       pagador: "hospede",
       createdAt: Date.now(),
@@ -2154,10 +2171,7 @@ router.post("/evento/confirmar-otp", async (req, res) => {
     const { inviteId, eventoId } = payload;
     const invite = await ShareInvite.findOne({ inviteId, shareId: eventoId });
     if (!invite) return res.status(404).json({ ok: false, message: "Convite não encontrado." });
-    // Só bloqueia a reentrada quando a viagem JÁ FOI DESPACHADA (tripRefId).
-    // O usedAt é marcado no pagamento, mas o hóspede pode fechar/reabrir a
-    // página livremente até o motorista ser mesmo despachado.
-    if (invite.tripRefId) return res.status(409).json({ ok: false, message: "Esta viagem já foi iniciada — o motorista já foi requisitado." });
+    if (invite.usedAt) return res.status(409).json({ ok: false, message: "Convite já utilizado." });
 
     if ((invite.attempts || 0) >= 5) {
       return res.status(429).json({ ok: false, message: "Demasiadas tentativas. Contacte o organizador." });
@@ -2228,10 +2242,7 @@ router.post("/evento/definir-destino", async (req, res) => {
     const { inviteId, eventoId } = payload;
     const invite = await ShareInvite.findOne({ inviteId, shareId: eventoId });
     if (!invite) return res.status(404).json({ ok: false, message: "Convite não encontrado." });
-    // Só bloqueia a reentrada quando a viagem JÁ FOI DESPACHADA (tripRefId).
-    // O usedAt é marcado no pagamento, mas o hóspede pode fechar/reabrir a
-    // página livremente até o motorista ser mesmo despachado.
-    if (invite.tripRefId) return res.status(409).json({ ok: false, message: "Esta viagem já foi iniciada — o motorista já foi requisitado." });
+    if (invite.usedAt) return res.status(409).json({ ok: false, message: "Convite já utilizado." });
 
     // Calcular preço via OSRM (partida do evento → destino do participante)
     const partida = invite.partidaEvento;
@@ -2689,9 +2700,8 @@ router.post("/evento/estou-pronto", async (req, res) => {
       return res.status(400).json({ ok: false, message: "Tipo de convite inválido." });
     }
 
-    // inviteId: do body se vier, senão do próprio token (payload).
-    // Assim o modo "chamar motorista" não precisa de passar pelo OTP —
-    // o token do link já identifica o convite.
+    // inviteId: do body se vier, senão do próprio token (payload) —
+    // o modo "chamar motorista" não passa pelo OTP.
     const inviteId = String(req.body?.inviteId || payload.inviteId || "").trim();
     if (!inviteId) {
       return res.status(400).json({ ok: false, message: "Convite inválido." });
