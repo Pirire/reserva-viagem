@@ -1062,5 +1062,109 @@ Desde 2018, a construir confiança todos os dias.</p>
       };
     });
   </script>
+
+<!-- ═══ OVERLAY DE CONSENTIMENTO (Cookies + Privacidade) ═══ -->
+<div id="rmConsentOverlay" style="
+  display:none; position:fixed; inset:0; z-index:99999;
+  background:rgba(4,5,7,.55); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  align-items:center; justify-content:center; padding:24px;
+  animation:rmConsentFade .4s ease;">
+  <div style="
+    width:min(560px,94vw); max-height:88vh; overflow-y:auto;
+    background:linear-gradient(180deg,rgba(24,27,34,.96),rgba(11,12,16,.98));
+    border:1px solid rgba(192,192,192,.20); border-radius:24px;
+    box-shadow:0 40px 120px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04) inset;
+    padding:36px 32px;">
+
+    <div style="text-align:center; margin-bottom:8px;">
+      <div style="font-size:13px; font-weight:900; letter-spacing:.18em; color:#c0c0c0; text-transform:uppercase;">REALMETROPOLIS</div>
+    </div>
+
+    <h2 style="font-size:20px; font-weight:800; color:#fff; text-align:center; margin:14px 0 18px; letter-spacing:.01em;">
+      Privacidade &amp; Cookies
+    </h2>
+
+    <div style="font-size:13.5px; line-height:1.7; color:#b8bec8; margin-bottom:24px;">
+      <p style="margin-bottom:12px;">
+        A RealMetropolis utiliza cookies e trata os seus dados pessoais de acordo com o
+        Regulamento Geral de Proteção de Dados (RGPD). Os cookies são essenciais para o
+        funcionamento da plataforma, para manter a sua sessão e para melhorar a sua experiência.
+      </p>
+      <p style="margin-bottom:12px;">
+        A sua localização é utilizada apenas durante uma viagem ativa, para efeitos de segurança
+        e acompanhamento do serviço. Os seus dados nunca são vendidos a terceiros e são tratados
+        de forma confidencial.
+      </p>
+      <p>
+        Ao continuar, confirma que leu e compreendeu a nossa política de privacidade e a utilização
+        de cookies.
+      </p>
+    </div>
+
+    <label style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; padding:14px 16px;
+      background:rgba(192,192,192,.05); border:1px solid rgba(192,192,192,.16); border-radius:14px; margin-bottom:22px;">
+      <input type="checkbox" id="rmConsentCheck" style="width:20px; height:20px; margin-top:1px; cursor:pointer; accent-color:#1cd68e; flex-shrink:0;">
+      <span style="font-size:14px; color:#e8ebef; font-weight:600; line-height:1.4;">
+        Li e autorizo o tratamento dos meus dados e a utilização de cookies.
+      </span>
+    </label>
+
+    <button id="rmConsentBtn" disabled style="
+      width:100%; padding:16px; border:none; border-radius:14px;
+      font-size:14px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+      background:rgba(192,192,192,.14); color:#6b7280; cursor:not-allowed;
+      transition:all .25s ease; font-family:inherit;">
+      Fechar
+    </button>
+
+  </div>
+</div>
+
+<style>
+  @keyframes rmConsentFade { from{opacity:0} to{opacity:1} }
+  #rmConsentBtn.rm-ativo {
+    background:linear-gradient(135deg,#1cd68e,#14b877) !important;
+    color:#04120b !important; cursor:pointer !important;
+    box-shadow:0 10px 30px rgba(28,214,142,.35) !important;
+  }
+  #rmConsentBtn.rm-ativo:hover { transform:translateY(-1px); }
+</style>
+
+<script>
+  (function(){
+    var CHAVE = 'rm_consentimento_v1';
+    var overlay = document.getElementById('rmConsentOverlay');
+    var check   = document.getElementById('rmConsentCheck');
+    var btn     = document.getElementById('rmConsentBtn');
+    if (!overlay || !check || !btn) return;
+
+    // Já aceitou antes? Então não mostra.
+    var jaAceitou = false;
+    try { jaAceitou = localStorage.getItem(CHAVE) === '1'; } catch(e){}
+
+    if (!jaAceitou) {
+      overlay.style.display = 'flex';
+    }
+
+    // O botão só fica ativo quando a caixa está marcada
+    check.addEventListener('change', function(){
+      if (check.checked) {
+        btn.disabled = false;
+        btn.classList.add('rm-ativo');
+      } else {
+        btn.disabled = true;
+        btn.classList.remove('rm-ativo');
+      }
+    });
+
+    // Fechar: guarda o consentimento e esconde para sempre
+    btn.addEventListener('click', function(){
+      if (btn.disabled) return;
+      try { localStorage.setItem(CHAVE, '1'); } catch(e){}
+      overlay.style.display = 'none';
+    });
+  })();
+</script>
+
 </body>
 </html>

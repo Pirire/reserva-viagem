@@ -144,6 +144,66 @@
     .rm-hospede-destino > input { width: 100% !important; box-sizing: border-box !important; }
     .rm-participante-extra .nm-wrap > input.rm-hospede-field,
     .rm-hospede-row .nm-wrap > input.rm-hospede-field { width: 100% !important; box-sizing: border-box !important; }
+
+    /* ── Textos dos botões encolhem com a moldura (não transbordam) ── */
+    .action-btn, .rm-step-next, #btnPreferencia {
+      min-width: 0 !important;
+      font-size: clamp(9px, 2.4vw, 13px) !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      padding-left: clamp(8px, 2vw, 18px) !important;
+      padding-right: clamp(8px, 2vw, 18px) !important;
+    }
+    .rm-step1-actions {
+      display: flex !important;
+      gap: 8px !important;
+      flex-wrap: nowrap !important;
+      align-items: stretch !important;
+    }
+    .rm-step1-actions > button { flex: 1 1 0 !important; }
+
+    /* ── Cabeçalho: SAIR encolhe e nunca invade o nome do titular ── */
+    .topbar {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 10px !important;
+    }
+    .topbar .brand {
+      min-width: 0 !important;       /* deixa o nome encolher com "..." */
+      flex: 1 1 auto !important;
+      overflow: hidden !important;
+    }
+    .topbar .brand-copy h1 {
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+    .topbar .top-actions {
+      flex: 0 0 auto !important;      /* os botões ficam sempre à direita */
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+    }
+    /* Botão SAIR: moldura e texto encolhem com o ecrã */
+    #btnEncerrarSessao {
+      flex: 0 0 auto !important;
+      font-size: clamp(9px, 2vw, 12px) !important;
+      padding: clamp(6px, 1.4vw, 10px) clamp(8px, 1.6vw, 14px) !important;
+      white-space: nowrap !important;
+    }
+
+    /* ── Carrossel: linha desliza lateralmente quando não cabe ── */
+    .rm-carrossel {
+      scrollbar-width: none;              /* Firefox: sem barra */
+      -ms-overflow-style: none;           /* IE/Edge: sem barra */
+    }
+    .rm-carrossel::-webkit-scrollbar { display: none; }  /* Chrome/Safari: sem barra */
+    .rm-carrossel > * { flex: 0 0 auto; }  /* itens mantêm o tamanho, não encolhem */
+
+    /* KPIs dentro do carrossel: largura mínima para deslizarem bem */
+    .rm-carrossel > .sla-kpi { flex: 0 0 auto !important; min-width: 120px; }
 </style>
 
 <!-- Overlay dedicado ao convite de partilha — único, sem cabeçalho
@@ -272,7 +332,7 @@
     <button class="drop-btn" id="menuBtnContactos">MEUS CONTACTOS</button>
     <button class="drop-btn" id="menuBtnEstatisticas">ESTATÍSTICAS</button>
     <button class="drop-btn" id="menuBtnClassificacoes">CLASSIFICAÇÕES</button>
-    <button class="drop-btn" id="menuBtnSLA">RELATÓRIO SLA</button>
+    <button class="drop-btn" id="menuBtnSLA">RELATÓRIO</button>
   </nav>
 
   <!-- SELETOR DE MODO -->
@@ -293,8 +353,7 @@
     <span id="rmRiMin">—</span>
   </div>
 
-  <!-- Botão VER ROTA — canto inferior esquerdo, igual a reserva.html -->
-  <button id="rmBtnVerRota">🗺 VER ROTA</button>
+  <!-- Botão VER ROTA movido para a linha dos botões de validade -->
 
   <!-- Botão VOLTAR AO FORMULÁRIO — aparece quando mapa está a descoberto -->
   <button id="rmBtnVoltarFormulario">↑ VOLTAR AO FORMULÁRIO</button>
@@ -304,7 +363,7 @@
     <section class="panel hidden" id="tripPanel">
       <div class="panel-head">
         <div>
-          <h2>RESERVA PRIVADA</h2>
+          <h2>NOVA RESERVA</h2>
           <p id="rmStepSub">Para onde vai?</p>
         </div>
         <button class="close-btn" id="btnCloseTrip">✕</button>
@@ -339,11 +398,12 @@
             <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--silver-2);margin-bottom:8px">
               VÁLIDO POR (até chamar o motorista)
             </div>
-            <div id="rmValidadeBtns" style="display:flex;gap:8px;flex-wrap:wrap">
+            <div id="rmValidadeBtns" class="rm-carrossel" style="display:flex;gap:8px;flex-wrap:nowrap;align-items:center;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding-bottom:2px">
               <button type="button" class="rm-validade-btn" data-horas="1">+1h</button>
               <button type="button" class="rm-validade-btn" data-horas="2">+2h</button>
               <button type="button" class="rm-validade-btn" data-horas="3">+3h</button>
               <button type="button" class="rm-validade-btn" data-horas="4">+4h</button>
+              <button id="rmBtnVerRota" type="button">🗺 MAPA</button>
             </div>
           </div>
 
@@ -1290,7 +1350,7 @@
     <div class="popup-card" style="width:min(780px,94vw);max-height:92vh">
       <div class="popup-head">
         <div>
-          <h3>RELATÓRIO SLA</h3>
+          <h3>RELATÓRIO</h3>
           <p>Relatório profissional completo — viagem, despesas, estatísticas semanais</p>
         </div>
         <div style="display:flex;gap:6px;align-items:center">
@@ -1361,7 +1421,7 @@
         <!-- ── SECÇÃO 3: DESPESAS ── -->
         <div>
           <div class="sla-section-title">Resumo de Despesas</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div class="rm-carrossel" style="display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding-bottom:2px">
             <div class="sla-kpi">
               <div class="sla-kpi-label">Tarifa Base</div>
               <div class="sla-kpi-value" id="slaBase" style="font-size:15px">—</div>
@@ -1395,7 +1455,7 @@
             <canvas id="slaWeekChart"></canvas>
           </div>
           <!-- Stats semanais em 3 caixas -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+          <div class="rm-carrossel" style="display:flex;gap:8px;margin-top:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding-bottom:2px">
             <div class="sla-kpi" style="border-color:rgba(31,201,125,.20);background:rgba(31,201,125,.04)">
               <div class="sla-kpi-label">Viagens Finalizadas</div>
               <div class="sla-kpi-value" id="slaWeekFin" style="color:var(--ok)">—</div>
@@ -1634,35 +1694,25 @@
 
     /* ── Botão VER ROTA — canto inferior esquerdo, pulsante ── */
     #rmBtnVerRota {
-      position: fixed;
-      bottom: 108px;   /* acima do floating-shell (bottom:24px + ~80px) */
-      left: 16px;
-      z-index: 1150;
-      display: none;
-      height: 46px;
-      padding: 0 22px;
-      border-radius: 999px;
-      background: #1fc97d;
-      border: none;
-      color: #06120d;
+      display: none;               /* escondido até haver endereços */
+      padding: 9px 14px;
+      border-radius: 9px;
+      border: 1px solid #c4c9d4;
+      background: #c4c9d4;                    /* prata */
+      color: #0a0b0e !important;              /* letras pretas */
+      font-family: inherit;
       font-size: 12px;
       font-weight: 800;
-      letter-spacing: .08em;
+      letter-spacing: .04em;
       cursor: pointer;
-      transition: .18s ease;
-      font-family: inherit;
+      transition: all .18s;
       align-items: center;
-      gap: 8px;
-      box-shadow: 0 4px 24px rgba(31,201,125,.45), 0 2px 8px rgba(0,0,0,.5);
-      animation: rmRoutePulse 2.2s ease-in-out infinite;
+      gap: 6px;
+      white-space: nowrap;
     }
-    @keyframes rmRoutePulse {
-      0%,100% { box-shadow: 0 4px 24px rgba(31,201,125,.45), 0 2px 8px rgba(0,0,0,.5); }
-      50%      { box-shadow: 0 4px 32px rgba(31,201,125,.75), 0 0 0 6px rgba(31,201,125,.12), 0 2px 8px rgba(0,0,0,.5); }
-    }
-    #rmBtnVerRota.show { display: flex; }
-    #rmBtnVerRota:hover  { background: #22e08a; transform: translateY(-2px); }
-    #rmBtnVerRota:active { transform: scale(.97); animation: none; }
+    #rmBtnVerRota.show { display: inline-flex; }   /* aparece ao lado do +4h */
+    #rmBtnVerRota:hover  { background: #d6dae2; transform: translateY(-1px); }
+    #rmBtnVerRota:active { transform: scale(.97); }
 
     /* ── Botão VOLTAR AO FORMULÁRIO — centrado, aparece quando painel oculto ── */
     #rmBtnVoltarFormulario {
@@ -3153,7 +3203,7 @@
           document.getElementById('rmRiMin').textContent = _fmtMin(route.duration);
           document.getElementById('rmRouteInfo').classList.add('show');
 
-          // Mostrar botão VER ROTA
+          // Mostrar botão VER ROTA (há endereços + rota traçada)
           document.getElementById('rmBtnVerRota').classList.add('show');
 
         } catch (e) {
@@ -3285,40 +3335,7 @@
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJ6XoeSWUFGWFwPPgOQXZA1zfGpy1ECTg&loading=async&libraries=geometry&callback=_rmMapsReady"
     async defer></script>
 
-<div style="position:fixed;right:14px;bottom:14px;z-index:400">
-  <div style="font-size:12px;font-family:Inter,Arial,system-ui,sans-serif;color:#9aa1ab;background:rgba(8,10,13,.72);backdrop-filter:blur(10px);padding:9px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px">
-    <span style="opacity:.7">&copy; REALMETROPOLIS</span>
-    <span style="opacity:.35">&middot;</span>
-    <a href="#" onclick="abrirLegalOverlay('privacidade');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Privacidade</a>
-    <span style="opacity:.35">&middot;</span>
-    <a href="#" onclick="abrirLegalOverlay('cookies');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Cookies</a>
-  </div>
-</div>
-
-<!-- Overlay translúcido — Privacidade / Cookies -->
-<div id="legalOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(4,5,7,.72);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:24px">
-  <div style="width:min(720px,94vw);max-height:86vh;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(22,25,31,.92),rgba(10,11,14,.96));border:1px solid rgba(255,255,255,.14);border-radius:22px;box-shadow:0 40px 100px rgba(0,0,0,.6);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)">
-      <div style="font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;text-transform:uppercase">REALMETROPOLIS</div>
-      <button onclick="fecharLegalOverlay()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#cdd2da;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;line-height:1">&times;</button>
-    </div>
-    <iframe id="legalOverlayFrame" src="" style="flex:1;border:none;width:100%;background:transparent;min-height:60vh"></iframe>
-  </div>
-</div>
-<script>
-function abrirLegalOverlay(tipo){
-  var url = tipo === 'cookies' ? '/cookies.html' : '/privacidade.html';
-  document.getElementById('legalOverlayFrame').src = url;
-  document.getElementById('legalOverlay').style.display = 'flex';
-}
-function fecharLegalOverlay(){
-  document.getElementById('legalOverlay').style.display = 'none';
-  document.getElementById('legalOverlayFrame').src = '';
-}
-document.getElementById('legalOverlay')?.addEventListener('click', function(e){
-  if (e.target.id === 'legalOverlay') fecharLegalOverlay();
-});
-</script>
+<!-- (rodape cookies/privacidade removido - consentimento agora no index.html) -->
 
 </body>
 </html>
