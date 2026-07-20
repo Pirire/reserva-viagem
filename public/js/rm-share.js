@@ -1,6 +1,6 @@
 // rm-share.js — Partilha de viagem, polling, rota ao vivo
 // ─────────────────────────────────────────────────────────────
-console.log("✅ rm-share.js VERSÃO 2026-07-18-PRONTO-SEM-OTP-V23 carregado");
+console.log("✅ rm-share.js VERSÃO 2026-07-02-EVT-V21-FASE2 carregado");
 
 // Ligação Socket.io dedicada aos eventos em tempo real da partilha
 // (pagamento falhado, recálculo, cancelamento, finalização). Criada
@@ -1128,19 +1128,12 @@ function setActiveShareCard(idx) {
         if (p)  p.textContent  = 'Introduza o código recebido por SMS para entrar na partilha.';
       }
     }
-    if (window._rmModoProto && inviteToken) {
-      // Modo "chamar motorista" (pós-pagamento): NÃO pede OTP.
-      // O link já traz o token válido; o hóspede só precisa de
-      // introduzir o código pronto no ecrã ESTOU PRONTO (validado
-      // pela rota /evento/estou-pronto contra o prontoOtpHash).
-      _evtInviteInfo = { token: inviteToken, inviteId: null };
-      _evtMostrarEcraProto();
-      return;
-    }
     if (inviteToken && inviteShareId) {
-      const legenda = window._rmModoEvento
+      const legenda = window._rmModoProto
+        ? `Introduza o código para confirmar o embarque.`
+        : (window._rmModoEvento
             ? `Este é o seu bilhete do evento. Introduza o código recebido para validar.`
-            : `Convite de partilha: ${inviteShareId}. Introduza o código SMS para entrar.`;
+            : `Convite de partilha: ${inviteShareId}. Introduza o código SMS para entrar.`);
       showInviteBar(legenda);
       openPopup(els.inviteVerifyPopup);
     }
@@ -1203,6 +1196,24 @@ function setActiveShareCard(idx) {
     const otp = (els.inviteOtpInput.value || '').trim();
     if (!inviteToken || !inviteShareId) { showToast('Convite inválido.'); return; }
     if (!otp) { showToast('Introduza o código SMS.'); return; }
+    // Modo PRONTO (pós-pagamento): o código que o utilizador introduz
+    // é o "código de chamar motorista" (prontoOtp), validado pelo
+    // /evento/estou-pronto — NÃO pelo confirmar-otp (o bilhete já foi
+    // pago, logo já tem usedAt preenchido, e o confirmar-otp devolvia
+    // 409 "já utilizado"). Guardamos o código e vamos direto ao ecrã
+    // ESTOU PRONTO, que o envia no momento certo.
+    if (window._rmModoProto) {
+      _evtCodigoPronto = otp;
+      // Precisamos do inviteId/eventoId para o estou-pronto. Vêm do
+      // token do link (o backend também os lê de lá como fallback).
+      if (!_evtInviteInfo) {
+        _evtInviteInfo = { token: inviteToken, inviteId: null, eventoId: inviteShareId };
+      }
+      closePopup(els.inviteVerifyPopup);
+      el('inviteBar')?.classList.remove('show');
+      _evtMostrarEcraProto();
+      return;
+    }
     // Modo Evento chama rota própria (o backend distingue-os pelo
     // typ do JWT — se cruzarmos, devolve "Tipo de convite inválido").
     if (window._rmModoEvento) return verifyEventoInviteAccess(otp);
@@ -1299,6 +1310,7 @@ function setActiveShareCard(idx) {
      typ:"evento_invite", que só o /evento/confirmar-otp aceita).
   ═══════════════════════════════════════════════════════════════ */
   let _evtInviteInfo = null; // { inviteId, eventoId, nome, partida, scheduledAt, token }
+  let _evtCodigoPronto = null; // código "chamar motorista" (modo pronto=1), enviado no estou-pronto
 
   async function verifyEventoInviteAccess(otp) {
     try {
@@ -1376,10 +1388,11 @@ function setActiveShareCard(idx) {
     // atribuído. Se sim, o convidado está a voltar ao link após ter
     // clicado ESTOU PRONTO — vai direto ao mapa.
     try {
-      const params = new URLSearchParams({
-        token:    _evtInviteInfo.token,
-        inviteId: _evtInviteInfo.inviteId,
-      });
+      const params = new URLSearchParams({ token: _evtInviteInfo.token });
+      // Só enviar inviteId se existir — senão o URLSearchParams envia a
+      // string "null", e o servidor procura um bilhete "null" (404).
+      // Em falta, o servidor usa o inviteId que está dentro do token.
+      if (_evtInviteInfo.inviteId) params.set('inviteId', _evtInviteInfo.inviteId);
       const data = await fetchJson(url('/partilha/evento/motorista-atribuido?' + params.toString()));
       if (data?.atribuido && data.motorista) {
         _evtTripId = data.tripId;
@@ -1431,17 +1444,9 @@ function setActiveShareCard(idx) {
         <div style="font-size:22px;font-weight:900;color:#f4f6f8;line-height:1.32;letter-spacing:.02em;margin-bottom:12px">
           Confirme agora e enviaremos<br>o seu motorista
         </div>
-        <div style="font-size:12.5px;color:#8b95a2;line-height:1.5;margin-bottom:32px">
-          Introduza o código que recebeu por SMS/email e toque no botão — um motorista será atribuído e enviado ao seu ponto de recolha.
+        <div style="font-size:12.5px;color:#8b95a2;line-height:1.5;margin-bottom:44px">
+          Ao tocar no botão abaixo, um motorista da REALMETROPOLIS será atribuído e enviado ao seu ponto de recolha.
         </div>
-
-        <!-- Campo do código de confirmação -->
-        <input id="evtCodigoPronto" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
-          style="width:100%;max-width:240px;text-align:center;font-size:28px;font-weight:800;
-          letter-spacing:.28em;padding:16px;margin-bottom:24px;border-radius:12px;background:#0b0d11;
-          border:1.5px solid rgba(196,201,212,.25);color:#fff;font-family:inherit;outline:none"
-          onfocus="this.style.borderColor='#c4c9d4'"
-          onblur="this.style.borderColor='rgba(196,201,212,.25)'">
 
         <!-- Botão ESTOU PRONTO -->
         <button id="btnEstouPronto" type="button" style="
@@ -1485,21 +1490,16 @@ function setActiveShareCard(idx) {
     }
 
     try {
-      const _codigoEl = document.getElementById('evtCodigoPronto');
-      const _codigo = _codigoEl ? _codigoEl.value.trim() : '';
-      if (!_codigo) {
-        showToast('Introduza o código que recebeu por SMS/email.', 4000);
-        _evtProntoEmAndamento = false;
-        if (btn) { btn.disabled = false; btn.textContent = 'ESTOU PRONTO'; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
-        if (_codigoEl) _codigoEl.focus();
-        return;
-      }
+      const _corpo = {
+        token:    _evtInviteInfo.token,
+        inviteId: _evtInviteInfo.inviteId,
+      };
+      // Modo pronto=1: incluir o código de "chamar motorista" que o
+      // utilizador introduziu — o backend exige-o para despachar.
+      if (_evtCodigoPronto) _corpo.codigo = _evtCodigoPronto;
       const data = await fetchJson(url('/partilha/evento/estou-pronto'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign(
-          { token: _evtInviteInfo.token, codigo: _codigo },
-          _evtInviteInfo.inviteId ? { inviteId: _evtInviteInfo.inviteId } : {}
-        ))
+        body: JSON.stringify(_corpo)
       });
       // Sucesso — passar para ecrã "A procurar motorista"
       _evtMostrarEcraProcurandoMotorista(data);
@@ -1564,10 +1564,11 @@ function setActiveShareCard(idx) {
     _evtPollTentativas++;
 
     try {
-      const params = new URLSearchParams({
-        token:    _evtInviteInfo.token,
-        inviteId: _evtInviteInfo.inviteId,
-      });
+      const params = new URLSearchParams({ token: _evtInviteInfo.token });
+      // Só enviar inviteId se existir — senão o URLSearchParams envia a
+      // string "null", e o servidor procura um bilhete "null" (404).
+      // Em falta, o servidor usa o inviteId que está dentro do token.
+      if (_evtInviteInfo.inviteId) params.set('inviteId', _evtInviteInfo.inviteId);
       const data = await fetchJson(url('/partilha/evento/motorista-atribuido?' + params.toString()));
 
       if (data?.atribuido && data.motorista) {

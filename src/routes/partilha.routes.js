@@ -8,6 +8,7 @@ import Motorista from "../models/Motorista.js";
 import ShareInvite from "../models/ShareInvite.js";
 import ShareTrip from "../models/ShareTrip.js";
 import Trip from "../models/Trip.js";
+import Veiculo from "../models/Veiculo.js";
 import { getConfig, calcularPreco } from "./quote.routes.js";
 // Sem chave Google Maps configurada (GOOGLE_MAPS_API_KEY), e sem
 // custos/configuração extra: o resto da aplicação (reserva.html,
@@ -2916,7 +2917,7 @@ router.get("/evento/motorista-atribuido", async (req, res) => {
     // engine ainda está a procurar. Devolvemos "atribuido:false"
     // e o frontend continua o polling.
     const m = trip.driver?.driverId;
-    const estadoOk = ["atribuida", "em_viagem", "aceite", "confirmada"].includes(String(trip.status || "").toLowerCase());
+    const estadoOk = ["atribuida", "em_viagem", "aceite", "confirmada", "assigned", "accepted", "in_progress"].includes(String(trip.status || "").toLowerCase());
 
     if (!m || !estadoOk) {
       return res.json({
@@ -2931,8 +2932,27 @@ router.get("/evento/motorista-atribuido", async (req, res) => {
     // já tem snapshot em trip.driver.veiculo/matricula quando o
     // motorista foi atribuído; usamos isso se estiver preenchido,
     // senão caímos para o que o Motorista tem no perfil).
-    const veiculoSnap = trip.driver?.veiculo    || m.veiculo    || "";
-    const matriculaSnap = trip.driver?.matricula || m.matricula || "";
+    let veiculoSnap   = trip.driver?.veiculo    || m.veiculo    || "";
+    let matriculaSnap = trip.driver?.matricula  || m.matricula  || "";
+    let corVeiculo    = m.cor || "";
+    // Se o snapshot/perfil não têm o veículo, buscá-lo na coleção
+    // Veiculo pelo motoristaId — é lá que vive (mesma fonte que o
+    // reservas.routes.js já usa). Sem isto, veículo e matrícula
+    // apareciam vazios ("—") no cartão do motorista.
+    if (!veiculoSnap || !matriculaSnap) {
+      try {
+        const v = await Veiculo.findOne({ motoristaId: m._id })
+          .select("marca modelo matricula cor")
+          .lean();
+        if (v) {
+          if (!veiculoSnap)   veiculoSnap   = `${v.marca || ""} ${v.modelo || ""}`.trim();
+          if (!matriculaSnap) matriculaSnap = v.matricula || "";
+          if (!corVeiculo)    corVeiculo    = v.cor || "";
+        }
+      } catch (errVeic) {
+        console.warn("⚠️ [evento/motorista-atribuido] falha a buscar veículo:", errVeic?.message);
+      }
+    }
 
     return res.json({
       ok: true,
@@ -2946,7 +2966,7 @@ router.get("/evento/motorista-atribuido", async (req, res) => {
         contacto:      m.contacto || "",
         veiculo:       veiculoSnap,
         matricula:     matriculaSnap,
-        cor:           m.cor      || "",
+        cor:           corVeiculo || m.cor || "",
         rating:        m.rating   || 5,
         lat:           m.lat      || null,
         lng:           m.lng      || null,
