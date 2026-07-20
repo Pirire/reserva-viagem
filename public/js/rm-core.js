@@ -804,6 +804,9 @@
     const wrap = document.getElementById('rmParticipantesExtra');
     if (!wrap) return;
     wrap.style.display = 'flex';
+    // Mostrar também o invólucro do carrossel (com as setas)
+    const _carWrap = document.getElementById('rmCarrosselWrap');
+    if (_carWrap) _carWrap.style.display = 'block';
 
     // Caixa "Todos no mesmo veículo" — criada uma única vez, aparece
     // assim que há pelo menos um convidado. Marcada = uma só viagem
@@ -824,7 +827,7 @@
     linha.className = 'rm-hospede-row rm-participante-extra';
     linha.dataset.idx = idx;
     linha.dataset.numFixo = idx + 2;   // Nº fixo por ordem de criação (organizador=1)
-    linha.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:10px;border:1px solid rgba(196,201,212,.15);position:relative';
+    linha.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:10px;border:1px solid rgba(196,201,212,.15);position:relative;flex:0 0 auto;box-sizing:border-box';
     linha.innerHTML = `
       <div class="rm-participante-header" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
         <span class="rm-num-badge-forte" style="font-size:12px;font-weight:900;letter-spacing:.04em;color:#c4c9d4">Nº —</span>
@@ -1251,7 +1254,9 @@
       // Limpa também os participantes extra — nova reserva começa
       // sempre limpa, como já acontecia com o hóspede principal.
       const _wrapExtra = document.getElementById('rmParticipantesExtra');
-      if (_wrapExtra) { _wrapExtra.innerHTML = ''; _wrapExtra.style.display = 'none'; }
+      if (_wrapExtra) { _wrapExtra.innerHTML = ''; }
+      const _carWrapReset = document.getElementById('rmCarrosselWrap');
+      if (_carWrapReset) _carWrapReset.style.display = 'none';
       const _mvWrap = document.getElementById('rmMesmoVeiculoWrap');
       if (_mvWrap) _mvWrap.remove();
       _rmParticipantesExtraCount = 0;

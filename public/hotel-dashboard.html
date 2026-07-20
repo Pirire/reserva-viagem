@@ -204,6 +204,17 @@
 
     /* KPIs dentro do carrossel: largura mínima para deslizarem bem */
     .rm-carrossel > .sla-kpi { flex: 0 0 auto !important; min-width: 120px; }
+
+    /* ── Cartões de participante: cada um ocupa SEMPRE a largura total ──
+       Nunca reduz nem divide o espaço — um cartão completo por vez,
+       com encaixe (snap). Desliza-se para ver os outros. */
+    #rmParticipantesExtra { scroll-snap-type: x mandatory; }
+    #rmParticipantesExtra > .rm-participante-extra {
+      flex: 0 0 100% !important;
+      width: 100% !important;
+      box-sizing: border-box;
+      scroll-snap-align: center;
+    }
 </style>
 
 <!-- Overlay dedicado ao convite de partilha — único, sem cabeçalho
@@ -414,14 +425,18 @@
                cada um a receber o link de pagamento da sua parte.
                Sem isto ligado, o formulário funciona exactamente
                como sempre funcionou — uma pessoa, um destino. -->
-          <button type="button" id="btnConvidarMaisPessoas" style="display:inline-flex;align-items:center;gap:4px;background:#1cd68e;border:none;color:#04120b;font-size:11px;font-weight:900;letter-spacing:.03em;cursor:pointer;padding:5px 10px;border-radius:16px;text-align:center;width:auto;align-self:flex-start">
+          <button type="button" id="btnConvidarMaisPessoas" style="display:inline-flex;align-items:center;gap:3px;background:transparent;border:1px solid #1cd68e;color:#1cd68e;font-size:11px;font-weight:900;letter-spacing:.02em;cursor:pointer;padding:3px 9px;border-radius:14px;text-align:center;width:auto;align-self:flex-start">
             ＋ PARTICIPANTES
           </button>
-          <div id="rmParticipantesExtra" style="display:none;flex-direction:column;gap:10px;margin-top:6px"></div>
+          <div id="rmCarrosselWrap" style="display:none;position:relative;margin-top:6px">
+            <button type="button" id="rmCarrosselPrev" aria-label="Anterior" style="display:none;position:absolute;left:-6px;top:50%;transform:translateY(-50%);z-index:5;width:32px;height:32px;border-radius:50%;background:rgba(28,214,142,.92);border:none;color:#04120b;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);align-items:center;justify-content:center;line-height:1">‹</button>
+            <div id="rmParticipantesExtra" class="rm-carrossel" style="display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding-bottom:4px;scroll-snap-type:x mandatory"></div>
+            <button type="button" id="rmCarrosselNext" aria-label="Seguinte" style="display:none;position:absolute;right:-6px;top:50%;transform:translateY(-50%);z-index:5;width:32px;height:32px;border-radius:50%;background:rgba(28,214,142,.92);border:none;color:#04120b;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);align-items:center;justify-content:center;line-height:1">›</button>
+          </div>
 
           <div class="rm-step1-actions">
             <button class="action-btn secondary" id="btnPreferencia">ADICIONAR PREFERÊNCIA</button>
-            <button class="rm-step-next" id="rmBtnStep1Next" type="button">CONTINUAR</button>
+            <button class="rm-step-next" id="rmBtnStep1Next" type="button" style="color:#000 !important">CONTINUAR</button>
           </div>
         </div>
 
@@ -555,7 +570,7 @@
               <span class="req-esp-qty">1</span>
             </button>
           </div>
-          <button class="rm-step-next" id="rmBtnStep2Next" type="button">CONTINUAR</button>
+          <button class="rm-step-next" id="rmBtnStep2Next" type="button" style="color:#000 !important">CONTINUAR</button>
         </div>
 
         <!-- Popup de quantidade dos requisitos especiais -->
@@ -1699,8 +1714,9 @@
       padding: 9px 14px;
       border-radius: 9px;
       border: 1px solid #c4c9d4;
-      background: #c4c9d4;                    /* prata */
-      color: #0a0b0e !important;              /* letras pretas */
+      background: #c4c9d4 !important;        /* prata */
+      color: #000 !important;                 /* letras pretas */
+      opacity: 1 !important;
       font-family: inherit;
       font-size: 12px;
       font-weight: 800;
@@ -1759,7 +1775,7 @@
       border-radius: 14px;
       border: none;
       background: linear-gradient(135deg, #1fc97d, #16a363);
-      color: #fff;
+      color: #04140e !important;
       font-size: 12px;
       font-weight: 800;
       letter-spacing: .07em;
@@ -3278,7 +3294,27 @@
       background: rgba(31,201,125,.15) !important;
       border-color: rgba(31,201,125,.5) !important;
     }
-  </style>
+  
+    /* ── Letras pretas GARANTIDAS (vence regras anteriores) ── */
+    #rmBtnVerRota, #rmBtnVerRota * { color: #000 !important; }
+    #tripPanel .rm-step-next, #tripPanel #rmBtnStep1Next,
+    #tripPanel #rmBtnStep2Next { color: #000 !important; }
+
+    /* ── CORREÇÃO FINAL de cores (vence tudo) ── */
+    #tripPanel #rmBtnStep1Next,
+    #tripPanel #rmBtnStep2Next {
+      background: #c4c9d4 !important;
+      color: #000 !important;
+      -webkit-text-fill-color: #000 !important;
+    }
+    /* Botão fechar do participante: SEMPRE vermelho (o #tripPanel não o pinta) */
+    #tripPanel .rm-participante-remover,
+    #rmParticipantesExtra .rm-participante-remover {
+      color: #ff5a5a !important;
+      -webkit-text-fill-color: #ff5a5a !important;
+      background: transparent !important;
+    }
+</style>
 
   <script>
     (function () {
@@ -3310,7 +3346,7 @@
   </script>
 
   <!-- ══ MÓDULOS JS (ordem de dependência) ══════════════════ -->
-  <script src="js/rm-core.js?v=22"></script>
+  <script src="js/rm-core.js?v=24"></script>
   <script src="js/rm-requisitos.js"></script>
   <script src="js/rm-map.js"></script>
   <script src="/socket.io/socket.io.js"></script>
@@ -3343,5 +3379,68 @@
 
 <!-- (rodape cookies/privacidade removido - consentimento agora no index.html) -->
 
+
+<script>
+  (function(){
+    const ordem = ['inputPartida','inputDestino','inputNomeHospede','inputContactoHospede','inputEmailHospede'];
+    const dropdownAberto = (id) => {
+      const map = { inputPartida:'nmPartida', inputDestino:'nmDestino' };
+      const dd = map[id] ? document.getElementById(map[id]) : null;
+      return dd && dd.classList.contains('open');
+    };
+    ordem.forEach((id, i) => {
+      const campo = document.getElementById(id);
+      if (!campo) return;
+      campo.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        if (dropdownAberto(id)) return;
+        e.preventDefault();
+        for (let j = i + 1; j < ordem.length; j++) {
+          const prox = document.getElementById(ordem[j]);
+          if (prox) { prox.focus(); return; }
+        }
+        campo.blur();
+      });
+    });
+  })();
+</script>
+
+<script>
+  // Setas do carrossel de participantes: aparecem conforme há conteúdo
+  // à esquerda/direita; clicam para deslizar um cartão.
+  (function(){
+    const car  = document.getElementById('rmParticipantesExtra');
+    const prev = document.getElementById('rmCarrosselPrev');
+    const next = document.getElementById('rmCarrosselNext');
+    const wrap = document.getElementById('rmCarrosselWrap');
+    if (!car || !prev || !next || !wrap) return;
+
+    function atualizar(){
+      const temCartoes = car.querySelectorAll('.rm-participante-extra').length > 0;
+      wrap.style.display = temCartoes ? 'block' : 'none';
+      if (!temCartoes) return;
+      const maxScroll = car.scrollWidth - car.clientWidth;
+      const x = car.scrollLeft;
+      // Seta esquerda: só se já rolou para a direita
+      prev.style.display = (x > 8) ? 'flex' : 'none';
+      // Seta direita: só se ainda há conteúdo à direita
+      next.style.display = (x < maxScroll - 8) ? 'flex' : 'none';
+    }
+
+    function passo(){
+      const primeiro = car.querySelector('.rm-participante-extra');
+      return primeiro ? (primeiro.getBoundingClientRect().width + 10) : car.clientWidth;
+    }
+    prev.addEventListener('click', () => { car.scrollBy({ left: -passo(), behavior: 'smooth' }); });
+    next.addEventListener('click', () => { car.scrollBy({ left:  passo(), behavior: 'smooth' }); });
+
+    car.addEventListener('scroll', atualizar, { passive: true });
+    window.addEventListener('resize', atualizar);
+    // Observar quando cartões são adicionados/removidos
+    new MutationObserver(atualizar).observe(car, { childList: true });
+    // Primeira atualização
+    setTimeout(atualizar, 100);
+  })();
+</script>
 </body>
 </html>
