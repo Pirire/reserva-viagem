@@ -41,7 +41,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
 
   <!-- Estilos -->
-  <link rel="stylesheet" href="css/rm-dashboard.css">
+  <link rel="stylesheet" href="css/rm-dashboard.css?v=3">
 
   <!-- Dependências externas -->
   <script src="https://js.stripe.com/v3/"></script>
@@ -337,7 +337,7 @@
 
   <!-- SELETOR DE MODO -->
   <div class="trip-type-wrap" id="tripTypeWrap">
-    <button class="trip-type-btn" id="btnSemPartilha">RESERVAR</button>
+    <button class="trip-type-btn" id="btnSemPartilha">VIAJAR</button>
     <button class="trip-type-btn" id="btnPartilharAmigos">PARTILHAR VIAGEM</button>
   </div>
 
@@ -363,7 +363,7 @@
     <section class="panel hidden" id="tripPanel">
       <div class="panel-head">
         <div>
-          <h2>NOVA RESERVA</h2>
+          <h2>NOVA VIAGEM</h2>
           <p id="rmStepSub">Para onde vai?</p>
         </div>
         <button class="close-btn" id="btnCloseTrip">✕</button>
@@ -384,6 +384,7 @@
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
               <input type="checkbox" id="rmEuPagoPrincipal" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
               <span>Eu pago (escolher quem)</span>
+              <span id="rmEuPagoValor" style="display:none;margin-left:auto;font-weight:800;font-size:13px;color:#1cd68e;background:rgba(28,214,142,.12);border:1px solid rgba(28,214,142,.35);border-radius:8px;padding:3px 10px">—</span>
             </label>
             <div class="rm-eupago-lista-principal" style="display:none;flex-wrap:wrap;gap:6px;padding:8px 0 2px"></div>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
@@ -2908,7 +2909,12 @@
         const wrap = originalParent;
         if (!wrap) return;
         const r = wrap.getBoundingClientRect();
-        const opensUp = true; // painel é bottom-sheet — sempre há mais espaço acima
+        // Direção dinâmica: abre para BAIXO se houver espaço suficiente abaixo
+        // do campo; só abre para cima se não couber abaixo mas couber acima.
+        const espacoAbaixo = window.innerHeight - r.bottom;
+        const espacoAcima  = r.top;
+        const alturaMin    = 180; // espaço desejável para o dropdown
+        const opensUp = (espacoAbaixo < alturaMin && espacoAcima > espacoAbaixo);
         dropdown.style.position = 'fixed';
         dropdown.style.left = r.left + 'px';
         dropdown.style.width = r.width + 'px';
@@ -3304,7 +3310,7 @@
   </script>
 
   <!-- ══ MÓDULOS JS (ordem de dependência) ══════════════════ -->
-  <script src="js/rm-core.js?v=13"></script>
+  <script src="js/rm-core.js?v=16"></script>
   <script src="js/rm-requisitos.js"></script>
   <script src="js/rm-map.js"></script>
   <script src="/socket.io/socket.io.js"></script>

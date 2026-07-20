@@ -825,7 +825,10 @@
     linha.dataset.idx = idx;
     linha.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:10px;border:1px solid rgba(196,201,212,.15);position:relative';
     linha.innerHTML = `
-      <button type="button" class="rm-participante-remover" style="position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--silver-2);font-size:11px;cursor:pointer">✕ remover</button>
+      <div class="rm-participante-header" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
+        <span class="rm-num-badge-forte" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:900;letter-spacing:.04em;color:#c4c9d4;background:rgba(196,201,212,.12);border:1px solid rgba(196,201,212,.3);border-radius:10px;padding:5px 14px">👤 Nº —</span>
+        <button type="button" class="rm-participante-remover" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.35);color:#ff8a8a;font-size:13px;font-weight:800;cursor:pointer;border-radius:10px;padding:6px 14px">✕ Fechar</button>
+      </div>
       <input class="field rm-hospede-field" placeholder="Nome do participante" data-campo="nome">
       <input class="field rm-hospede-field" type="tel" placeholder="Contacto" data-campo="contacto">
       <input class="field rm-hospede-field" type="email" placeholder="Email (opcional)" data-campo="email">
@@ -931,14 +934,9 @@
     // Badges nos convidados extra
     pagadoresUI.forEach(p => {
       if (!p.linhaEl) return;
-      let badge = p.linhaEl.querySelector('.rm-num-badge');
-      if (!badge) {
-        badge = document.createElement('div');
-        badge.className = 'rm-num-badge';
-        badge.style.cssText = 'position:absolute;top:8px;left:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#c4c9d4;opacity:.7';
-        p.linhaEl.insertBefore(badge, p.linhaEl.firstChild);
-      }
-      badge.textContent = `Nº ${p.num}`;
+      // Atualizar o número no header forte (novo formato)
+      const badgeForte = p.linhaEl.querySelector('.rm-num-badge-forte');
+      if (badgeForte) badgeForte.innerHTML = `\u{1F464} N\u00ba ${p.num}`;
     });
 
     // Anti-conflito
@@ -969,6 +967,29 @@
         wrap.querySelector('input').addEventListener('change', _rmAtualizarEuPago);
         p.listaEl.appendChild(wrap);
       });
+    });
+
+    // ── DESTAQUE VERDE no input do nome de quem é BENEFICIÁRIO ──
+    // assumidoPor[num] != null significa que alguém paga por esse participante.
+    // Aplica-se ao input do nome (principal ou convidado).
+    pagadoresUI.forEach(p => {
+      let inputNome = null;
+      if (p.num === 1) {
+        inputNome = document.getElementById('inputNomeHospede');
+      } else if (p.linhaEl) {
+        inputNome = p.linhaEl.querySelector('input[data-campo="nome"]') || p.linhaEl.querySelector('.rm-hospede-field');
+      }
+      if (!inputNome) return;
+      const ehBeneficiario = assumidoPor[p.num] != null;
+      if (ehBeneficiario) {
+        inputNome.style.setProperty('border-color', '#1cd68e', 'important');
+        inputNome.style.setProperty('box-shadow', '0 0 0 2px rgba(28,214,142,.25)', 'important');
+        inputNome.style.setProperty('background', 'rgba(28,214,142,.06)', 'important');
+      } else {
+        inputNome.style.removeProperty('border-color');
+        inputNome.style.removeProperty('box-shadow');
+        inputNome.style.removeProperty('background');
+      }
     });
   }
 
