@@ -823,11 +823,12 @@
     const linha = document.createElement('div');
     linha.className = 'rm-hospede-row rm-participante-extra';
     linha.dataset.idx = idx;
+    linha.dataset.numFixo = idx + 2;   // Nº fixo por ordem de criação (organizador=1)
     linha.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:10px;border:1px solid rgba(196,201,212,.15);position:relative';
     linha.innerHTML = `
       <div class="rm-participante-header" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px">
-        <span class="rm-num-badge-forte" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:900;letter-spacing:.04em;color:#c4c9d4;background:rgba(196,201,212,.12);border:1px solid rgba(196,201,212,.3);border-radius:10px;padding:5px 14px">👤 Nº —</span>
-        <button type="button" class="rm-participante-remover" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.35);color:#ff8a8a;font-size:13px;font-weight:800;cursor:pointer;border-radius:10px;padding:6px 14px">✕ Fechar</button>
+        <span class="rm-num-badge-forte" style="font-size:12px;font-weight:900;letter-spacing:.04em;color:#c4c9d4">Nº —</span>
+        <button type="button" class="rm-participante-remover" style="background:transparent;border:none;color:#ff5a5a;font-size:11px;font-weight:800;cursor:pointer;padding:2px 4px">✕ fechar</button>
       </div>
       <input class="field rm-hospede-field" placeholder="Nome do participante" data-campo="nome">
       <input class="field rm-hospede-field" type="tel" placeholder="Contacto" data-campo="contacto">
@@ -846,9 +847,30 @@
         <span>Bloquear viagem (destino fixo)</span>
       </label>
     `;
-    wrap.appendChild(linha);
+    // Inserir na posição ORDENADA por número (Nº crescente: 2,3,4...).
+    // O número é fixo (numFixo), mas a posição na lista segue a ordem.
+    const meuNum = idx + 2;
+    const existentes = Array.from(wrap.querySelectorAll('.rm-participante-extra'));
+    const posterior = existentes.find(l => (Number(l.dataset.numFixo) || 999) > meuNum);
+    if (posterior) wrap.insertBefore(linha, posterior);
+    else wrap.appendChild(linha);
 
     linha.querySelector('.rm-participante-remover').addEventListener('click', () => linha.remove());
+
+    // Cursor automático no campo do nome (pronto a escrever) + Enter salta de campo.
+    const _campos = Array.from(linha.querySelectorAll('input.rm-hospede-field'));
+    const _nome = linha.querySelector('input[data-campo="nome"]') || _campos[0];
+    if (_nome) setTimeout(() => _nome.focus(), 60);
+    _campos.forEach((campo, ci) => {
+      campo.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const prox = _campos[ci + 1];
+          if (prox) prox.focus();
+          else campo.blur();
+        }
+      });
+    });
 
     // Autocomplete geográfico — mesma função já usada no destino do
     // evento, com IDs únicos por linha (não tem id fixo, por isso
@@ -920,9 +942,11 @@
     const chkP = document.getElementById('rmEuPagoPrincipal');
     if (chkP) out.push({ num: 1, chk: chkP, listaEl: document.querySelector('.rm-eupago-lista-principal'), linhaEl: null });
     const linhas = Array.from(document.querySelectorAll('#rmParticipantesExtra .rm-participante-extra'));
-    linhas.forEach((linha, i) => {
-      linha.dataset.num = i + 2;
-      out.push({ num: i + 2, chk: linha.querySelector('.rm-eupago-check'), listaEl: linha.querySelector('.rm-eupago-lista'), linhaEl: linha });
+    linhas.forEach((linha) => {
+      // Nº por ORDEM DE CRIAÇÃO (fixo), não pela posição na tela.
+      const nFixo = Number(linha.dataset.numFixo) || (Number(linha.dataset.idx) + 2);
+      linha.dataset.num = nFixo;
+      out.push({ num: nFixo, chk: linha.querySelector('.rm-eupago-check'), listaEl: linha.querySelector('.rm-eupago-lista'), linhaEl: linha });
     });
     return out;
   }
@@ -936,7 +960,7 @@
       if (!p.linhaEl) return;
       // Atualizar o número no header forte (novo formato)
       const badgeForte = p.linhaEl.querySelector('.rm-num-badge-forte');
-      if (badgeForte) badgeForte.innerHTML = `\u{1F464} N\u00ba ${p.num}`;
+      if (badgeForte) badgeForte.textContent = `N\u00ba ${p.num}`;
     });
 
     // Anti-conflito
