@@ -94,10 +94,10 @@
   }
 
     .rm-validade-btn{
-      padding:9px 16px;border-radius:9px;cursor:pointer;
+      padding:11px 21px;border-radius:10px;cursor:pointer;
       background:transparent;color:var(--silver-2);
       border:1px solid rgba(196,201,212,.25);
-      font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.02em;
+      font-family:inherit;font-size:15px;font-weight:800;letter-spacing:.02em;
       transition:all .18s;
     }
     .rm-validade-btn:hover{border-color:var(--silver-2);color:#f4f6f8}
@@ -214,6 +214,129 @@
       width: 100% !important;
       box-sizing: border-box;
       scroll-snap-align: center;
+    }
+
+    /* Painel alto; sem scroll */
+    @media (min-width: 900px) {
+      #tripPanel .panel-body { max-height: none !important; overflow-y: auto; }
+    }
+    /* Estado 1 (ao abrir): Partida e Destino EMPILHADOS (cada um na sua linha) */
+    #tripPanel .form-row:first-of-type {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    /* Estado 2 (com participantes): Partida | Destino | Data na MESMA linha */
+    #tripPanel.rm-tem-participantes .form-row:first-of-type {
+      flex-direction: row !important;
+      gap: 10px !important;
+      align-items: flex-start !important;
+    }
+    #tripPanel.rm-tem-participantes .form-row:first-of-type > .nm-wrap,
+    #tripPanel.rm-tem-participantes .form-row:first-of-type > #inputDateTime {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      width: auto !important;
+    }
+
+    /* ── Estado 1: campos esticam para preencher a altura toda (sem espaço vazio) ── */
+    #tripPanel .panel-body { display: flex; flex-direction: column; flex: 1 1 auto; }
+    #tripPanel #rmStep1 {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    /* No Estado 2 (com participantes) não distribui — deixa o carrossel mandar */
+    #tripPanel.rm-tem-participantes #rmStep1 { justify-content: flex-start; }
+
+    /* ── Estado 1: campos mais altos para preencher o espaço (sem vazios) ── */
+    @media (min-width: 900px) {
+      #tripPanel:not(.rm-tem-participantes) #rmStep1 .field,
+      #tripPanel:not(.rm-tem-participantes) #rmStep1 input.field {
+        padding-top: 18px !important;
+        padding-bottom: 18px !important;
+        font-size: 14px !important;
+      }
+      #tripPanel:not(.rm-tem-participantes) #rmStep1 label {
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+      }
+    }
+
+    /* ── ESPAÇAMENTO UNIFORME de todos os campos (Estado 1) ── */
+    #tripPanel:not(.rm-tem-participantes) #rmStep1 { gap: 12px !important; }
+    /* A linha do hóspede (Nome/Contacto/Email/caixas) usa o MESMO gap */
+    #tripPanel:not(.rm-tem-participantes) #rmStep1 .rm-hospede-row {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+      margin: 0 !important;
+    }
+    /* A form-row dos endereços (empilhada no Estado 1) usa o mesmo gap */
+    #tripPanel:not(.rm-tem-participantes) #rmStep1 .form-row:first-of-type {
+      gap: 12px !important;
+    }
+    /* Caixas de seleção alinhadas ao início das inputs (esquerda) */
+    #tripPanel #rmCaixasPrincipal {
+      align-items: flex-start !important;
+      width: 100%;
+      padding-left: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* ── Estado 2: cartões de participante preenchem o overlay (altura+largura) ── */
+    #tripPanel.rm-tem-participantes .panel-body { display: flex; flex-direction: column; }
+    #tripPanel.rm-tem-participantes #rmStep1 { flex: 1 1 auto; display: flex; flex-direction: column; }
+    #tripPanel.rm-tem-participantes #rmCarrosselWrap {
+      flex: 1 1 auto !important;
+      display: flex !important;
+      min-height: 0 !important;
+    }
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra {
+      flex: 1 1 auto;
+      align-items: stretch !important;
+    }
+    /* Cada cartão preenche a altura toda e distribui os campos */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra > .rm-participante-extra {
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-start !important;
+      gap: 12px !important;
+    }
+    /* Campos do cartão mais altos (preenchem melhor) */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .rm-hospede-field {
+      padding-top: 15px !important;
+      padding-bottom: 15px !important;
+      font-size: 14px !important;
+    }
+
+    /* ── Estado 2: campos MAIORES (X e Y), letras maiores, dropdown largura total ── */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .rm-hospede-field,
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra input.field {
+      padding-top: 17px !important;
+      padding-bottom: 17px !important;
+      font-size: 15px !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    /* O wrap do "Destino sugestivo" ocupa a largura toda (barra de sugestão igual) */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .nm-wrap {
+      width: 100% !important;
+      display: block !important;
+    }
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .nm-wrap > input {
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    /* Também aumentar os 3 campos de cima (Partida|Destino|Data) no Estado 2 */
+    #tripPanel.rm-tem-participantes #rmStep1 .form-row:first-of-type input.field {
+      padding-top: 15px !important;
+      padding-bottom: 15px !important;
+      font-size: 14px !important;
+    }
+    /* Caixas Eu pago / Bloquear dentro do cartão — letras maiores */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra label {
+      font-size: 13px !important;
     }
 </style>
 
@@ -348,7 +471,7 @@
 
   <!-- SELETOR DE MODO -->
   <div class="trip-type-wrap" id="tripTypeWrap">
-    <button class="trip-type-btn" id="btnSemPartilha">VIAJAR</button>
+    <button class="trip-type-btn" id="btnSemPartilha">RESERVAR</button>
     <button class="trip-type-btn" id="btnPartilharAmigos">PARTILHAR VIAGEM</button>
   </div>
 
@@ -383,31 +506,43 @@
 
         <!-- STEP 1: Endereços + Data/Hora -->
         <div class="rm-step" id="rmStep1">
+          <!-- Resumo compacto do organizador (aparece só quando há participantes) -->
+          <button type="button" id="rmOrganizadorResumo" style="display:none;width:100%;text-align:left;background:rgba(28,214,142,.08);border:1px solid rgba(28,214,142,.3);border-radius:12px;padding:10px 14px;cursor:pointer;color:#e8ebef;font-family:inherit">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div style="min-width:0">
+                <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:#1cd68e;text-transform:uppercase;margin-bottom:2px">Nº 1 · Organizador</div>
+                <div id="rmResumoTexto" style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Toque para editar</div>
+              </div>
+              <span style="font-size:11px;color:#1cd68e;font-weight:800;white-space:nowrap">✎ editar</span>
+            </div>
+          </button>
           <div class="form-row">
             <div class="nm-wrap" style="position:relative"><span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:#1cd68e;box-shadow:0 0 0 3px rgba(28,214,142,.18);z-index:2;pointer-events:none"></span><input class="field" id="inputPartida" type="text" placeholder="Local de Partida" autocomplete="new-password" style="padding-right:44px;padding-left:32px"><button id="geoPartidaBtn" title="Usar a minha localização" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;line-height:1;opacity:.55;transition:opacity .2s;padding:0" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.55'">📍</button><div class="nm-dropdown" id="nmPartida"></div></div>
             <div class="nm-wrap" style="position:relative"><span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:#ff6b6b;box-shadow:0 0 0 3px rgba(255,107,107,.18);z-index:2;pointer-events:none"></span><input class="field" id="inputDestino" type="text" placeholder="Endereço de Destino" autocomplete="new-password" style="padding-left:32px"><div class="nm-dropdown" id="nmDestino"></div></div>
             <input class="field" id="inputDateTime" type="datetime-local">
           </div>
-          <div class="form-row rm-hospede-row" style="margin-top:10px">
+          <div class="form-row rm-hospede-row" style="margin-top:0">
             <input class="field rm-hospede-field" id="inputNomeHospede" type="text" placeholder="Nome do hóspede" autocomplete="off">
             <input class="field rm-hospede-field" id="inputContactoHospede" type="tel" placeholder="Contacto do hóspede (para SMS)" autocomplete="off">
             <input class="field rm-hospede-field" id="inputEmailHospede" type="email" placeholder="Email do hóspede (para o email de confirmação)" autocomplete="off">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
-              <input type="checkbox" id="rmEuPagoPrincipal" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
-              <span>Eu pago (escolher quem)</span>
-              <span id="rmEuPagoValor" style="display:none;margin-left:auto;font-weight:800;font-size:13px;color:#1cd68e;background:rgba(28,214,142,.12);border:1px solid rgba(28,214,142,.35);border-radius:8px;padding:3px 10px">—</span>
-            </label>
+            <div id="rmCaixasPrincipal" style="display:flex;flex-direction:column;gap:8px;margin-top:6px;align-items:flex-start">
+              <label id="rmBloquearLabel" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer">
+                <input type="checkbox" id="rmBloquearPrincipal" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
+                <span>Bloquear destino (destino fixo, o hóspede não pode mudar)</span>
+              </label>
+              <label id="rmEuPagoLabel" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer">
+                <input type="checkbox" id="rmEuPagoPrincipal" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
+                <span>Eu pago (escolher quem)</span>
+                <span id="rmEuPagoValor" style="display:none;font-weight:800;font-size:13px;color:#1cd68e;background:rgba(28,214,142,.12);border:1px solid rgba(28,214,142,.35);border-radius:8px;padding:3px 10px">—</span>
+              </label>
+            </div>
             <div class="rm-eupago-lista-principal" style="display:none;flex-wrap:wrap;gap:6px;padding:8px 0 2px"></div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
-              <input type="checkbox" id="rmBloquearPrincipal" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
-              <span>Bloquear viagem (destino fixo, o hóspede não pode mudar)</span>
-            </label>
           </div>
 
           <!-- Janela de validade — o hóspede escolhe até quando o bilhete
                é válido (máx 4h após a hora da reserva). Por omissão +2h. -->
           <div id="rmValidadeWrap" style="margin-top:12px">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--silver-2);margin-bottom:8px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--silver-2);margin-bottom:8px" id="rmValidadeBtnsLabel">
               VÁLIDO POR (até chamar o motorista)
             </div>
             <div id="rmValidadeBtns" class="rm-carrossel" style="display:flex;gap:8px;flex-wrap:nowrap;align-items:center;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding-bottom:2px">
@@ -2432,17 +2567,30 @@
       left: 50%;
       bottom: 24px;
       transform: translateX(-50%);
-      width: 100%;
-      max-width: 480px;
+      width: 50%;              /* PC: ocupa 50% da largura */
+      min-width: 420px;         /* não fica estreito demais em ecrãs médios */
+      max-width: 720px;
       z-index: 50;
+    }
+    /* Telemóvel: ocupa o ecrã todo, como uma app */
+    @media (max-width: 640px) {
+      .floating-shell {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        left: 0;
+        bottom: 0;
+        transform: none;
+      }
     }
     #tripPanel.panel {
       width: 100%;
-      max-width: 480px;
+      max-width: 100%;
       margin: 0 auto;
       border-radius: 22px 22px 0 0;
       box-shadow: -40px 0 80px rgba(0,0,0,.5), 40px 0 80px rgba(0,0,0,.5), 0 -8px 40px rgba(0,0,0,.6);
-      max-height: 88vh;
+      height: auto;           /* adapta-se ao conteúdo — termina nos botões */
+      max-height: 90vh;
       display: flex;
       flex-direction: column;
       /* Fundo preto sólido em todas as etapas (Step 1 a 4) — substitui
@@ -2464,6 +2612,8 @@
     #tripPanel.panel .panel-body {
       overflow-y: auto;
       overflow-x: hidden;
+      flex: 1 1 auto;       /* preenche a altura disponível do painel */
+      min-height: 0;
     }
 
     /* ══════════════════════════════════════════════════════════════
@@ -3314,6 +3464,168 @@
       -webkit-text-fill-color: #ff5a5a !important;
       background: transparent !important;
     }
+
+    /* ── Efeito FLASH nos botões RESERVAR / PARTILHAR VIAGEM ── */
+    .trip-type-btn { position: relative; overflow: hidden; }
+    .trip-type-btn::after {
+      content: "";
+      position: absolute;
+      top: 0; left: -120%;
+      width: 60%; height: 100%;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,.55), transparent);
+      transform: skewX(-20deg);
+      animation: rmFlash 3.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes rmFlash {
+      0%   { left: -120%; }
+      45%  { left: 130%; }
+      100% { left: 130%; }
+    }
+
+    /* Cartão de participante: altura natural, sem espremer, dentro do scroll do painel */
+    #rmParticipantesExtra > .rm-participante-extra {
+      height: auto;
+    }
+    /* Quando há participantes, o carrossel destaca-se com um respiro em cima */
+    #rmCarrosselWrap { margin-top: 8px; }
+
+    /* Telemóvel: painel ocupa o ecrã todo (como app) */
+    @media (max-width: 640px) {
+      #tripPanel.panel {
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+      }
+    }
+
+    /* ── Organizador COLAPSADO (quando há participantes) ── */
+    /* Esconde os campos detalhados; mostra só o resumo compacto. */
+    #tripPanel.rm-org-colapsado #rmStep1 > .nm-wrap,
+    #tripPanel.rm-org-colapsado #rmStep1 > #inputDateTime,
+    #tripPanel.rm-org-colapsado #rmStep1 > #inputNomeHospede,
+    #tripPanel.rm-org-colapsado #rmStep1 > #inputContactoHospede,
+    #tripPanel.rm-org-colapsado #rmStep1 > #inputEmailHospede,
+    #tripPanel.rm-org-colapsado #rmStep1 > label,
+    #tripPanel.rm-org-colapsado #rmStep1 > .rm-eupago-lista-principal,
+    #tripPanel.rm-org-colapsado #rmStep1 > #rmValidadeWrap {
+      display: none !important;
+    }
+    #tripPanel.rm-org-colapsado #rmOrganizadorResumo { display: block !important; }
+    /* O carrossel de participantes fica soberano (ocupa o espaço) */
+    #tripPanel.rm-org-colapsado #rmCarrosselWrap { flex: 1 1 auto; }
+
+    /* ═══ COM PARTICIPANTES: organizador compacto (Partida→Destino→Data numa
+       linha; Eu pago + Bloquear noutra). Resto do organizador escondido,
+       para o formulário do participante ficar soberano, sem scroll. ═══ */
+
+    /* Esconder nome/contacto/email do hóspede, validade, mesmo-veículo */
+    #tripPanel.rm-tem-participantes #inputNomeHospede,
+    #tripPanel.rm-tem-participantes #inputContactoHospede,
+    #tripPanel.rm-tem-participantes #inputEmailHospede,
+    #tripPanel.rm-tem-participantes #rmValidadeBtnsLabel,
+    #tripPanel.rm-tem-participantes #rmValidadeBtns,
+    #tripPanel.rm-tem-participantes #rmMesmoVeiculoWrap {
+      display: none !important;
+    }
+
+    /* rmStep1 em coluna, compacto */
+    #tripPanel.rm-tem-participantes #rmStep1 {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    /* Partida, Destino e Data lado a lado (a mesma linha) */
+    #tripPanel.rm-tem-participantes #rmStep1 .nm-wrap,
+    #tripPanel.rm-tem-participantes #rmStep1 #inputDateTime {
+      display: inline-block !important;
+      width: calc(33.33% - 6px) !important;
+      vertical-align: top;
+      margin: 0 !important;
+    }
+    /* Os 3 campos de cima (Partida|Destino|Data) — tamanho médio confortável */
+    #tripPanel.rm-tem-participantes #rmStep1 > .form-row:first-of-type input.field {
+      padding-top: 14px !important; padding-bottom: 14px !important;
+      font-size: 14px !important;
+    }
+    /* Os campos dos PARTICIPANTES — grandes e legíveis */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra input.field,
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .rm-hospede-field {
+      padding-top: 18px !important; padding-bottom: 18px !important;
+      font-size: 15px !important;
+    }
+
+    /* As duas caixas (Eu pago + Bloquear) lado a lado no Estado 2 */
+    #tripPanel.rm-tem-participantes #rmCaixasPrincipal {
+      flex-direction: row !important;
+      gap: 12px !important;
+    }
+    #tripPanel.rm-tem-participantes #rmEuPagoLabel,
+    #tripPanel.rm-tem-participantes #rmBloquearLabel {
+      flex: 1 1 0 !important;
+      margin: 0 !important;
+      font-size: 11px !important;
+    }
+
+    /* O carrossel do participante fica soberano, com espaço garantido */
+    #tripPanel.rm-tem-participantes #rmCarrosselWrap {
+      flex: 1 1 auto;
+      min-height: 360px;
+    }
+
+    /* ═══ CARTÃO DE PARTICIPANTE — tudo maior e legível (regra final) ═══ */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra input.field,
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra input.rm-hospede-field {
+      padding-top: 18px !important;
+      padding-bottom: 18px !important;
+      font-size: 16px !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    /* nm-wrap do Destino sugestivo — largura total (mesmo comprimento) */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .nm-wrap {
+      width: 100% !important;
+      display: block !important;
+    }
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .nm-wrap > input {
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    /* Caixas (Eu pago / Bloquear) do cartão — letras maiores */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra label {
+      font-size: 14px !important;
+    }
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra label input[type="checkbox"] {
+      width: 20px !important;
+      height: 20px !important;
+    }
+    /* Número Nº e fechar — maiores */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .rm-num-badge-forte { font-size: 15px !important; }
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .rm-participante-remover { font-size: 13px !important; }
+
+    /* ═══ Títulos das CAIXAS DE MARCAÇÃO um pouco maiores (regra final) ═══ */
+    /* Caixas Eu pago / Bloquear dentro do cartão de participante */
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra label span {
+      font-size: 14px !important;
+    }
+    /* Opções "Nº X" (beneficiários) — título maior */
+    #tripPanel #rmParticipantesExtra .rm-eupago-opt + span,
+    #tripPanel .rm-eupago-lista label,
+    #tripPanel .rm-eupago-lista-principal label {
+      font-size: 13px !important;
+    }
+    /* Caixas Eu pago / Bloquear do organizador (Estado 1 e 2) */
+    #tripPanel #rmCaixasPrincipal label span {
+      font-size: 14px !important;
+    }
+
+    /* ═══ Inputs um pouco MENOS altos (regra final) ═══ */
+    #tripPanel #rmStep1 input.field,
+    #tripPanel #rmStep1 .rm-hospede-field,
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra input.field,
+    #tripPanel.rm-tem-participantes #rmParticipantesExtra .rm-hospede-field {
+      padding-top: 13px !important;
+      padding-bottom: 13px !important;
+    }
 </style>
 
   <script>
@@ -3346,7 +3658,7 @@
   </script>
 
   <!-- ══ MÓDULOS JS (ordem de dependência) ══════════════════ -->
-  <script src="js/rm-core.js?v=24"></script>
+  <script src="js/rm-core.js?v=28"></script>
   <script src="js/rm-requisitos.js"></script>
   <script src="js/rm-map.js"></script>
   <script src="/socket.io/socket.io.js"></script>

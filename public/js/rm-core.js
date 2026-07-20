@@ -807,6 +807,7 @@
     // Mostrar também o invólucro do carrossel (com as setas)
     const _carWrap = document.getElementById('rmCarrosselWrap');
     if (_carWrap) _carWrap.style.display = 'block';
+    document.getElementById('tripPanel')?.classList.add('rm-tem-participantes');
 
     // Caixa "Todos no mesmo veículo" — criada uma única vez, aparece
     // assim que há pelo menos um convidado. Marcada = uma só viagem
@@ -858,7 +859,16 @@
     if (posterior) wrap.insertBefore(linha, posterior);
     else wrap.appendChild(linha);
 
-    linha.querySelector('.rm-participante-remover').addEventListener('click', () => linha.remove());
+    linha.querySelector('.rm-participante-remover').addEventListener('click', () => {
+      linha.remove();
+      // Se já não houver participantes, o organizador volta ao tamanho completo
+      const car = document.getElementById('rmParticipantesExtra');
+      if (car && car.querySelectorAll('.rm-participante-extra').length === 0) {
+        document.getElementById('tripPanel')?.classList.remove('rm-tem-participantes');
+        const cw = document.getElementById('rmCarrosselWrap');
+        if (cw) cw.style.display = 'none';
+      }
+    });
 
     // Cursor automático no campo do nome (pronto a escrever) + Enter salta de campo.
     const _campos = Array.from(linha.querySelectorAll('input.rm-hospede-field'));
@@ -1257,6 +1267,7 @@
       if (_wrapExtra) { _wrapExtra.innerHTML = ''; }
       const _carWrapReset = document.getElementById('rmCarrosselWrap');
       if (_carWrapReset) _carWrapReset.style.display = 'none';
+      document.getElementById('tripPanel')?.classList.remove('rm-tem-participantes');
       const _mvWrap = document.getElementById('rmMesmoVeiculoWrap');
       if (_mvWrap) _mvWrap.remove();
       _rmParticipantesExtraCount = 0;
