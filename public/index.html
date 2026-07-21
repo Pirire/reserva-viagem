@@ -992,9 +992,22 @@ Desde 2018, a construir confiança todos os dias.</p>
         var _moveu = false;
         var container = faixa.parentElement;
 
-        function medir(){ largura = faixa.scrollWidth / 2; }
+        function medir(){
+          // Medir a largura EXACTA de um conjunto (as imagens originais),
+          // incluindo o gap. Somar cada imagem original + o gap entre elas
+          // é mais preciso que scrollWidth/2 (que conta um gap a mais na
+          // junção e fazia as imagens colarem/desalinharem no loop).
+          var estilo = getComputedStyle(faixa);
+          var gap = parseFloat(estilo.columnGap || estilo.gap || '0') || 0;
+          var total = 0;
+          for (var i = 0; i < originais.length; i++){
+            total += originais[i].getBoundingClientRect().width + gap;
+          }
+          largura = total;   // inclui o gap a seguir à última original -> junção perfeita
+        }
         // medir depois de as imagens carregarem
         setTimeout(medir, 300);
+        setTimeout(medir, 900);   // segunda medição (caso as imagens demorem a carregar)
         window.addEventListener('resize', medir);
 
         function normalizar(){
