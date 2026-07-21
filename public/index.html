@@ -116,21 +116,18 @@
 
     .carousel{
       display:flex;gap:30px;align-items:flex-end;
-      transition: transform 0.5s ease;
-      animation: rmCarrossel 32s linear infinite;
       will-change: transform;
+      cursor: grab;
+      touch-action: pan-y;
     }
-    /* Deslize contínuo — como as imagens estão duplicadas, ao chegar
-       a -50% volta ao início sem salto visível (loop infinito). */
-    @keyframes rmCarrossel{
-      from{ transform: translateX(0); }
-      to  { transform: translateX(-50%); }
-    }
-    /* Pausa ao passar o rato (desktop) para poder ver/clicar */
-    .carousel-container:hover .carousel{ animation-play-state: paused; }
-    /* Respeita quem desligou animações no sistema */
-    @media (prefers-reduced-motion: reduce){
-      .carousel{ animation: none; }
+    .carousel.a-arrastar{ cursor: grabbing; }
+    /* Impede o browser de "agarrar" a própria imagem ao arrastar
+       (senão a foto cola-se ao dedo/rato e fica pesado). */
+    .carousel img{
+      -webkit-user-drag: none;
+      user-select: none;
+      -webkit-user-select: none;
+      pointer-events: auto;
     }
 
     .carousel img{
@@ -590,7 +587,6 @@ Desde 2018, a construir confiança todos os dias.</p>
 
       function _contarToqueRM(e){
         e.stopPropagation();
-        e.preventDefault();           // impede o zoom/duplo-toque do telemóvel
 
         clicks++;
 
@@ -602,9 +598,9 @@ Desde 2018, a construir confiança todos os dias.</p>
           clicks = 0;
         }
       }
-      // pointerdown cobre rato e toque de forma fiável (evita o
-      // duplo-toque-para-zoom do telemóvel roubar os cliques)
-      adminLogoTrigger.addEventListener("pointerdown", _contarToqueRM);
+      // click funciona em rato e toque; o zoom por duplo-toque já é
+      // impedido pelo touch-action:manipulation no CSS do .rm-circle.
+      adminLogoTrigger.addEventListener("click", _contarToqueRM);
 
       const API_BASE =
         (location.protocol === "file:")
@@ -875,56 +871,86 @@ Desde 2018, a construir confiança todos os dias.</p>
         });
       });
 
-      // Carrossel automático: duplicar as imagens uma vez para o
-      // deslize (animação CSS) fazer loop contínuo sem salto.
+      // ===== Carrossel: deslize automático + arrastar livre =====
+      // Controlado por JS (não por CSS) para permitir arrastar nos
+      // dois sentidos (voltar/adiantar) e continuar o movimento.
       (function(){
         var faixa = document.getElementById('carousel');
         if (!faixa) return;
+
+        // Duplicar as imagens para o loop ser contínuo (sem fim visível)
         var originais = Array.prototype.slice.call(faixa.children);
+        originais.forEach(function(img){ img.setAttribute('draggable','false'); });
         originais.forEach(function(img){
           var copia = img.cloneNode(true);
           copia.setAttribute('aria-hidden','true');
-          // as cópias também abrem o lightbox
+          copia.setAttribute('draggable','false');
           copia.addEventListener('click', function(e){
             e.stopPropagation();
             var g = copia.dataset.group || null;
-            if (g) openLightbox(g, 0);
+            if (g && !_moveu) openLightbox(g, 0);
           });
           faixa.appendChild(copia);
         });
 
-        // ===== Arrastar para passar mais rápido (dedo ou rato) =====
-        var container = faixa.parentElement;   // .carousel-container
-        var arrastando = false, xInicio = 0, deslocInicial = 0, desloc = 0, moveu = false;
+        var pos = 0;               // posição atual (px)
+        var velocidade = 0.4;      // deslize automático (px por frame) — devagar
+        var largura = 0;           // largura de um conjunto (metade do total)
+        var arrastando = false, xInicio = 0, posInicio = 0;
+        var _moveu = false;
+        var container = faixa.parentElement;
+
+        function medir(){ largura = faixa.scrollWidth / 2; }
+        // medir depois de as imagens carregarem
+        setTimeout(medir, 300);
+        window.addEventListener('resize', medir);
+
+        function normalizar(){
+          // manter pos dentro de [-largura, 0] para o loop ser infinito
+          if (largura > 0){
+            while (pos <= -largura) pos += largura;
+            while (pos > 0)         pos -= largura;
+          }
+        }
+
+        function aplicar(){ faixa.style.transform = 'translateX(' + pos + 'px)'; }
+
+        // Loop de animação (deslize automático quando não se arrasta)
+        function tick(){
+          if (!arrastando && largura > 0){
+            pos -= velocidade;
+            normalizar();
+            aplicar();
+          }
+          requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
 
         function posX(e){ return e.touches ? e.touches[0].clientX : e.clientX; }
 
         function iniciar(e){
-          arrastando = true; moveu = false;
+          // com rato: impedir o "arrastar imagem" nativo do browser
+          if (!e.touches) e.preventDefault();
+          arrastando = true; _moveu = false;
           xInicio = posX(e);
-          faixa.style.animationPlayState = 'paused';   // pausa o automático
-          // ler a posição atual da animação para continuar de onde está
-          deslocInicial = desloc;
-          faixa.style.transition = 'none';
+          posInicio = pos;
+          faixa.classList.add('a-arrastar');
         }
         function mover(e){
           if (!arrastando) return;
           var dx = posX(e) - xInicio;
-          if (Math.abs(dx) > 4) moveu = true;
-          desloc = deslocInicial + dx;
-          faixa.style.transform = 'translateX(' + desloc + 'px)';
+          if (Math.abs(dx) > 4) _moveu = true;
+          pos = posInicio + dx;     // arrastar nos dois sentidos
+          normalizar();
+          aplicar();
         }
         function terminar(){
           if (!arrastando) return;
           arrastando = false;
-          // Retomar o deslize automático a partir da posição atual,
-          // com uma transição suave de volta ao movimento contínuo.
-          faixa.style.transition = '';
-          faixa.style.transform = '';
-          faixa.style.animationPlayState = '';
-          desloc = 0;
+          faixa.classList.remove('a-arrastar');
         }
 
+        faixa.addEventListener('dragstart', function(e){ e.preventDefault(); });
         container.addEventListener('mousedown', iniciar);
         window.addEventListener('mousemove', mover);
         window.addEventListener('mouseup', terminar);
@@ -932,9 +958,9 @@ Desde 2018, a construir confiança todos os dias.</p>
         container.addEventListener('touchmove', mover, {passive:true});
         container.addEventListener('touchend', terminar);
 
-        // Se arrastou, não abrir o lightbox (era só para passar)
+        // Se arrastou, não abrir o lightbox
         faixa.addEventListener('click', function(e){
-          if (moveu) { e.stopPropagation(); e.preventDefault(); moveu = false; }
+          if (_moveu) { e.stopPropagation(); e.preventDefault(); }
         }, true);
       })();
 
