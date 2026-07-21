@@ -105,7 +105,7 @@
 
     .carousel-container{
       width:100%;
-      position:fixed;left:0;bottom:10px;
+      position:fixed;left:0;bottom:40px;
       display:flex;align-items:flex-end;
       overflow:hidden;                 /* esconde as imagens que saem nas pontas */
       transition: transform 0.5s ease;
@@ -316,6 +316,37 @@
     }
     .rm-opt:active { transform:translateY(0); }
 
+    /* ===== Carrossel dos painéis de acesso (2 visíveis) ===== */
+    .rm-acesso-carrossel{
+      display:flex;gap:12px;margin-bottom:14px;
+      overflow-x:auto;scroll-snap-type:x mandatory;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;                 /* Firefox: sem barra */
+      padding-bottom:2px;
+    }
+    .rm-acesso-carrossel::-webkit-scrollbar{ display:none; }  /* Chrome/Safari */
+    .rm-acesso-carrossel > a{
+      flex:0 0 calc(50% - 6px);             /* 2 painéis visíveis */
+      scroll-snap-align:start;
+    }
+    .rm-acesso-carrossel .rm-opt{
+      padding:30px 12px;                    /* painéis MAIORES */
+      gap:12px !important;
+    }
+    .rm-acesso-carrossel .rm-opt span:first-child{ font-size:32px !important; }  /* ícone maior */
+    /* Bolinhas de navegação */
+    .rm-acesso-dots{
+      display:flex;justify-content:center;gap:8px;margin-bottom:18px;
+    }
+    .rm-acesso-dots .rm-dot{
+      width:8px;height:8px;border-radius:50%;
+      background:rgba(255,255,255,.25);
+      transition:background .2s,width .2s;
+    }
+    .rm-acesso-dots .rm-dot.ativa{
+      background:#c0c0c0;width:22px;border-radius:4px;   /* a ativa fica alongada */
+    }
+
   
   /* ===== MENU HAMBÚRGUER (só telemóvel) ===== */
   .rm-burger{
@@ -332,22 +363,50 @@
   .rm-burger.open .rm-burger-bar:nth-child(1){transform:translateY(7px) rotate(45deg)}
   .rm-burger.open .rm-burger-bar:nth-child(2){opacity:0}
   .rm-burger.open .rm-burger-bar:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
-  .rm-menu-backdrop{display:none;position:fixed;inset:0;z-index:180;background:rgba(0,0,0,.55)}
+  .rm-menu-backdrop{
+    display:none;position:fixed;inset:0;z-index:180;
+    background:rgba(0,0,0,.45);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
   /* Com o menu aberto, o botão reservar recua para trás do overlay */
   body.rm-menu-aberto .car-reserve-btn{ opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
   .rm-menu-backdrop.open{display:block}
   @media(max-width:820px){
+    /* ===== Painel lateral deslizante (premium) ===== */
     .header-center{
-      display:none !important;position:fixed;top:63px;right:0;
-      width:min(80vw,320px);flex-direction:column;align-items:stretch;gap:10px;
-      padding:16px;background:rgba(0,0,0,.96);
-      border-left:1px solid rgba(192,192,192,.18);
-      border-bottom:1px solid rgba(192,192,192,.18);
-      border-radius:0 0 0 16px;box-shadow:-8px 12px 40px rgba(0,0,0,.6);
-      z-index:190;max-height:calc(100vh - 63px);overflow-y:auto;
+      display:flex !important;flex-direction:column;align-items:stretch;gap:6px;
+      position:fixed;top:0;right:0;bottom:0;
+      width:min(82vw,340px);
+      padding:calc(env(safe-area-inset-top,0px) + 78px) 0 24px;
+      background:linear-gradient(180deg,#0c0c0e,#000);
+      border-left:1px solid rgba(192,192,192,.16);
+      box-shadow:-20px 0 60px rgba(0,0,0,.7);
+      z-index:190;overflow-y:auto;
+      transform:translateX(105%);              /* escondido fora do ecrã */
+      transition:transform .32s cubic-bezier(.4,0,.2,1);
+      visibility:hidden;
     }
-    .header-center.open{display:flex !important}
-    .header-center .pill-btn{margin-left:0;width:100%;text-align:left;font-size:15px;padding:14px 16px;border-radius:12px}
+    .header-center.open{ transform:translateX(0); visibility:visible; }
+    .header-center .pill-btn{
+      margin:0;width:100%;text-align:left;
+      display:flex;align-items:center;gap:14px;
+      font-size:15px;font-weight:600;letter-spacing:.02em;
+      padding:16px 24px;border-radius:0;border:none;
+      background:none;color:#e8e8e8;
+      border-left:2px solid transparent;
+      transition:background .18s,border-color .18s;
+    }
+    .header-center .pill-btn:hover,
+    .header-center .pill-btn:active{
+      background:rgba(192,192,192,.06);
+      border-left-color:#c0c0c0;
+    }
+    .header-center .pill-btn .rm-menu-ico{
+      width:22px;height:22px;flex:0 0 auto;color:#c0c0c0;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .header-center .pill-btn .rm-menu-ico svg{width:22px;height:22px}
     .rm-burger{display:flex}
     .brand-name{font-size:16px}
   }
@@ -367,10 +426,10 @@
     </div>
 
     <div class="header-center">
-      <button class="pill-btn" id="quemSomosBtn" type="button">QUEM SOMOS</button>
-      <button class="pill-btn" id="colaboradorBtn" type="button">HOTEL / ALOJAMENTO</button>
-      <button class="pill-btn" id="areaClienteBtn" type="button">ÁREA DE CLIENTE</button>
-      <button class="pill-btn" id="contatoBtn" type="button">CONTACTO</button>
+      <button class="pill-btn" id="quemSomosBtn" type="button"><span class="rm-menu-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>QUEM SOMOS</button>
+      <button class="pill-btn" id="colaboradorBtn" type="button"><span class="rm-menu-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h.01M9 12h.01M9 15h.01"/></svg></span>HOTEL / ALOJAMENTO</button>
+      <button class="pill-btn" id="areaClienteBtn" type="button"><span class="rm-menu-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg></span>ÁREA DE CLIENTE</button>
+      <button class="pill-btn" id="contatoBtn" type="button"><span class="rm-menu-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg></span>CONTACTO</button>
     </div>
 
     <div class="header-right">
@@ -525,9 +584,9 @@ Desde 2018, a construir confiança todos os dias.</p>
       <div style="font-size:11px;font-weight:900;color:#edf0f5;letter-spacing:.14em;margin-bottom:3px">ACESSO RESTRITO</div>
       <div style="font-size:11px;color:rgba(255,255,255,.35);margin-bottom:20px;letter-spacing:.04em">Selecione o tipo de acesso</div>
 
-      <div style="display:flex;gap:8px;margin-bottom:18px;align-items:stretch">
+      <div class="rm-acesso-carrossel" id="rmAcessoCarrossel">
 
-        <a href="./admin-login.html" style="text-decoration:none;flex:1;display:flex">
+        <a href="./admin-login.html" style="text-decoration:none;display:flex">
           <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
             <span style="font-size:24px;line-height:1">🔑</span>
             <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">ADMIN</span>
@@ -535,7 +594,7 @@ Desde 2018, a construir confiança todos os dias.</p>
           </div>
         </a>
 
-        <a href="./gestor-frota-login.html" style="text-decoration:none;flex:1;display:flex">
+        <a href="./gestor-frota-login.html" style="text-decoration:none;display:flex">
           <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
             <span style="font-size:24px;line-height:1">🚐</span>
             <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">GESTOR</span>
@@ -543,7 +602,7 @@ Desde 2018, a construir confiança todos os dias.</p>
           </div>
         </a>
 
-        <a href="./login-operador-seguranca.html" style="text-decoration:none;flex:1;display:flex">
+        <a href="./login-operador-seguranca.html" style="text-decoration:none;display:flex">
           <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
             <span style="font-size:24px;line-height:1">🛡️</span>
             <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">SEGURANÇA</span>
@@ -551,7 +610,7 @@ Desde 2018, a construir confiança todos os dias.</p>
           </div>
         </a>
 
-        <a href="./motorista-login.html" style="text-decoration:none;flex:1;display:flex">
+        <a href="./motorista-login.html" style="text-decoration:none;display:flex">
           <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
             <span style="font-size:24px;line-height:1">🚗</span>
             <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">MOTORISTA</span>
@@ -559,7 +618,7 @@ Desde 2018, a construir confiança todos os dias.</p>
           </div>
         </a>
 
-        <a href="./validador-login.html" style="text-decoration:none;flex:1;display:flex">
+        <a href="./validador-login.html" style="text-decoration:none;display:flex">
           <div class="rm-opt" style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 6px;gap:8px">
             <span style="font-size:24px;line-height:1">✅</span>
             <span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:.08em;display:block">VALIDADOR</span>
@@ -568,6 +627,7 @@ Desde 2018, a construir confiança todos os dias.</p>
         </a>
 
       </div>
+      <div class="rm-acesso-dots" id="rmAcessoDots"></div>
 
       <button onclick="document.getElementById('popupAdmin').classList.remove('active')"
         style="background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:8px;
@@ -655,6 +715,38 @@ Desde 2018, a construir confiança todos os dias.</p>
           var el=document.getElementById(id);
           if(el){el.style.opacity='1';}
         });
+        // Carrossel dos painéis: criar/atualizar bolinhas
+        _initAcessoCarrossel();
+      }
+
+      function _initAcessoCarrossel(){
+        var car = document.getElementById('rmAcessoCarrossel');
+        var dots = document.getElementById('rmAcessoDots');
+        if(!car || !dots || car._init) return;
+        car._init = true;
+
+        function nPaginas(){
+          // quantas "páginas" de 2 painéis há
+          return Math.max(1, Math.ceil(car.scrollWidth / car.clientWidth));
+        }
+        function construir(){
+          var n = nPaginas();
+          dots.innerHTML = '';
+          for(var i=0;i<n;i++){
+            var d = document.createElement('div');
+            d.className = 'rm-dot' + (i===0?' ativa':'');
+            dots.appendChild(d);
+          }
+        }
+        function atualizar(){
+          var pag = Math.round(car.scrollLeft / car.clientWidth);
+          dots.querySelectorAll('.rm-dot').forEach(function(d,i){
+            d.classList.toggle('ativa', i===pag);
+          });
+        }
+        construir();
+        car.addEventListener('scroll', atualizar, {passive:true});
+        window.addEventListener('resize', function(){ construir(); atualizar(); });
       }
 
       function resetAdminPopup(){
