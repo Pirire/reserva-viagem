@@ -654,6 +654,71 @@ router.get("/reservas/classificacoes", requireCliente, async (req, res) => {
 });
 
 /* ══════════════════════════════════════════════════════════════
+   GET /api/reservas/stats/semana
+   Estatísticas dos últimos 7 dias deste hotel — alimenta o gráfico
+   do RELATÓRIO SLA (finalizadas, canceladas e faturado por dia).
+   Substitui os dados de exemplo (SLA_WEEK_MOCK) por dados reais.
+   Devolve no formato que o rm-sla.js espera: { labels, fin, can, fat }.
+══════════════════════════════════════════════════════════════ */
+router.get("/reservas/stats/semana", requireCliente, async (req, res) => {
+  try {
+    const seteDiasAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const reservas = await Reserva.find({
+      clienteId: req.clienteId,
+      status: { $in: ["concluida", "cancelada"] },
+      $or: [
+        { concluidaEm: { $gte: seteDiasAtras } },
+        { canceladaEm: { $gte: seteDiasAtras } },
+        { datahora:    { $gte: seteDiasAtras } },
+      ],
+    }).select("status valor datahora concluidaEm canceladaEm").lean();
+
+    const nomesDia = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const labels = [];
+    const idxPorData = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      labels.push(nomesDia[d.getDay()]);
+      idxPorData[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] = 6 - i;
+    }
+
+    const fin = new Array(7).fill(0);
+    const can = new Array(7).fill(0);
+    const fat = new Array(7).fill(0);
+
+    for (const r of reservas) {
+      const quando =
+        r.status === "concluida" ? (r.concluidaEm || r.datahora) :
+        r.status === "cancelada" ? (r.canceladaEm || r.datahora) :
+        r.datahora;
+      if (!quando) continue;
+
+      const d = new Date(quando);
+      d.setHours(0, 0, 0, 0);
+      const chave = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const idx = idxPorData[chave];
+      if (idx == null) continue;
+
+      if (r.status === "concluida") {
+        fin[idx] += 1;
+        fat[idx] += Number(r.valor || 0);
+      } else if (r.status === "cancelada") {
+        can[idx] += 1;
+      }
+    }
+
+    const fatRound = fat.map((v) => Math.round(v * 100) / 100);
+    return res.json({ labels, fin, can, fat: fatRound });
+  } catch (err) {
+    logger.error({ err }, "❌ /reservas/stats/semana");
+    return res.status(500).json({ message: "Erro ao calcular estatísticas." });
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════
    GET /api/reservas/sla/lista
    Lista compacta de viagens finalizadas deste hotel — para o
    seletor no popup "RELATÓRIO SLA" (escolher qual viagem ver).

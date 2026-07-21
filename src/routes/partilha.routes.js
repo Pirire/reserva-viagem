@@ -1699,17 +1699,21 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
     if (!t) return res.status(400).json({ ok: false, message: "datahora obrigatória (formato ISO)." });
 
     // Prazo de validade (janela): o hóspede escolhe "válido por" (máx 4h
-    // após a hora da viagem). Sem isto, a reserva nunca expira.
+    // após a hora da viagem). Se NÃO escolher, aplica-se 2 horas por
+    // defeito — assim TODOS os bilhetes têm sempre uma validade visível
+    // e são consistentes (nunca há um bilhete sem prazo).
+    const MAX_MS = 4 * 60 * 60 * 1000;      // 4 horas (máximo)
+    const DEFAULT_MS = 2 * 60 * 60 * 1000;  // 2 horas (por defeito)
     let validUntil = validUntilRaw ? parseDateTime(validUntilRaw) : null;
     if (validUntil) {
       if (validUntil <= t) {
         return res.status(400).json({ ok: false, message: "O prazo de validade deve ser depois da hora da viagem." });
       }
-      const MAX_MS = 4 * 60 * 60 * 1000; // 4 horas
       if (validUntil - t > MAX_MS) {
-        // Limita ao máximo de 4h em vez de rejeitar (mais tolerante).
         validUntil = new Date(t.getTime() + MAX_MS);
       }
+    } else {
+      validUntil = new Date(t.getTime() + DEFAULT_MS);
     }
 
     const cat = String(categoria || "economica");
@@ -1785,6 +1789,9 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
         requisitosEspeciais: p.requisitosEspeciais && typeof p.requisitosEspeciais === "object"
           ? p.requisitosEspeciais
           : null,
+        // Validade do bilhete — chega ao email (bloco preto "válido até")
+        // e é usada para expirar/cancelar. Sempre definida (2h por defeito).
+        inviteExpiresAt: validUntil ? validUntil.getTime() : null,
       });
 
       const inviteToken = jwt.sign(
@@ -2941,9 +2948,23 @@ router.get("/evento/motorista-atribuido", async (req, res) => {
     // apareciam vazios ("—") no cartão do motorista.
     if (!veiculoSnap || !matriculaSnap) {
       try {
-        const v = await Veiculo.findOne({ motoristaId: m._id })
+        // O motoristaId no veículo pode estar gravado como string OU
+        // ObjectId — procuramos pelos dois formatos para garantir que
+        // encontramos (foi esta a causa de o veículo vir vazio: m._id
+        // é ObjectId, mas na coleção está como string).
+        const _midStr = String(m._id);
+        const v = await Veiculo.findOne({
+          $or: [
+            { motoristaId: m._id },
+            { motoristaId: _midStr },
+          ],
+          disponivel: true,
+        })
           .select("marca modelo matricula cor")
-          .lean();
+          .lean()
+          || await Veiculo.findOne({
+            $or: [{ motoristaId: m._id }, { motoristaId: _midStr }],
+          }).select("marca modelo matricula cor").lean();
         if (v) {
           if (!veiculoSnap)   veiculoSnap   = `${v.marca || ""} ${v.modelo || ""}`.trim();
           if (!matriculaSnap) matriculaSnap = v.matricula || "";

@@ -280,7 +280,7 @@ function destruirGrafico() {
   /* Dados semanais — tenta API real, fallback para mock */
   const SLA_WEEK_MOCK = {
     labels:['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'],
-    fin:   [8,11,7,14,18,22,6],
-    can:   [1,1,0,2,2,3,1],
-    fat:   [360,495,315,630,810,990,270]
+    fin:   [0,0,0,0,0,0,0],
+    can:   [0,0,0,0,0,0,0],
+    fat:   [0,0,0,0,0,0,0]
   };

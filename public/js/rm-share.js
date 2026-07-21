@@ -1534,6 +1534,13 @@ function setActiveShareCard(idx) {
 
   // Estado interno da Fase 2 (cartão do motorista + mapa em tempo real)
   let _evtPollTimer      = null;   // timer do setTimeout do polling
+  let _evtVigiaTimer     = null;   // timer de VIGILÂNCIA: depois de o motorista
+                                   // aparecer, continua a verificar se ele ainda
+                                   // está atribuído. Se cancelar (viagem volta a
+                                   // "pendente"), o passageiro volta ao ecrã de
+                                   // procura em vez de ficar preso com o motorista
+                                   // que já desistiu.
+  const EVT_VIGIA_INTERVAL_MS = 5_000;   // 5s — verifica o cancelamento sem sobrecarregar
   let _evtPollTentativas = 0;
   const EVT_POLL_INTERVAL_MS = 3_000;   // 3s entre polls — não sobrecarrega backend
   const EVT_POLL_MAX_TENTATIVAS = 60;   // 60 × 3s = 3 minutos
@@ -1616,6 +1623,39 @@ function setActiveShareCard(idx) {
     _evtPollTimer = setTimeout(_evtPollMotorista, EVT_POLL_INTERVAL_MS);
   }
 
+  // VIGILÂNCIA pós-atribuição: verifica de 5 em 5s se o motorista
+  // ainda está atribuído. Se o servidor responder "atribuido:false"
+  // (o motorista cancelou → viagem voltou a "pendente"), o passageiro
+  // regressa ao ecrã "à procura de motorista" e o polling normal
+  // recomeça — em vez de ficar preso com o motorista que desistiu.
+  function _evtIniciarVigilancia() {
+    if (_evtVigiaTimer) { clearTimeout(_evtVigiaTimer); _evtVigiaTimer = null; }
+    _evtVigiaTimer = setTimeout(_evtVigiarMotorista, EVT_VIGIA_INTERVAL_MS);
+  }
+
+  async function _evtVigiarMotorista() {
+    try {
+      const params = new URLSearchParams({ token: _evtInviteInfo.token });
+      if (_evtInviteInfo.inviteId) params.set('inviteId', _evtInviteInfo.inviteId);
+      const data = await fetchJson(url('/partilha/evento/motorista-atribuido?' + params.toString()));
+
+      if (data && data.atribuido === false) {
+        // O motorista cancelou (ou foi libertado). Voltar a procurar.
+        console.warn('[evt/vigia] motorista já não atribuído — voltar a procurar');
+        if (_evtVigiaTimer) { clearTimeout(_evtVigiaTimer); _evtVigiaTimer = null; }
+        _evtPollTentativas = 0;
+        _evtMostrarEcraProcurandoMotorista({ tripId: _evtTripId });
+        _evtPollMotorista();
+        return;
+      }
+    } catch (err) {
+      // Erro pontual de rede — não faz nada, tenta de novo no próximo ciclo.
+      console.warn('[evt/vigia] erro (vai tentar de novo):', err?.message);
+    }
+    // Continuar a vigiar.
+    _evtVigiaTimer = setTimeout(_evtVigiarMotorista, EVT_VIGIA_INTERVAL_MS);
+  }
+
   // Após 3 minutos sem motorista, mostra ecrã de fallback profissional
   // com número de telefone para o utilizador se sentir apoiado.
   function _evtMostrarFalhaMotorista() {
@@ -1654,8 +1694,12 @@ function setActiveShareCard(idx) {
   // Auto-contido — não depende de nada do dashboard principal.
   // ═════════════════════════════════════════════════════════════════
   function _evtMostrarMotorista(m) {
-    // Cancelar polling — a partir daqui é tudo tempo real via socket
+    // Cancelar o polling de procura — o motorista foi encontrado.
     if (_evtPollTimer) { clearTimeout(_evtPollTimer); _evtPollTimer = null; }
+    // Iniciar a VIGILÂNCIA: continua a verificar (mais devagar) se o
+    // motorista ainda está atribuído. Se ele cancelar, o passageiro
+    // não pode ficar preso a pensar que tem motorista.
+    _evtIniciarVigilancia();
 
     const ov = document.getElementById('evtProntoOverlay');
     if (!ov) return;
@@ -1956,6 +2000,9 @@ function setActiveShareCard(idx) {
 
       // Se algum evento diz que o motorista chegou ao passageiro
       _evtSocket.on('trip_arrived', () => {
+        // A viagem começou — parar a vigilância de cancelamento
+        // (já não há recolha para o motorista cancelar).
+        if (_evtVigiaTimer) { clearTimeout(_evtVigiaTimer); _evtVigiaTimer = null; }
         const etaEl = document.getElementById('evtMotoristaEta');
         if (etaEl) {
           etaEl.textContent = '🚗 CHEGOU';

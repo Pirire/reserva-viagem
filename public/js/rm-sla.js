@@ -4,10 +4,9 @@
 
 async function _slaCarregarSemana() {
     try {
-      const res = await fetch('/api/feedback/admin/classificacoes?periodo=semana&limite=1', { credentials:'include' });
-      if (!res.ok) throw new Error();
-      // Se endpoint existe, tenta buscar dados de viagens semanais
-      const r2 = await fetch('/api/viagens/stats/semana', { credentials:'include' });
+      // Estatísticas reais da semana deste hotel. Se o endpoint
+      // falhar (ex: sem dados ainda), cai no mock mais abaixo.
+      const r2 = await fetch('/api/reservas/stats/semana', { credentials:'include' });
       if (!r2.ok) throw new Error();
       return await r2.json();
     } catch {
