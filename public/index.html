@@ -1489,12 +1489,46 @@ Desde 2018, a construir confiança todos os dias.</p>
     var menu     = document.querySelector('.header-center');
     var backdrop = document.getElementById('rmMenuBackdrop');
     if(!burger || !menu) return;
-    function abrir(){menu.classList.add('open');burger.classList.add('open');if(backdrop)backdrop.classList.add('open');document.body.classList.add('rm-menu-aberto');burger.setAttribute('aria-expanded','true');}
-    function fechar(){menu.classList.remove('open');burger.classList.remove('open');if(backdrop)backdrop.classList.remove('open');document.body.classList.remove('rm-menu-aberto');burger.setAttribute('aria-expanded','false');}
+
+    // O <header> tem backdrop-filter, que cria um "containing block" e
+    // prende o position:fixed do menu dentro do header (aparecia só no
+    // topo, cortado). Solução: ao abrir no telemóvel, mover o menu para
+    // o <body>; ao fechar, devolvê-lo ao header (para o desktop ficar
+    // igual). Guardamos a posição original para o repor certo.
+    var paiOriginal = menu.parentNode;
+    var irmaoOriginal = menu.nextSibling;
+
+    function moverParaBody(){
+      if(menu.parentNode !== document.body) document.body.appendChild(menu);
+    }
+    function devolverAoHeader(){
+      if(menu.parentNode === document.body){
+        if(irmaoOriginal && irmaoOriginal.parentNode === paiOriginal)
+          paiOriginal.insertBefore(menu, irmaoOriginal);
+        else
+          paiOriginal.appendChild(menu);
+      }
+    }
+
+    function abrir(){
+      if(window.innerWidth <= 820) moverParaBody();
+      menu.classList.add('open');burger.classList.add('open');
+      if(backdrop)backdrop.classList.add('open');
+      document.body.classList.add('rm-menu-aberto');
+      burger.setAttribute('aria-expanded','true');
+    }
+    function fechar(){
+      menu.classList.remove('open');burger.classList.remove('open');
+      if(backdrop)backdrop.classList.remove('open');
+      document.body.classList.remove('rm-menu-aberto');
+      burger.setAttribute('aria-expanded','false');
+      // devolver ao header depois da animação de fecho
+      setTimeout(function(){ if(!menu.classList.contains('open')) devolverAoHeader(); }, 350);
+    }
     burger.addEventListener('click',function(){menu.classList.contains('open')?fechar():abrir();});
     if(backdrop) backdrop.addEventListener('click',fechar);
     menu.querySelectorAll('.pill-btn').forEach(function(b){b.addEventListener('click',fechar);});
-    window.addEventListener('resize',function(){if(window.innerWidth>820)fechar();});
+    window.addEventListener('resize',function(){if(window.innerWidth>820){fechar();devolverAoHeader();}});
   })();
   </script>
 
