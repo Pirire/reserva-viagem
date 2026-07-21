@@ -1188,6 +1188,23 @@ function setActiveShareCard(idx) {
       body.rm-modo-evento #inviteVerifyPopup .popup-card {
         margin: auto !important;
       }
+      /* Luz prata a percorrer o nome do motorista (como o botão ficar online) */
+      .evt-nome-luz { position: relative; display: inline-block; }
+      .evt-nome-luz::after {
+        content: ''; position: absolute; bottom: -5px; left: 0;
+        width: 22px; height: 2px; border-radius: 2px;
+        background: linear-gradient(90deg, transparent, #ffffff, #c4c9d4, transparent);
+        animation: evtLuzNome 1.8s ease-in-out infinite;
+      }
+      @keyframes evtLuzNome {
+        0%   { left: 0; opacity: .4; }
+        50%  { left: calc(100% - 22px); opacity: 1; }
+        100% { left: 0; opacity: .4; }
+      }
+      /* Foto ampliada — estado ativo (queda diagonal + fade) */
+      #evtFotoBackdrop.on { background: rgba(0,0,0,.82) !important; }
+      #evtFotoBackdrop.on #evtFotoGrande { transform: translate(0,0) scale(1) rotate(0deg) !important; opacity: 1 !important; }
+      #evtFotoBackdrop.on #evtFotoHint { opacity: 1 !important; }
     `;
     document.head.appendChild(st);
   }
@@ -1643,52 +1660,162 @@ function setActiveShareCard(idx) {
     const ov = document.getElementById('evtProntoOverlay');
     if (!ov) return;
 
-    // Trocar o layout: já não é uma caixa centrada; agora ocupa o ecrã
-    // todo com cartão em cima e mapa a ocupar o resto.
+    // Comentários (por agora exemplos; virão da BD numa fase seguinte)
+    const _coment = Array.isArray(m.comentarios) && m.comentarios.length
+      ? m.comentarios
+      : [
+          { estrelas: 5, texto: 'Muito pontual e simpático. Carro impecável.', autor: 'Maria S.' },
+          { estrelas: 5, texto: 'Condução segura, recomendo bastante.', autor: 'João P.' },
+        ];
+    const _nomeCompleto = escapeHtml(m.nome || 'Motorista');
+    const _rating = (Number(m.rating) || 5).toFixed(1);
+    const _fotoBg = m.foto ? `url('${escapeHtml(m.foto)}') center/cover no-repeat` : '#141414';
+
     ov.style.padding = '0';
     ov.style.alignItems = 'stretch';
     ov.style.justifyContent = 'stretch';
+
     ov.innerHTML = `
-      <div id="evtMotoristaWrap" style="display:flex;flex-direction:column;width:100%;height:100%">
-        <!-- Cartão do motorista -->
-        <div id="evtMotoristaCard" style="background:linear-gradient(180deg,#0a0b0e 0%,#050507 100%);border-bottom:1px solid rgba(196,201,212,.14);padding:20px 20px 22px;color:#fff">
+      <div id="evtMotoristaWrap" style="display:flex;flex-direction:column;width:100%;height:100%;background:#000">
+
+        <!-- CARTÃO -->
+        <div id="evtMotoristaCard" style="background:#000;padding:16px 18px;display:flex;flex-direction:column;border-bottom:1px solid #333;color:#fff;box-sizing:border-box">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div style="font-size:9.5px;font-weight:900;letter-spacing:.32em;color:#c4c9d4;opacity:.85">REALMETROPOLIS</div>
-            <div id="evtMotoristaEta" style="font-size:10.5px;font-weight:900;letter-spacing:.14em;color:#c4c9d4;background:rgba(196,201,212,.1);border:1px solid rgba(196,201,212,.28);border-radius:999px;padding:5px 12px">A caminho</div>
+            <div style="font-size:10px;font-weight:900;letter-spacing:.28em;color:#c0c0c0">REALMETROPOLIS</div>
+            <div id="evtMotoristaEta" style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#000;background:#c0c0c0;border-radius:999px;padding:5px 12px">A caminho</div>
           </div>
 
-          <div style="display:flex;align-items:center;gap:14px">
-            <div id="evtMotoristaFoto" style="width:60px;height:60px;border-radius:50%;background:${m.foto ? `url('${escapeHtml(m.foto)}') center/cover no-repeat` : '#1a1c22'};border:1.5px solid rgba(196,201,212,.35);display:flex;align-items:center;justify-content:center;color:#5f6874;font-size:22px;font-weight:900;flex-shrink:0">
-              ${m.foto ? '' : '👤'}
+          <!-- Estado FECHADO: foto + dados empilhados -->
+          <div id="evtBlocoFechado">
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="flex-shrink:0">
+                <div id="evtFotoPequena" style="width:64px;height:64px;border-radius:50%;background:${_fotoBg};border:1px solid #666;display:flex;align-items:center;justify-content:center;color:#808080;cursor:pointer;position:relative">
+                  ${m.foto ? '' : '<i class="ti ti-user" style="font-size:30px"></i>'}
+                  <div style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;background:#000;border:1px solid #c0c0c0;display:flex;align-items:center;justify-content:center;color:#c0c0c0"><i class="ti ti-zoom-in" style="font-size:11px"></i></div>
+                </div>
+              </div>
+              <div style="flex:1;min-width:0;padding-top:2px;display:flex;flex-direction:column;gap:10px">
+                <div>
+                  <div style="font-size:8.5px;color:#808080;letter-spacing:.14em;margin-bottom:2px">CARRO</div>
+                  <div style="font-size:14px;font-weight:900;color:#f4f4f4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(m.veiculo || '—')}</div>
+                </div>
+                <div>
+                  <div style="font-size:8.5px;color:#808080;letter-spacing:.14em;margin-bottom:2px">COR</div>
+                  <div style="font-size:14px;font-weight:900;color:#f4f4f4">${escapeHtml(m.cor || '—')}</div>
+                </div>
+                <div>
+                  <div style="font-size:8.5px;color:#808080;letter-spacing:.14em;margin-bottom:2px">MATRÍCULA</div>
+                  <div style="font-size:15px;font-weight:900;color:#f4f4f4;letter-spacing:.08em">${escapeHtml(m.matricula || '—')}</div>
+                </div>
+              </div>
             </div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:15px;font-weight:900;color:#f4f6f8;letter-spacing:.01em;line-height:1.2;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(m.nome || 'Motorista')}</div>
-              <div style="font-size:11px;color:#8b95a2;letter-spacing:.02em">
-                ${_evtEstrelas(m.rating || 5)} · ${_evtNomeCategoria(_evtInviteInfo.categoria)}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid #222">
+              <div class="evt-nome-luz" style="font-size:14px;font-weight:900;color:#f4f4f4;white-space:nowrap">${_nomeCompleto}</div>
+              <div id="evtAbrirComentarios" style="font-size:12px;color:#c0c0c0;cursor:pointer;white-space:nowrap">${_rating} <span style="color:#e8e8e8">★</span></div>
+            </div>
+          </div>
+
+          <!-- Estado ABERTO: foto + nome + fechar, dados horizontais, comentários -->
+          <div id="evtBlocoAberto" style="display:none">
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+              <div id="evtFotoPequena2" style="width:52px;height:52px;border-radius:50%;background:${_fotoBg};border:1px solid #666;display:flex;align-items:center;justify-content:center;color:#808080;flex-shrink:0;cursor:pointer">${m.foto ? '' : '<i class="ti ti-user" style="font-size:24px"></i>'}</div>
+              <div class="evt-nome-luz" style="font-size:14px;font-weight:900;color:#f4f4f4;white-space:nowrap;flex-shrink:0">${_nomeCompleto}</div>
+              <button id="evtFecharComentarios" type="button" style="flex:1;padding:7px 8px;background:#141414;border:1px solid #333;color:#a0a0a0;font-family:inherit;font-weight:900;font-size:9.5px;letter-spacing:.03em;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap"><i class="ti ti-x" style="font-size:12px"></i>FECHAR</button>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px">
+              <div style="min-width:0">
+                <div style="font-size:8px;color:#808080;letter-spacing:.1em">CARRO</div>
+                <div style="font-size:12px;font-weight:900;color:#f4f4f4;white-space:nowrap">${escapeHtml(m.veiculo || '—')}</div>
+              </div>
+              <div>
+                <div style="font-size:8px;color:#808080;letter-spacing:.1em">COR</div>
+                <div style="font-size:12px;font-weight:900;color:#f4f4f4">${escapeHtml(m.cor || '—')}</div>
+              </div>
+              <div>
+                <div style="font-size:8px;color:#808080;letter-spacing:.1em">MATRÍCULA</div>
+                <div style="font-size:12px;font-weight:900;color:#f4f4f4;letter-spacing:.05em;white-space:nowrap">${escapeHtml(m.matricula || '—')}</div>
+              </div>
+            </div>
+            <div style="border-top:1px solid #222;padding-top:11px">
+              <div id="evtComentCarrossel" style="display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch">
+                ${_coment.map(c => `
+                  <div style="flex:0 0 calc(50% - 4px);scroll-snap-align:start;background:#0f0f0f;border-radius:10px;padding:10px 11px;box-sizing:border-box">
+                    <div style="font-size:11px;color:#f0b429;margin-bottom:4px">${'★'.repeat(Math.round(c.estrelas||5))}</div>
+                    <div style="font-size:10.5px;color:#b0b0b0;line-height:1.4">${escapeHtml(c.texto||'')}</div>
+                    <div style="font-size:8.5px;color:#666;margin-top:5px">${escapeHtml(c.autor||'')}</div>
+                  </div>
+                `).join('')}
               </div>
             </div>
           </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
-            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(196,201,212,.08);border-radius:10px;padding:9px 12px">
-              <div style="font-size:9px;color:#8b95a2;font-weight:800;letter-spacing:.08em;margin-bottom:3px">VEÍCULO</div>
-              <div style="font-size:12.5px;font-weight:800;color:#f4f6f8;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(m.veiculo || '—')} ${m.cor ? '· ' + escapeHtml(m.cor) : ''}</div>
-            </div>
-            <div style="background:rgba(196,201,212,.05);border:1px solid rgba(196,201,212,.16);border-radius:10px;padding:9px 12px">
-              <div style="font-size:9px;color:#c4c9d4;font-weight:800;letter-spacing:.08em;margin-bottom:3px">MATRÍCULA</div>
-              <div style="font-size:12.5px;font-weight:900;color:#f4f6f8;letter-spacing:.06em">${escapeHtml(m.matricula || '—')}</div>
-            </div>
-          </div>
-
-          ${m.contacto ? `
-            <a href="tel:${escapeHtml(m.contacto)}" style="display:block;text-align:center;margin-top:12px;padding:11px;background:transparent;border:1px solid rgba(196,201,212,.28);color:#c4c9d4;font-family:inherit;font-weight:800;font-size:12px;letter-spacing:.06em;border-radius:10px;text-decoration:none">☎ CONTACTAR MOTORISTA</a>
-          ` : ''}
         </div>
 
-        <!-- Mapa em tempo real -->
-        <div id="evtMotoristaMap" style="flex:1;min-height:280px;background:#0a0b0d"></div>
+        <!-- MAPA -->
+        <div style="flex:1;position:relative;background:#0a0a0a;min-height:0">
+          <div id="evtMotoristaMap" style="position:absolute;inset:0;background:#0a0b0d"></div>
+          <button id="evtBtnEmergencia" type="button" aria-label="Emergência" style="position:absolute;top:14px;right:14px;z-index:500;width:48px;height:48px;border-radius:50%;background:#000;border:1.5px solid #c0c0c0;display:flex;align-items:center;justify-content:center;color:#c0c0c0;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.5)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c0c0c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </button>
+
+          <!-- Foto ampliada (queda diagonal + fade) -->
+          <div id="evtFotoBackdrop" style="position:absolute;inset:0;z-index:600;background:rgba(0,0,0,0);display:none;align-items:center;justify-content:center;cursor:pointer;transition:background .35s ease">
+            <div id="evtFotoGrande" style="width:220px;height:220px;border-radius:50%;border:3px solid #c0c0c0;background:${_fotoBg};display:flex;align-items:center;justify-content:center;color:#808080;transform:translate(-90px,-150px) scale(.3) rotate(-12deg);opacity:0;transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .45s ease">${m.foto ? '' : '<i class="ti ti-user" style="font-size:96px"></i>'}</div>
+            <div id="evtFotoHint" style="position:absolute;bottom:26px;left:0;right:0;text-align:center;color:#c0c0c0;font-size:11px;letter-spacing:.04em;opacity:0;transition:opacity .3s ease .3s">Toca em qualquer lugar para fechar</div>
+          </div>
+        </div>
+
+        <!-- RODAPÉ -->
+        <div style="display:flex;gap:10px;padding:14px;background:#000;border-top:1px solid #333">
+          <button id="evtBtnMensagem" type="button" style="flex:1;text-align:center;padding:13px;background:#141414;border:1px solid #333;color:#f4f4f4;font-family:inherit;font-weight:900;font-size:13px;border-radius:12px;cursor:pointer"><i class="ti ti-message" style="font-size:16px;vertical-align:-3px;margin-right:6px"></i>Mensagem</button>
+          <button id="evtBtnEstouAqui" type="button" style="flex:1;text-align:center;padding:13px;background:#c0c0c0;border:none;color:#000;font-family:inherit;font-weight:900;font-size:13px;border-radius:12px;cursor:pointer"><i class="ti ti-camera" style="font-size:16px;vertical-align:-3px;margin-right:6px"></i>Estou aqui</button>
+        </div>
+
       </div>
     `;
+
+    // ── Interações ──
+    // Abrir/fechar comentários
+    const _abrir = document.getElementById('evtAbrirComentarios');
+    const _fechar = document.getElementById('evtFecharComentarios');
+    const _blocoF = document.getElementById('evtBlocoFechado');
+    const _blocoA = document.getElementById('evtBlocoAberto');
+    if (_abrir) _abrir.addEventListener('click', () => {
+      if (_blocoF) _blocoF.style.display = 'none';
+      if (_blocoA) _blocoA.style.display = 'block';
+    });
+    if (_fechar) _fechar.addEventListener('click', () => {
+      if (_blocoA) _blocoA.style.display = 'none';
+      if (_blocoF) _blocoF.style.display = 'block';
+    });
+
+    // Foto amplia com queda diagonal
+    const _back = document.getElementById('evtFotoBackdrop');
+    function _abrirFoto(e) {
+      if (e) e.stopPropagation();
+      if (!_back) return;
+      _back.style.display = 'flex';
+      requestAnimationFrame(() => requestAnimationFrame(() => _back.classList.add('on')));
+    }
+    function _fecharFoto() {
+      if (!_back) return;
+      _back.classList.remove('on');
+      setTimeout(() => { _back.style.display = 'none'; }, 500);
+    }
+    const _fp1 = document.getElementById('evtFotoPequena');
+    const _fp2 = document.getElementById('evtFotoPequena2');
+    if (_fp1) _fp1.addEventListener('click', _abrirFoto);
+    if (_fp2) _fp2.addEventListener('click', _abrirFoto);
+    if (_back) _back.addEventListener('click', _fecharFoto);
+
+    // Botões (lógica câmara/mensagem/emergência fica para a próxima fase)
+    const _btnEmerg = document.getElementById('evtBtnEmergencia');
+    if (_btnEmerg) _btnEmerg.addEventListener('click', () => {
+      if (m.contacto) location.href = 'tel:' + String(m.contacto).replace(/[^0-9+]/g, '');
+    });
+    const _btnMsg = document.getElementById('evtBtnMensagem');
+    if (_btnMsg) _btnMsg.addEventListener('click', () => showToast('Mensagem ao motorista — disponível em breve.'));
+    const _btnAqui = document.getElementById('evtBtnEstouAqui');
+    if (_btnAqui) _btnAqui.addEventListener('click', () => showToast('Enviar foto ao motorista — disponível em breve.'));
 
     _evtCarregarLeaflet()
       .then(() => _evtIniciarMapaMotorista(m))
@@ -1698,7 +1825,6 @@ function setActiveShareCard(idx) {
         if (mapEl) mapEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5f6874;font-size:12px;padding:20px;text-align:center">Não foi possível carregar o mapa.<br>O seu motorista está a caminho.</div>';
       });
 
-    // Ligar socket para receber posição do motorista em tempo real
     _evtLigarSocketMotorista();
   }
 
@@ -1767,7 +1893,7 @@ function setActiveShareCard(idx) {
       _evtLeafletMarker = window.L.marker([m.lat, m.lng], {
         icon: window.L.divIcon({
           className: 'evt-marker-driver',
-          html: '<div style="width:34px;height:34px;background:#050507;border:2px solid #c4c9d4;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 12px rgba(0,0,0,.6)">🚗</div>',
+          html: '<div style="width:34px;height:34px;background:rgba(0,0,0,.55);border:2px solid #c0c0c0;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.6)"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 2 L20 21 L12 16 L4 21 Z" fill="#e8e8e8"/></svg></div>',
           iconSize: [34, 34],
           iconAnchor: [17, 17],
         }),
@@ -1805,13 +1931,19 @@ function setActiveShareCard(idx) {
           _evtLeafletMarker = window.L.marker([d.lat, d.lng], {
             icon: window.L.divIcon({
               className: 'evt-marker-driver',
-              html: '<div style="width:34px;height:34px;background:#050507;border:2px solid #c4c9d4;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 12px rgba(0,0,0,.6)">🚗</div>',
+              html: '<div style="width:34px;height:34px;background:rgba(0,0,0,.55);border:2px solid #c0c0c0;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.6)"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 2 L20 21 L12 16 L4 21 Z" fill="#e8e8e8"/></svg></div>',
               iconSize: [34, 34],
               iconAnchor: [17, 17],
             }),
           }).addTo(_evtLeafletMap);
         } else {
           _evtLeafletMarker.setLatLng([d.lat, d.lng]);
+        }
+        // Rodar a seta na direção do movimento (heading em graus)
+        if (d.heading != null) {
+          const _el = _evtLeafletMarker.getElement && _evtLeafletMarker.getElement();
+          const _svg = _el && _el.querySelector('svg');
+          if (_svg) _svg.style.transform = 'rotate(' + Number(d.heading) + 'deg)';
         }
         _evtLeafletMap.panTo([d.lat, d.lng]);
 
