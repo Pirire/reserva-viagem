@@ -80,6 +80,9 @@
     background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
     box-shadow:0 0 0 4px rgba(212,216,223,.08),0 2px 8px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.16);
     cursor:pointer;transition:.2s;
+    touch-action:manipulation;        /* impede o zoom por duplo/triplo toque */
+    -webkit-user-select:none;user-select:none;   /* não seleciona o texto ao tocar rápido */
+    -webkit-tap-highlight-color:transparent;      /* sem realce azul ao tocar */
   }
   .rm-circle:hover{border-color:rgba(212,216,223,.9);box-shadow:0 0 0 5px rgba(212,216,223,.14)}
 
@@ -103,14 +106,31 @@
     .carousel-container{
       width:100%;
       position:fixed;left:0;bottom:10px;
-      display:flex;justify-content:center;align-items:flex-end;
+      display:flex;align-items:flex-end;
+      overflow:hidden;                 /* esconde as imagens que saem nas pontas */
       transition: transform 0.5s ease;
       z-index:120;pointer-events:auto;
+      -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+      mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
     }
 
     .carousel{
-      display:flex;gap:30px;justify-content:center;align-items:flex-end;
+      display:flex;gap:30px;align-items:flex-end;
       transition: transform 0.5s ease;
+      animation: rmCarrossel 32s linear infinite;
+      will-change: transform;
+    }
+    /* Deslize contínuo — como as imagens estão duplicadas, ao chegar
+       a -50% volta ao início sem salto visível (loop infinito). */
+    @keyframes rmCarrossel{
+      from{ transform: translateX(0); }
+      to  { transform: translateX(-50%); }
+    }
+    /* Pausa ao passar o rato (desktop) para poder ver/clicar */
+    .carousel-container:hover .carousel{ animation-play-state: paused; }
+    /* Respeita quem desligou animações no sistema */
+    @media (prefers-reduced-motion: reduce){
+      .carousel{ animation: none; }
     }
 
     .carousel img{
@@ -209,7 +229,7 @@
   border:1px solid rgba(192,192,192,0.28);
   border-radius:80px;
   text-decoration:none;
-  z-index:300;
+  z-index:100;
   box-shadow:
     0 10px 30px rgba(0,0,0,0.45),
     0 0 18px rgba(192,192,192,0.18);
@@ -316,6 +336,8 @@
   .rm-burger.open .rm-burger-bar:nth-child(2){opacity:0}
   .rm-burger.open .rm-burger-bar:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
   .rm-menu-backdrop{display:none;position:fixed;inset:0;z-index:180;background:rgba(0,0,0,.55)}
+  /* Com o menu aberto, o botão reservar recua para trás do overlay */
+  body.rm-menu-aberto .car-reserve-btn{ opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
   .rm-menu-backdrop.open{display:block}
   @media(max-width:820px){
     .header-center{
@@ -566,21 +588,23 @@ Desde 2018, a construir confiança todos os dias.</p>
       let clicks = 0;
       let timer;
 
-      adminLogoTrigger.addEventListener("click", (e) => {
+      function _contarToqueRM(e){
         e.stopPropagation();
+        e.preventDefault();           // impede o zoom/duplo-toque do telemóvel
 
         clicks++;
 
         clearTimeout(timer);
-        timer = setTimeout(() => {
-          clicks = 0;
-        }, 1200);
+        timer = setTimeout(() => { clicks = 0; }, 1200);
 
         if (clicks >= 5) {
           openAdminPopup();
           clicks = 0;
         }
-      });
+      }
+      // pointerdown cobre rato e toque de forma fiável (evita o
+      // duplo-toque-para-zoom do telemóvel roubar os cliques)
+      adminLogoTrigger.addEventListener("pointerdown", _contarToqueRM);
 
       const API_BASE =
         (location.protocol === "file:")
@@ -850,6 +874,69 @@ Desde 2018, a construir confiança todos os dias.</p>
           openLightbox(g, 0);
         });
       });
+
+      // Carrossel automático: duplicar as imagens uma vez para o
+      // deslize (animação CSS) fazer loop contínuo sem salto.
+      (function(){
+        var faixa = document.getElementById('carousel');
+        if (!faixa) return;
+        var originais = Array.prototype.slice.call(faixa.children);
+        originais.forEach(function(img){
+          var copia = img.cloneNode(true);
+          copia.setAttribute('aria-hidden','true');
+          // as cópias também abrem o lightbox
+          copia.addEventListener('click', function(e){
+            e.stopPropagation();
+            var g = copia.dataset.group || null;
+            if (g) openLightbox(g, 0);
+          });
+          faixa.appendChild(copia);
+        });
+
+        // ===== Arrastar para passar mais rápido (dedo ou rato) =====
+        var container = faixa.parentElement;   // .carousel-container
+        var arrastando = false, xInicio = 0, deslocInicial = 0, desloc = 0, moveu = false;
+
+        function posX(e){ return e.touches ? e.touches[0].clientX : e.clientX; }
+
+        function iniciar(e){
+          arrastando = true; moveu = false;
+          xInicio = posX(e);
+          faixa.style.animationPlayState = 'paused';   // pausa o automático
+          // ler a posição atual da animação para continuar de onde está
+          deslocInicial = desloc;
+          faixa.style.transition = 'none';
+        }
+        function mover(e){
+          if (!arrastando) return;
+          var dx = posX(e) - xInicio;
+          if (Math.abs(dx) > 4) moveu = true;
+          desloc = deslocInicial + dx;
+          faixa.style.transform = 'translateX(' + desloc + 'px)';
+        }
+        function terminar(){
+          if (!arrastando) return;
+          arrastando = false;
+          // Retomar o deslize automático a partir da posição atual,
+          // com uma transição suave de volta ao movimento contínuo.
+          faixa.style.transition = '';
+          faixa.style.transform = '';
+          faixa.style.animationPlayState = '';
+          desloc = 0;
+        }
+
+        container.addEventListener('mousedown', iniciar);
+        window.addEventListener('mousemove', mover);
+        window.addEventListener('mouseup', terminar);
+        container.addEventListener('touchstart', iniciar, {passive:true});
+        container.addEventListener('touchmove', mover, {passive:true});
+        container.addEventListener('touchend', terminar);
+
+        // Se arrastou, não abrir o lightbox (era só para passar)
+        faixa.addEventListener('click', function(e){
+          if (moveu) { e.stopPropagation(); e.preventDefault(); moveu = false; }
+        }, true);
+      })();
 
       document.getElementById("prevBtn").onclick = showPrev;
       document.getElementById("nextBtn").onclick = showNext;
@@ -1156,13 +1243,51 @@ Desde 2018, a construir confiança todos os dias.</p>
       </p>
     </div>
 
-    <button id="rmConsentBtn" class="rm-ativo" style="
+    <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:22px;">
+      <label class="rm-consent-opt" style="display:flex; align-items:center; gap:12px; cursor:pointer; padding:13px 16px;
+        background:rgba(28,214,142,.06); border:1px solid rgba(28,214,142,.28); border-radius:14px;">
+        <input type="checkbox" id="rmConsentSim" style="width:20px; height:20px; cursor:pointer; accent-color:#1cd68e; flex-shrink:0;">
+        <span style="font-size:14px; color:#e8ebef; font-weight:700; line-height:1.4;">
+          Compreendo e aceito
+        </span>
+      </label>
+      <label class="rm-consent-opt" style="display:flex; align-items:center; gap:12px; cursor:pointer; padding:13px 16px;
+        background:rgba(255,107,107,.05); border:1px solid rgba(255,107,107,.24); border-radius:14px;">
+        <input type="checkbox" id="rmConsentNao" style="width:20px; height:20px; cursor:pointer; accent-color:#ff6b6b; flex-shrink:0;">
+        <span style="font-size:14px; color:#e8ebef; font-weight:700; line-height:1.4;">
+          Não aceito
+        </span>
+      </label>
+    </div>
+
+    <button id="rmConsentBtn" disabled style="
       width:100%; padding:16px; border:none; border-radius:14px;
       font-size:14px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
-      cursor:pointer; transition:all .25s ease; font-family:inherit;">
-      Entendi
+      background:rgba(192,192,192,.14); color:#6b7280; cursor:not-allowed;
+      transition:all .25s ease; font-family:inherit;">
+      OK
     </button>
 
+  </div>
+</div>
+
+<!-- Bloqueio total do ecrã (quando escolhe "Não aceito") -->
+<div id="rmBloqueioOverlay" style="
+  display:none; position:fixed; inset:0; z-index:2147483647;
+  background:rgba(4,5,7,.82); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  align-items:center; justify-content:center; padding:28px; text-align:center;">
+  <div style="max-width:440px;">
+    <div style="font-size:13px; font-weight:900; letter-spacing:.18em; color:#c0c0c0; text-transform:uppercase; margin-bottom:16px;">REALMETROPOLIS</div>
+    <p style="font-size:15px; color:#e8ebef; line-height:1.7; font-weight:600; margin-bottom:22px;">
+      Para utilizar a plataforma é necessário aceitar a utilização de cookies essenciais
+      e o tratamento de dados de acordo com o RGPD.
+    </p>
+    <button id="rmReconsiderarBtn" style="
+      padding:14px 28px; border:1px solid rgba(192,192,192,.4); border-radius:14px;
+      background:rgba(255,255,255,.06); color:#e8ebef; font-size:13px; font-weight:800;
+      letter-spacing:.06em; text-transform:uppercase; cursor:pointer; font-family:inherit;">
+      Voltar atrás
+    </button>
   </div>
 </div>
 
@@ -1181,16 +1306,61 @@ Desde 2018, a construir confiança todos os dias.</p>
     var CHAVE = 'rm_consentimento_v1';
     var overlay = document.getElementById('rmConsentOverlay');
     var btn     = document.getElementById('rmConsentBtn');
-    if (!overlay || !btn) return;
+    var sim     = document.getElementById('rmConsentSim');
+    var nao     = document.getElementById('rmConsentNao');
+    var bloqueio= document.getElementById('rmBloqueioOverlay');
+    var reconsiderar = document.getElementById('rmReconsiderarBtn');
+    if (!overlay || !btn || !sim || !nao) return;
 
-    var jaViu = false;
-    try { jaViu = localStorage.getItem(CHAVE) === '1'; } catch(e){}
-    if (!jaViu) { overlay.style.display = 'flex'; }
+    // Só mostra se ainda não aceitou antes
+    var jaAceitou = false;
+    try { jaAceitou = localStorage.getItem(CHAVE) === '1'; } catch(e){}
+    if (!jaAceitou) { overlay.style.display = 'flex'; }
+
+    function atualizarBotao(){
+      // O OK só fica ativo quando UMA das duas está marcada
+      if (sim.checked || nao.checked) {
+        btn.disabled = false;
+        btn.classList.add('rm-ativo');
+      } else {
+        btn.disabled = true;
+        btn.classList.remove('rm-ativo');
+      }
+    }
+
+    // Checkboxes exclusivas: marcar uma desmarca a outra
+    sim.addEventListener('change', function(){
+      if (sim.checked) nao.checked = false;
+      atualizarBotao();
+    });
+    nao.addEventListener('change', function(){
+      if (nao.checked) sim.checked = false;
+      atualizarBotao();
+    });
 
     btn.addEventListener('click', function(){
-      try { localStorage.setItem(CHAVE, '1'); } catch(e){}
-      overlay.style.display = 'none';
+      if (btn.disabled) return;
+
+      if (sim.checked) {
+        // Aceitou → guarda e fecha
+        try { localStorage.setItem(CHAVE, '1'); } catch(e){}
+        overlay.style.display = 'none';
+      } else if (nao.checked) {
+        // Não aceitou → bloqueia o ecrã por completo
+        overlay.style.display = 'none';
+        if (bloqueio) bloqueio.style.display = 'flex';
+      }
     });
+
+    // "Voltar atrás" no ecrã de bloqueio → reabre o aviso para reconsiderar
+    if (reconsiderar && bloqueio) {
+      reconsiderar.addEventListener('click', function(){
+        bloqueio.style.display = 'none';
+        nao.checked = false; sim.checked = false;
+        atualizarBotao();
+        overlay.style.display = 'flex';
+      });
+    }
   })();
 </script>
 
@@ -1201,8 +1371,8 @@ Desde 2018, a construir confiança todos os dias.</p>
     var menu     = document.querySelector('.header-center');
     var backdrop = document.getElementById('rmMenuBackdrop');
     if(!burger || !menu) return;
-    function abrir(){menu.classList.add('open');burger.classList.add('open');if(backdrop)backdrop.classList.add('open');burger.setAttribute('aria-expanded','true');}
-    function fechar(){menu.classList.remove('open');burger.classList.remove('open');if(backdrop)backdrop.classList.remove('open');burger.setAttribute('aria-expanded','false');}
+    function abrir(){menu.classList.add('open');burger.classList.add('open');if(backdrop)backdrop.classList.add('open');document.body.classList.add('rm-menu-aberto');burger.setAttribute('aria-expanded','true');}
+    function fechar(){menu.classList.remove('open');burger.classList.remove('open');if(backdrop)backdrop.classList.remove('open');document.body.classList.remove('rm-menu-aberto');burger.setAttribute('aria-expanded','false');}
     burger.addEventListener('click',function(){menu.classList.contains('open')?fechar():abrir();});
     if(backdrop) backdrop.addEventListener('click',fechar);
     menu.querySelectorAll('.pill-btn').forEach(function(b){b.addEventListener('click',fechar);});

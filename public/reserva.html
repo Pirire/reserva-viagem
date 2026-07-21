@@ -336,13 +336,13 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'DM Sans',system-ui
 #btnVerRota{
   position:fixed;top:calc(var(--safe-t, 0px) + 14px);right:16px;z-index:200;
   display:none;
-  height:46px;padding:0 22px;border-radius:999px;
+  width:44px;height:44px;padding:0;border-radius:50%;
   background:var(--silver);
   border:none;
-  color:#000;font-size:12px;font-weight:800;letter-spacing:.08em;
+  color:#000;font-size:20px;
   cursor:pointer;transition:.18s ease;font-family:inherit;
-  align-items:center;gap:8px;
-  box-shadow:0 4px 24px rgba(205,210,218,.35),0 2px 8px rgba(0,0,0,.5);
+  align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(205,210,218,.35),0 2px 8px rgba(0,0,0,.5);
   animation:routeBtnPulse 2.2s ease-in-out infinite;
 }
 @keyframes routeBtnPulse{
@@ -671,7 +671,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'DM Sans',system-ui
   </div>
 </div>
 
-<button id="btnVerRota">🗺 VER ROTA</button>
+<button id="btnVerRota" title="Ver rota" aria-label="Ver rota"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 11L21 3L13 21L11 13L3 11Z" fill="#000" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
 <button id="btnMostrarSheet">↑ VOLTAR AO FORMULÁRIO</button>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -814,7 +814,7 @@ async function calcRoute(){
     // Desenhar rota
     if(routeLayer) map.removeLayer(routeLayer);
     const coords=osrmRoute.geometry.coordinates.map(c=>[c[1],c[0]]);
-    routeLayer=L.polyline(coords,{color:'#cdd2da',weight:4,opacity:.85,lineCap:'round',lineJoin:'round'}).addTo(map);
+    routeLayer=L.polyline(coords,{color:'#000000',weight:5,opacity:.9,lineCap:'round',lineJoin:'round'}).addTo(map);
     map.fitBounds(routeLayer.getBounds(),{padding:[80,80]});
     updateRotaBtn();
     // Badge info
@@ -1472,15 +1472,7 @@ document.getElementById('btnMostrarSheet').onclick=()=>{
   });
 </script>
 
-<div style="position:fixed;right:14px;bottom:14px;z-index:400">
-  <div style="font-size:12px;font-family:Inter,Arial,system-ui,sans-serif;color:#9aa1ab;background:rgba(8,10,13,.72);backdrop-filter:blur(10px);padding:9px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px">
-    <span style="opacity:.7">&copy; REALMETROPOLIS</span>
-    <span style="opacity:.35">&middot;</span>
-    <a href="#" onclick="abrirLegalOverlay('privacidade');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Privacidade</a>
-    <span style="opacity:.35">&middot;</span>
-    <a href="#" onclick="abrirLegalOverlay('cookies');return false" style="color:#1cd68e;text-decoration:none;font-weight:800;letter-spacing:.01em">Cookies</a>
-  </div>
-</div>
+
 
 <!-- Overlay translúcido — Privacidade / Cookies -->
 <div id="legalOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(4,5,7,.72);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:24px">
