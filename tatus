@@ -1,0 +1,5 @@
+[33mc2f674f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Relatorio SLA com dados reais + fix _classif duplicado + cartao motorista + vigilancia cancelamento + validade 2h no email
+[33m61d481f[m Cartao do motorista redesenhado (foto amplia, seta prata, comentarios) + brilho discreto nos botoes + correcoes do despacho
+[33m4f2e889[m Fix: cartao do motorista aparece ao utilizador (assigned/inviteId/codigo pronto) + dados do veiculo + UI formulario
+[33m7ba1e5d[m UI: formulario reformulado - estado 1 vertical, estado 2 horizontal com carrossel, campos e caixas ajustados
+[33m6a2fbb3[m UI: carrossel participantes com setas, cartao largura total, cores botoes corrigidas
