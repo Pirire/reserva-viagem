@@ -581,7 +581,7 @@
 
           <div class="category-row">
             <button class="cat-btn selected" data-category="economica">
-              <span class="cat-ico-wrap" style="background:rgba(205,210,218,.08);border:1px solid rgba(205,210,218,.20)"><span class="cat-ico">🚗</span></span>
+              <span class="cat-ico-wrap" style="background:rgba(205,210,218,.08);border:1px solid rgba(205,210,218,.20)"><span class="cat-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cdd2da" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg></span></span>
               <span class="cat-info">
                 <span class="cat-name">ECONÓMICA</span>
                 <span class="cat-metas">
@@ -596,7 +596,7 @@
               </span>
             </button>
             <button class="cat-btn" data-category="confort">
-              <span class="cat-ico-wrap" style="background:rgba(74,142,240,.08);border:1px solid rgba(74,142,240,.2)"><span class="cat-ico">🚙</span></span>
+              <span class="cat-ico-wrap" style="background:rgba(74,142,240,.08);border:1px solid rgba(74,142,240,.2)"><span class="cat-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cdd2da" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg></span></span>
               <span class="cat-info">
                 <span class="cat-name">CONFORTO</span>
                 <span class="cat-metas">
@@ -611,7 +611,7 @@
               </span>
             </button>
             <button class="cat-btn" data-category="executive">
-              <span class="cat-ico-wrap" style="background:rgba(184,150,90,.08);border:1px solid rgba(184,150,90,.2)"><span class="cat-ico">🏎</span></span>
+              <span class="cat-ico-wrap" style="background:rgba(184,150,90,.08);border:1px solid rgba(184,150,90,.2)"><span class="cat-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cdd2da" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg></span></span>
               <span class="cat-info">
                 <span class="cat-name">EXECUTIVA</span>
                 <span class="cat-metas">
@@ -626,7 +626,7 @@
               </span>
             </button>
             <button class="cat-btn" data-category="luxo">
-              <span class="cat-ico-wrap" style="background:rgba(212,212,212,.06);border:1px solid rgba(212,212,212,.2)"><span class="cat-ico">✦</span></span>
+              <span class="cat-ico-wrap" style="background:rgba(212,212,212,.06);border:1px solid rgba(212,212,212,.2)"><span class="cat-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cdd2da" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg></span></span>
               <span class="cat-info">
                 <span class="cat-name">LUXO</span>
                 <span class="cat-metas">
@@ -2075,7 +2075,7 @@
       place-items: center;
       flex-shrink: 0;
     }
-    #tripPanel .cat-ico { font-size: 20px; line-height: 1; }
+    #tripPanel .cat-ico { font-size: 20px; line-height: 1; display:flex; align-items:center; justify-content:center; }
     #tripPanel .cat-info {
       flex: 1;
       min-width: 0;
@@ -3763,5 +3763,28 @@
     setTimeout(atualizar, 100);
   })();
 </script>
+
+<script>
+/* ===== Teclado no telemóvel: manter o campo focado visível =====
+   Quando um campo recebe foco, o teclado abre e pode tapá-lo.
+   Este script desliza suavemente o campo para uma zona visível. */
+(function(){
+  if (!('ontouchstart' in window)) return;   // só em ecrãs de toque
+  var campos = 'input, textarea, select';
+  document.addEventListener('focusin', function(e){
+    var el = e.target;
+    if (!el || !el.matches || !el.matches(campos)) return;
+    // esperar o teclado abrir e depois centrar o campo na vista
+    setTimeout(function(){
+      try {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch(_){
+        el.scrollIntoView(false);
+      }
+    }, 300);
+  });
+})();
+</script>
+
 </body>
 </html>

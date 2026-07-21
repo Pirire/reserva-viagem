@@ -35,6 +35,8 @@
   box-shadow:0 8px 30px rgba(0,0,0,0.35);
 }
   /* BOTÕES HEADER - PREMIUM CLEAN */
+/* Ícones do menu: escondidos no desktop, só aparecem no painel lateral (telemóvel) */
+.rm-menu-ico{ display:none; }
 .pill-btn{
   padding:10px 18px;
   border-radius:50px;
@@ -264,7 +266,6 @@
     0 0 26px rgba(220,220,220,0.30);
   filter:brightness(1.08);
 }
-    }
 
    @keyframes carGlow{
   from{
@@ -410,8 +411,9 @@
       border-left-color:#c0c0c0;
     }
     .header-center .pill-btn .rm-menu-ico{
+      display:flex !important;                 /* mostrar no telemóvel */
       width:22px;height:22px;flex:0 0 auto;color:#c0c0c0;
-      display:flex;align-items:center;justify-content:center;
+      align-items:center;justify-content:center;
     }
     .header-center .pill-btn .rm-menu-ico svg{width:22px;height:22px}
     .rm-burger{display:flex}
