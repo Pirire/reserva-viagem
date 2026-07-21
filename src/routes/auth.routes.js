@@ -1,5 +1,5 @@
 import { Router } from "express";
-import Cliente from "../models/cliente.js";
+import Cliente from "../models/Cliente.js";
 // (Import de Colaborador removido — os endpoints /colaboradores/* migraram
 // para /api/colaboradores/* em src/routes/colaboradores.routes.js, que usa
 // cookie httpOnly + bcrypt como padrão único de autenticação para gestores.)
