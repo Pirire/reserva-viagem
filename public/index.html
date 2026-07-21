@@ -2,8 +2,17 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>REALMETROPOLIS</title>
+
+  <!-- ===== PWA (app instalável) ===== -->
+  <link rel="manifest" href="/manifest-index.json" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Realmetropolis" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
 
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
@@ -290,6 +299,44 @@
     }
     .rm-opt:active { transform:translateY(0); }
 
+  
+  /* ===== MENU HAMBÚRGUER (só telemóvel) ===== */
+  .rm-burger{
+    display:none;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(192,192,192,.25);
+    border-radius:12px;width:44px;height:44px;cursor:pointer;
+    flex-direction:column;align-items:center;justify-content:center;gap:5px;
+    transition:all .2s;
+  }
+  .rm-burger:hover{border-color:rgba(230,230,230,.65)}
+  .rm-burger:active{transform:scale(.94)}
+  .rm-burger-bar{display:block;width:22px;height:2px;border-radius:2px;background:#d9d9d9;transition:transform .25s, opacity .2s}
+  .rm-burger.open .rm-burger-bar:nth-child(1){transform:translateY(7px) rotate(45deg)}
+  .rm-burger.open .rm-burger-bar:nth-child(2){opacity:0}
+  .rm-burger.open .rm-burger-bar:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+  .rm-menu-backdrop{display:none;position:fixed;inset:0;z-index:180;background:rgba(0,0,0,.55)}
+  .rm-menu-backdrop.open{display:block}
+  @media(max-width:820px){
+    .header-center{
+      display:none !important;position:fixed;top:63px;right:0;
+      width:min(80vw,320px);flex-direction:column;align-items:stretch;gap:10px;
+      padding:16px;background:rgba(0,0,0,.96);
+      border-left:1px solid rgba(192,192,192,.18);
+      border-bottom:1px solid rgba(192,192,192,.18);
+      border-radius:0 0 0 16px;box-shadow:-8px 12px 40px rgba(0,0,0,.6);
+      z-index:190;max-height:calc(100vh - 63px);overflow-y:auto;
+    }
+    .header-center.open{display:flex !important}
+    .header-center .pill-btn{margin-left:0;width:100%;text-align:left;font-size:15px;padding:14px 16px;border-radius:12px}
+    .rm-burger{display:flex}
+    .brand-name{font-size:16px}
+  }
+  @media(max-width:400px){
+    header{padding:12px 16px}
+    .brand-name{font-size:14px;letter-spacing:1px}
+  }
+
   </style>
 </head>
 
@@ -308,8 +355,15 @@
     </div>
 
     <div class="header-right">
+      <button class="rm-burger" id="rmBurgerBtn" type="button" aria-label="Abrir menu" aria-expanded="false">
+        <span class="rm-burger-bar"></span>
+        <span class="rm-burger-bar"></span>
+        <span class="rm-burger-bar"></span>
+      </button>
     </div>
   </header>
+
+  <div class="rm-menu-backdrop" id="rmMenuBackdrop"></div>
 
   <a href="./reserva.html" class="car-reserve-btn" aria-label="Reservar Viagem">
     <span class="car-body">
@@ -1095,26 +1149,18 @@ Desde 2018, a construir confiança todos os dias.</p>
         e acompanhamento do serviço. Os seus dados nunca são vendidos a terceiros e são tratados
         de forma confidencial.
       </p>
-      <p>
-        Ao continuar, confirma que leu e compreendeu a nossa política de privacidade e a utilização
-        de cookies.
+      <p style="margin:0;">
+        Utilizamos apenas cookies essenciais ao funcionamento da plataforma &mdash; não usamos cookies
+        de publicidade nem partilhamos os seus dados com terceiros. Ao continuar a navegar, aceita
+        a utilização destes cookies essenciais.
       </p>
     </div>
 
-    <label style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; padding:14px 16px;
-      background:rgba(192,192,192,.05); border:1px solid rgba(192,192,192,.16); border-radius:14px; margin-bottom:22px;">
-      <input type="checkbox" id="rmConsentCheck" style="width:20px; height:20px; margin-top:1px; cursor:pointer; accent-color:#1cd68e; flex-shrink:0;">
-      <span style="font-size:14px; color:#e8ebef; font-weight:600; line-height:1.4;">
-        Li e autorizo o tratamento dos meus dados e a utilização de cookies.
-      </span>
-    </label>
-
-    <button id="rmConsentBtn" disabled style="
+    <button id="rmConsentBtn" class="rm-ativo" style="
       width:100%; padding:16px; border:none; border-radius:14px;
       font-size:14px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
-      background:rgba(192,192,192,.14); color:#6b7280; cursor:not-allowed;
-      transition:all .25s ease; font-family:inherit;">
-      Fechar
+      cursor:pointer; transition:all .25s ease; font-family:inherit;">
+      Entendi
     </button>
 
   </div>
@@ -1134,37 +1180,46 @@ Desde 2018, a construir confiança todos os dias.</p>
   (function(){
     var CHAVE = 'rm_consentimento_v1';
     var overlay = document.getElementById('rmConsentOverlay');
-    var check   = document.getElementById('rmConsentCheck');
     var btn     = document.getElementById('rmConsentBtn');
-    if (!overlay || !check || !btn) return;
+    if (!overlay || !btn) return;
 
-    // Já aceitou antes? Então não mostra.
-    var jaAceitou = false;
-    try { jaAceitou = localStorage.getItem(CHAVE) === '1'; } catch(e){}
+    var jaViu = false;
+    try { jaViu = localStorage.getItem(CHAVE) === '1'; } catch(e){}
+    if (!jaViu) { overlay.style.display = 'flex'; }
 
-    if (!jaAceitou) {
-      overlay.style.display = 'flex';
-    }
-
-    // O botão só fica ativo quando a caixa está marcada
-    check.addEventListener('change', function(){
-      if (check.checked) {
-        btn.disabled = false;
-        btn.classList.add('rm-ativo');
-      } else {
-        btn.disabled = true;
-        btn.classList.remove('rm-ativo');
-      }
-    });
-
-    // Fechar: guarda o consentimento e esconde para sempre
     btn.addEventListener('click', function(){
-      if (btn.disabled) return;
       try { localStorage.setItem(CHAVE, '1'); } catch(e){}
       overlay.style.display = 'none';
     });
   })();
 </script>
+
+
+  <script>
+  (function(){
+    var burger   = document.getElementById('rmBurgerBtn');
+    var menu     = document.querySelector('.header-center');
+    var backdrop = document.getElementById('rmMenuBackdrop');
+    if(!burger || !menu) return;
+    function abrir(){menu.classList.add('open');burger.classList.add('open');if(backdrop)backdrop.classList.add('open');burger.setAttribute('aria-expanded','true');}
+    function fechar(){menu.classList.remove('open');burger.classList.remove('open');if(backdrop)backdrop.classList.remove('open');burger.setAttribute('aria-expanded','false');}
+    burger.addEventListener('click',function(){menu.classList.contains('open')?fechar():abrir();});
+    if(backdrop) backdrop.addEventListener('click',fechar);
+    menu.querySelectorAll('.pill-btn').forEach(function(b){b.addEventListener('click',fechar);});
+    window.addEventListener('resize',function(){if(window.innerWidth>820)fechar();});
+  })();
+  </script>
+
+
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('/sw.js').catch(function(e){
+        console.warn('SW falhou:', e && e.message);
+      });
+    });
+  }
+  </script>
 
 </body>
 </html>
