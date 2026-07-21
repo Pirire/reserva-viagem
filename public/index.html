@@ -183,9 +183,16 @@
     .popup-messages .msg.info{border:1px solid rgba(255,215,0,0.25);color:#ffe8a8;}
 
     #lightbox{
-      display:none;position:fixed;inset:0;background:rgba(0,0,0,0.86);
+      display:none;position:fixed;inset:0;background:rgba(0,0,0,0);
       justify-content:center;align-items:center;z-index:1000;
+      transition:background .35s ease;
     }
+    #lightbox.rm-aberto{ background:rgba(0,0,0,0.86); }
+    #lightbox .lightbox-inner{
+      opacity:0; transform:scale(.92);
+      transition:opacity .35s ease, transform .35s cubic-bezier(.2,.7,.3,1);
+    }
+    #lightbox.rm-aberto .lightbox-inner{ opacity:1; transform:scale(1); }
 
     .lightbox-inner{
       width:min(92vw, 1000px);display:flex;flex-direction:column;align-items:center;gap:10px;
@@ -929,13 +936,20 @@ Desde 2018, a construir confiança todos os dias.</p>
         const arr = groups[currentGroupKey] || [];
         if (!arr.length) return;
 
-        lightbox.style.display = "flex";
         lightboxImg.src = arr[currentIndex];
+        lightbox.style.display = "flex";
+        // forçar reflow e depois ativar a animação (fade + crescer até ao centro)
+        void lightbox.offsetWidth;
+        requestAnimationFrame(function(){ lightbox.classList.add('rm-aberto'); });
       }
 
       function closeLightbox() {
-        lightbox.style.display = "none";
-        lightboxImg.src = "";
+        // animar a saída (fade + encolher) e só depois esconder
+        lightbox.classList.remove('rm-aberto');
+        setTimeout(function(){
+          lightbox.style.display = "none";
+          lightboxImg.src = "";
+        }, 350);
         currentGroupKey = null;
         currentIndex = 0;
       }
