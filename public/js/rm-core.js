@@ -356,6 +356,13 @@
     panel.querySelectorAll('input, select, textarea').forEach(function (el) {
       if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
       else el.value = '';
+      // As coordenadas ficam em dataset.lat/lng, NAO no value. Se nao
+      // forem apagadas, o campo parece vazio mas mantem as coordenadas
+      // antigas e o endereco novo que se escreve e ignorado.
+      delete el.dataset.lat;
+      delete el.dataset.lng;
+      delete el.dataset.placeId;
+      delete el.dataset.lugar;
     });
     // 2) participantes extra (partilha)
     const extra = document.getElementById('rmParticipantesExtra');
