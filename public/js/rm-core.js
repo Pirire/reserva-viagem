@@ -341,9 +341,47 @@
   }
 
   function closeTripPanel() {
+    // FECHAR = reset TOTAL: limpa todos os campos e volta ao inicio
+    resetTotalTripPanel();
     els.tripPanel.classList.add('hidden');
     showTripTypeButtons();
     resetPreferenceSelection();
+  }
+
+  /* Limpa TODOS os campos e estados do painel de viagem. */
+  function resetTotalTripPanel() {
+    const panel = document.getElementById('tripPanel');
+    if (!panel) return;
+    // 1) todos os inputs/selects/textareas
+    panel.querySelectorAll('input, select, textarea').forEach(function (el) {
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+      else el.value = '';
+    });
+    // 2) participantes extra (partilha)
+    const extra = document.getElementById('rmParticipantesExtra');
+    if (extra) extra.innerHTML = '';
+    const carWrap = document.getElementById('rmCarrosselWrap');
+    if (carWrap) carWrap.style.display = 'none';
+    panel.classList.remove('rm-tem-participantes');
+    const mvWrap = document.getElementById('rmMesmoVeiculoWrap');
+    if (mvWrap) mvWrap.remove();
+    // 3) seleccoes visuais (categoria, grupo, validade, requisitos)
+    panel.querySelectorAll('.selected, .sel, .active').forEach(function (el) {
+      el.classList.remove('selected', 'sel', 'active');
+    });
+    // 4) dropdowns de sugestoes
+    panel.querySelectorAll('.nm-dropdown').forEach(function (d) {
+      d.innerHTML = '';
+      d.classList.remove('open');
+    });
+    // 5) voltar ao primeiro passo do formulario
+    const s1 = document.getElementById('rmStep1');
+    if (s1) s1.style.display = '';
+    panel.querySelectorAll('[id^="rmStep"]').forEach(function (s) {
+      if (s.id !== 'rmStep1') s.style.display = 'none';
+    });
+    const body = panel.querySelector('.panel-body');
+    if (body) body.scrollTop = 0;
   }
 
   function openShareMode() {
@@ -837,8 +875,8 @@
       <input class="field rm-hospede-field" placeholder="Nome do participante" data-campo="nome">
       <input class="field rm-hospede-field" type="tel" placeholder="Contacto" data-campo="contacto">
       <input class="field rm-hospede-field" type="email" placeholder="Email (opcional)" data-campo="email">
-      <div class="nm-wrap" style="position:relative">
-        <input class="field rm-hospede-field" placeholder="Destino sugestivo" data-campo="destinoTexto" autocomplete="off">
+      <div class="nm-wrap" style="position:relative;width:100%;display:block">
+        <input class="field rm-hospede-field" placeholder="Destino sugestivo" data-campo="destinoTexto" autocomplete="off" style="width:100%;box-sizing:border-box">
         <div class="nm-dropdown" data-campo="destinoDropdown"></div>
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
