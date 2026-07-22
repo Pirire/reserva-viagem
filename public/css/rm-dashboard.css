@@ -881,3 +881,33 @@
   background:rgba(31,201,125,.07);border:1px solid rgba(31,201,125,.18);
   font-size:12px;font-weight:900;color:#1fc97d;letter-spacing:.12em;
 }
+  /* ══════════════════════════════════════════════════════════════
+     TELEMOVEL: desligar desfoque e animacoes continuas
+     --------------------------------------------------------------
+     No telemovel apareciam rectangulos cinzentos/pretos a cortar o
+     ecra — blocos que "desapareciam" e voltavam. Nao era logica: era
+     o browser a nao conseguir repintar.
+
+     A causa e a soma de duas coisas que obrigam a repintar sem
+     parar: backdrop-filter (desfoque) em ~11 elementos, e animacoes
+     em ciclo infinito. Em Android, com varias camadas sobrepostas,
+     o compositor deixa camadas por actualizar.
+
+     No computador ha folga para ambos; no telemovel nao. Aqui
+     desliga-se so o efeito visual — nada de comportamento muda.
+     ══════════════════════════════════════════════════════════════ */
+  @media (max-width: 900px) {
+    :root { --blur: none; }
+    /* alguns backdrop-filter estao escritos directamente, nao via var */
+    [style*="backdrop-filter"],
+    .panel, .floating-shell, .popup-overlay,
+    .hamburger-dropdown, .share-sheet {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    /* animacoes que corriam sem fim */
+    .trip-type-wrap::after { animation: none !important; display: none !important; }
+    .viagens-btn.tem-pendentes,
+    .driver-card.oscilar,
+    .motorista-eta-dot { animation: none !important; }
+  }
