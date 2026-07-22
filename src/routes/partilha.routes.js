@@ -1853,7 +1853,20 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
           smsBody,
           emailSubject: "A sua viagem — REALMETROPOLIS",
           emailHtml,
-        }).catch((err) => console.warn("⚠️ [reserva-simples] falha ao notificar participante:", err?.message));
+        })
+          // Registar SEMPRE o resultado. Antes so havia .catch(): se a
+          // funcao devolvesse "nao enviei" sem rebentar, nada aparecia
+          // no log e o ecra dizia na mesma que o link tinha sido
+          // enviado — impossivel perceber porque nao chegava nada.
+          .then((nRes) => {
+            console.log(
+              `📩 [reserva-simples] ${c.nome} <${c.contacto || "sem contacto"}> ` +
+              `sms:${nRes?.smsEnviado} email:${nRes?.emailEnviado}` +
+              (nRes?.smsErro   ? ` | erroSMS: ${nRes.smsErro}` : "") +
+              (nRes?.emailErro ? ` | erroEmail: ${nRes.emailErro}` : "")
+            );
+          })
+          .catch((err) => console.warn("⚠️ [reserva-simples] falha ao notificar participante:", err?.message));
       }
     }
 
