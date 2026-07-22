@@ -4,7 +4,14 @@
 
 
   /* ── CONFIGURAÇÃO DA API ───────────────────────────────────── */
-  const API_BASE   = location.origin.includes('10000') ? location.origin : 'http://localhost:10000';
+  // O backend serve tambem o frontend, por isso a API esta SEMPRE no
+  // mesmo endereco da pagina. A regra anterior ("se o endereco tiver
+  // 10000 usa-o, senao usa localhost:10000") funcionava em
+  // desenvolvimento mas em producao caia sempre no localhost do PC —
+  // os pedidos nunca chegavam ao servidor (401 / Failed to fetch).
+  // Excepcao: abrir o ficheiro HTML directamente (file://), onde nao
+  // ha servidor e se aponta para o local.
+  const API_BASE   = (location.protocol === 'file:') ? 'http://localhost:10000' : location.origin;
   const API_PREFIX = '/api';
 
   function url(path) {
@@ -346,6 +353,7 @@
     resetPreferenceSelection();
   }
 
+
   function openShareMode() {
     hideTripTypeButtons();
     setActiveTripType('partilhar');
@@ -620,10 +628,13 @@
   /* ── RESERVA PRIVADA ───────────────────────────────────────── */
   // Calcular distância via OSRM e preços para todas as categorias
   async function tentarCalcularPrecos() {
-    const pLat = els.inputPartida.dataset.lat;
-    const pLng = els.inputPartida.dataset.lng;
-    const dLat = els.inputDestino.dataset.lat;
-    const dLng = els.inputDestino.dataset.lng;
+    // NOTA: usar let (nao const). Se faltarem coordenadas, sao obtidas
+    // por geocodificacao e as variaveis TEM de ser actualizadas — caso
+    // contrario a rota seria pedida com "undefined" e o preco falhava.
+    let pLat = els.inputPartida.dataset.lat;
+    let pLng = els.inputPartida.dataset.lng;
+    let dLat = els.inputDestino.dataset.lat;
+    let dLng = els.inputDestino.dataset.lng;
 
     // Se faltam coordenadas, geocodificar os textos escritos
     if (!pLat || !pLng) {
@@ -633,6 +644,8 @@
       if (!geo.length) return;
       els.inputPartida.dataset.lat = geo[0].lat;
       els.inputPartida.dataset.lng = geo[0].lon;
+      pLat = geo[0].lat;
+      pLng = geo[0].lon;
     }
     if (!dLat || !dLng) {
       const txt = els.inputDestino.value.trim();
@@ -641,6 +654,8 @@
       if (!geo.length) return;
       els.inputDestino.dataset.lat = geo[0].lat;
       els.inputDestino.dataset.lng = geo[0].lon;
+      dLat = geo[0].lat;
+      dLng = geo[0].lon;
     }
 
     // Indicar que está a calcular (só o preço, sem apagar ícone/tempo/distância)
@@ -837,8 +852,8 @@
       <input class="field rm-hospede-field" placeholder="Nome do participante" data-campo="nome">
       <input class="field rm-hospede-field" type="tel" placeholder="Contacto" data-campo="contacto">
       <input class="field rm-hospede-field" type="email" placeholder="Email (opcional)" data-campo="email">
-      <div class="nm-wrap" style="position:relative">
-        <input class="field rm-hospede-field" placeholder="Destino sugestivo" data-campo="destinoTexto" autocomplete="off">
+      <div class="nm-wrap" style="position:relative;width:100%;display:block">
+        <input class="field rm-hospede-field" placeholder="Destino sugestivo" data-campo="destinoTexto" autocomplete="off" style="width:100%;box-sizing:border-box">
         <div class="nm-dropdown" data-campo="destinoDropdown"></div>
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer;margin-top:2px">
