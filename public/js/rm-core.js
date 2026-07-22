@@ -85,6 +85,9 @@
   // Tipo de parceiro cacheado via /me
   let _isHotelCache = null;
   async function isHotelAsync() {
+    // Modo cliente (minha-conta.html): nao e parceiro, nem vale a
+    // pena perguntar ao servidor.
+    if (window.__RM_MODO_CLIENTE__) { _isHotelCache = false; return false; }
     _isHotelCache = null; // verificar sempre sem cache
     try {
       const res  = await fetch('/api/admin/parceiros/me', { credentials: 'include' });
@@ -135,6 +138,31 @@
 
   async function carregarUtilizador() {
     const nomeEl = el('nomeUtilizador');
+
+    // ── MODO CLIENTE ──────────────────────────────────────────
+    // A mesma pagina serve o parceiro (hotel) e o cliente final. O
+    // cliente autentica-se noutro sitio: sem isto era procurado em
+    // /admin/parceiros/me, nunca encontrado, e acabava expulso para
+    // o index — nao conseguia abrir a propria conta.
+    if (window.__RM_MODO_CLIENTE__) {
+      for (let tentativa = 0; tentativa < 3; tentativa++) {
+        try {
+          if (tentativa > 0) await new Promise(r => setTimeout(r, 600));
+          const res  = await fetch(url('/clientes/me'), { credentials: 'include' });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data?.ok) {
+            const u = data.user || data;
+            currentUser.nomeCompleto = u.nomeCompleto || u.nome || u.name || '';
+            currentUser.email        = u.email || '';
+            currentUser.contacto     = u.contacto || u.telefone || u.phone || '';
+            if (nomeEl) nomeEl.textContent = (currentUser.nomeCompleto || 'REALMETROPOLIS').toUpperCase();
+            return;
+          }
+        } catch (_) {}
+      }
+      window.location.href = '/index.html';
+      return;
+    }
 
     // Tentar até 3 vezes com delay — o cookie pode ainda não estar disponível
     for (let tentativa = 0; tentativa < 3; tentativa++) {

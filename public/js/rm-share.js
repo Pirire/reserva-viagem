@@ -1,3 +1,12 @@
+/* Contactos guardados: o parceiro (hotel) e o cliente final guardam-nos
+   em sitios diferentes. Esta funcao devolve o caminho certo conforme
+   quem esta na pagina — sem isto, no modo cliente a lista aparecia
+   sempre vazia. */
+function _rmBaseContactos() {
+  return window.__RM_MODO_CLIENTE__
+    ? '/api/clientes/me/contactos'
+    : '/api/admin/parceiros/me/contactos';
+}
 // rm-share.js — Partilha de viagem, polling, rota ao vivo
 // ─────────────────────────────────────────────────────────────
 console.log("✅ rm-share.js VERSÃO 2026-07-02-EVT-V21-FASE2 carregado");
@@ -2654,7 +2663,7 @@ async function _abrirOverlayContactos(slotIdx) {
 
   let contactos = [];
   try {
-    const r = await fetch('/api/admin/parceiros/me/contactos', { credentials: 'include' });
+    const r = await fetch(_rmBaseContactos(), { credentials: 'include' });
     const d = await r.json().catch(() => ({}));
     contactos = r.ok && Array.isArray(d?.contactos) ? d.contactos : [];
   } catch (_) {}

@@ -1,3 +1,12 @@
+/* Contactos guardados: o parceiro (hotel) e o cliente final guardam-nos
+   em sitios diferentes. Esta funcao devolve o caminho certo conforme
+   quem esta na pagina — sem isto, no modo cliente a lista aparecia
+   sempre vazia. */
+function _rmBaseContactos() {
+  return window.__RM_MODO_CLIENTE__
+    ? '/api/clientes/me/contactos'
+    : '/api/admin/parceiros/me/contactos';
+}
 // ─────────────────────────────────────────────────────────────
 // rm-activity.js — Atividade, artigo perdido, segurança, fatura
 //                  Contactos, Viagens Pendentes
@@ -73,7 +82,7 @@ async function sendLostItem() {
 
 async function fetchContactos() {
     try {
-      const r = await fetch('/api/admin/parceiros/me/contactos', { credentials: 'include' });
+      const r = await fetch(_rmBaseContactos(), { credentials: 'include' });
       const data = await r.json().catch(() => ({}));
       _cachedContactos = r.ok && Array.isArray(data?.contactos) ? data.contactos : [];
     } catch { _cachedContactos = []; }
@@ -81,7 +90,7 @@ async function fetchContactos() {
   }
 
   async function apiAdicionarContacto(nome, tel) {
-    const r = await fetch('/api/admin/parceiros/me/contactos', {
+    const r = await fetch(_rmBaseContactos(), {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome: nome.trim(), tel: tel.trim() })
@@ -93,7 +102,7 @@ async function fetchContactos() {
   }
 
   async function apiRemoverContacto(id) {
-    const r = await fetch(`/api/admin/parceiros/me/contactos/${id}`, {
+    const r = await fetch(`${_rmBaseContactos()}/${id}`, {
       method: 'DELETE', credentials: 'include'
     });
     const data = await r.json().catch(() => ({}));
@@ -156,8 +165,11 @@ async function fetchContactos() {
     }
     const btn = el('btnViagensPendentes');
     const n = viagensPendentes.length;
-    if (n > 0) { btn.classList.add('tem-pendentes'); btn.dataset.count = n > 9 ? '9+' : String(n); }
-    else { btn.classList.remove('tem-pendentes'); btn.removeAttribute('data-count'); }
+    // O botão do cabeçalho foi removido — proteger contra null.
+    if (btn) {
+      if (n > 0) { btn.classList.add('tem-pendentes'); btn.dataset.count = n > 9 ? '9+' : String(n); }
+      else { btn.classList.remove('tem-pendentes'); btn.removeAttribute('data-count'); }
+    }
   }
 
   function renderViagensPendentes() {
