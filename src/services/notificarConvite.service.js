@@ -105,6 +105,13 @@ function transporteSmtp() {
     port: Number(process.env.SMTP_PORT || 587),
     secure: Number(process.env.SMTP_PORT) === 465,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    // ── FORÇAR IPv4 ──────────────────────────────────────────────
+    // O alojamento (Render) não tem rota IPv6. Sem isto, o Node
+    // resolvia o servidor de email para um endereço IPv6 e a ligação
+    // morria com "connect ENETUNREACH 2a00:1450:...:587" ou ficava
+    // em "Connection timeout" — nenhum email chegava a sair, apesar
+    // de as credenciais estarem correctas.
+    family: 4,
     connectionTimeout: SMTP_TIMEOUT_MS,
     greetingTimeout:   SMTP_TIMEOUT_MS,
     socketTimeout:     SMTP_TIMEOUT_MS + 4_000,
