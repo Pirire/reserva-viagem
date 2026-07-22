@@ -522,9 +522,9 @@
             <input class="field" id="inputDateTime" type="datetime-local">
           </div>
           <div class="form-row rm-hospede-row" style="margin-top:0">
-            <input class="field rm-hospede-field" id="inputNomeHospede" type="text" placeholder="Nome do hóspede" autocomplete="new-password">
-            <input class="field rm-hospede-field" id="inputContactoHospede" type="tel" placeholder="Contacto do hóspede (para SMS)" autocomplete="new-password">
-            <input class="field rm-hospede-field" id="inputEmailHospede" type="email" placeholder="Email do hóspede (para o email de confirmação)" autocomplete="new-password">
+            <input class="field rm-hospede-field" id="inputNomeHospede" type="text" placeholder="Nome do hóspede" autocomplete="off">
+            <input class="field rm-hospede-field" id="inputContactoHospede" type="tel" placeholder="Contacto do hóspede (para SMS)" autocomplete="off">
+            <input class="field rm-hospede-field" id="inputEmailHospede" type="email" placeholder="Email do hóspede (para o email de confirmação)" autocomplete="off">
             <div id="rmCaixasPrincipal" style="display:flex;flex-direction:column;gap:8px;margin-top:6px;align-items:flex-start">
               <label id="rmBloquearLabel" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--silver-2);cursor:pointer">
                 <input type="checkbox" id="rmBloquearPrincipal" style="width:16px;height:16px;cursor:pointer;accent-color:#c4c9d4">
@@ -560,14 +560,9 @@
                cada um a receber o link de pagamento da sua parte.
                Sem isto ligado, o formulário funciona exactamente
                como sempre funcionou — uma pessoa, um destino. -->
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">
-            <button type="button" id="btnConvidarMaisPessoas" style="display:inline-flex;align-items:center;gap:3px;background:transparent;border:1px solid #1cd68e;color:#1cd68e;font-size:11px;font-weight:900;letter-spacing:.02em;cursor:pointer;padding:3px 9px;border-radius:14px;text-align:center;width:auto">
-              ＋ PARTICIPANTES
-            </button>
-            <button type="button" id="btnFecharResetTrip" title="Fechar e limpar tudo" style="display:inline-flex;align-items:center;gap:4px;background:transparent;border:1px solid rgba(255,90,90,.55);color:#ff5a5a;font-size:11px;font-weight:900;letter-spacing:.02em;cursor:pointer;padding:3px 12px;border-radius:14px;width:auto">
-              ✕ FECHAR
-            </button>
-          </div>
+          <button type="button" id="btnConvidarMaisPessoas" style="display:inline-flex;align-items:center;gap:3px;background:transparent;border:1px solid #1cd68e;color:#1cd68e;font-size:11px;font-weight:900;letter-spacing:.02em;cursor:pointer;padding:3px 9px;border-radius:14px;text-align:center;width:auto;align-self:flex-start">
+            ＋ PARTICIPANTES
+          </button>
           <div id="rmCarrosselWrap" style="display:none;position:relative;margin-top:6px">
             <button type="button" id="rmCarrosselPrev" aria-label="Anterior" style="display:none;position:absolute;left:-6px;top:50%;transform:translateY(-50%);z-index:5;width:32px;height:32px;border-radius:50%;background:rgba(28,214,142,.92);border:none;color:#04120b;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);align-items:center;justify-content:center;line-height:1">‹</button>
             <div id="rmParticipantesExtra" class="rm-carrossel" style="display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding-bottom:4px;scroll-snap-type:x mandatory"></div>
@@ -2588,47 +2583,6 @@
         transform: none;
       }
     }
-
-    /* ── REDUZIR campos e botões no telemóvel para caber tudo no ecrã ── */
-    @media (max-width: 640px) {
-      /* Campos de entrada mais compactos (partida, destino, nome, email, contacto) */
-      #tripPanel #rmStep1 .field,
-      #tripPanel #rmStep1 input.field,
-      #tripPanel #rmStep1 select {
-        min-height: 34px !important;
-        padding-top: 8px !important;
-        padding-bottom: 8px !important;
-        font-size: 13px !important;
-      }
-      /* Data e hora mais compacta */
-      #tripPanel #inputDateTime {
-        min-height: 34px !important;
-        padding-top: 8px !important;
-        padding-bottom: 8px !important;
-        font-size: 13px !important;
-      }
-      /* Menos espaço entre campos */
-      #tripPanel:not(.rm-tem-participantes) #rmStep1 { gap: 8px !important; }
-      /* Botões de validade (1h, 2h, ...) mais pequenos */
-      #tripPanel .rm-validade-btn,
-      #tripPanel .validade-opt,
-      #tripPanel [data-validade] {
-        padding: 6px 10px !important;
-        font-size: 11px !important;
-        min-height: 30px !important;
-      }
-      /* Botão ver rota mais pequeno */
-      #rmBtnVerRota {
-        padding: 6px 12px !important;
-        font-size: 11px !important;
-        min-height: 32px !important;
-      }
-      /* Painel com scroll para nunca cortar conteúdo */
-      #tripPanel .panel-body {
-        max-height: calc(100vh - 120px) !important;
-        overflow-y: auto !important;
-      }
-    }
     #tripPanel.panel {
       width: 100%;
       max-width: 100%;
@@ -3474,8 +3428,33 @@
         const shell = document.querySelector('.floating-shell');
         if (shell) shell.style.display = '';
         // RESET TOTAL: limpar TODOS os campos do formulário
+        rmResetTotalHotel();
       });
 
+      /* ── RESET TOTAL do formulário do hotel: limpa TODOS os campos ── */
+      function rmResetTotalHotel(){
+        const panel = document.getElementById('tripPanel');
+        if (!panel) return;
+        // 1) Limpar todos os inputs/selects/textareas do painel
+        panel.querySelectorAll('input, select, textarea').forEach(function(el){
+          if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+          else el.value = '';
+        });
+        // 2) Limpar também os participantes extra (carrossel de partilha)
+        const extra = document.getElementById('rmParticipantesExtra');
+        if (extra) extra.innerHTML = '';
+        const carWrap = document.getElementById('rmCarrosselWrap');
+        if (carWrap) carWrap.style.display = 'none';
+        panel.classList.remove('rm-tem-participantes');
+        const mvWrap = document.getElementById('rmMesmoVeiculoWrap');
+        if (mvWrap) mvWrap.remove();
+        // 3) Limpar seleção de categorias/grupo (classes visuais)
+        panel.querySelectorAll('.cat-card.sel, .cat-card.active, .cat-card.selected, .grupo-opt.active, .req-esp-btn.active').forEach(function(el){
+          el.classList.remove('sel','active','selected');
+        });
+        // 4) Limpar dropdowns de autocomplete
+        panel.querySelectorAll('.nm-dropdown').forEach(function(d){ d.innerHTML=''; d.classList.remove('open'); });
+      }
     })();
   </script>
 
@@ -3550,13 +3529,10 @@
     /* Telemóvel: painel ocupa o ecrã todo (como app) */
     @media (max-width: 640px) {
       #tripPanel.panel {
-        height: auto;              /* altura natural: sem espaco vazio em baixo */
-        max-height: 100vh;         /* nunca passa do ecra; se passar, faz scroll */
+        height: 100vh;
+        max-height: 100vh;
         border-radius: 0;
       }
-      /* O corpo do painel deixa de esticar os campos para encher a altura */
-      #tripPanel .panel-body { flex: 0 1 auto !important; }
-      #tripPanel #rmStep1 { justify-content: flex-start !important; }
     }
 
     /* ── Organizador COLAPSADO (quando há participantes) ── */
@@ -3718,7 +3694,7 @@
   </script>
 
   <!-- ══ MÓDULOS JS (ordem de dependência) ══════════════════ -->
-  <script src="js/rm-core.js?v=31"></script>
+  <script src="js/rm-core.js?v=28"></script>
   <script src="js/rm-requisitos.js"></script>
   <script src="js/rm-map.js"></script>
   <script src="/socket.io/socket.io.js"></script>
@@ -3833,21 +3809,6 @@
         el.scrollIntoView(false);
       }
     }, 300);
-  });
-})();
-</script>
-
-
-<script>
-/* Botao FECHAR (ao lado de + PARTICIPANTES): reutiliza o mesmo caminho
-   do X do topo, que ja faz reset total + fecha (closeTripPanel). */
-(function(){
-  document.addEventListener('click', function(e){
-    var b = e.target.closest && e.target.closest('#btnFecharResetTrip');
-    if (!b) return;
-    e.preventDefault();
-    var x = document.getElementById('btnCloseTrip');
-    if (x) x.click();
   });
 })();
 </script>
