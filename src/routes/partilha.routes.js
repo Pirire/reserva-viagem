@@ -1705,6 +1705,11 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
     const MAX_MS = 4 * 60 * 60 * 1000;      // 4 horas (máximo)
     const DEFAULT_MS = 2 * 60 * 60 * 1000;  // 2 horas (por defeito)
     let validUntil = validUntilRaw ? parseDateTime(validUntilRaw) : null;
+    // parseDateTime devolve MILISSEGUNDOS (numero), nao um Date. Sem esta
+    // normalizacao o validUntil ficava numero neste ramo e Date no ramo
+    // do valor por defeito — e o .getTime() mais abaixo rebentava com
+    // "validUntil.getTime is not a function", impedindo criar a reserva.
+    if (validUntil !== null) validUntil = new Date(validUntil);
     if (validUntil) {
       if (validUntil <= t) {
         return res.status(400).json({ ok: false, message: "O prazo de validade deve ser depois da hora da viagem." });
