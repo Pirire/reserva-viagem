@@ -406,6 +406,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'DM Sans',system-ui
         <div class="step1-title">Para onde vai?</div>
         <div class="step1-sub">Serviço premium de transporte</div>
       </div>
+      <button type="button" id="btnFecharReset" title="Fechar e limpar tudo" aria-label="Fechar e limpar" style="margin-left:auto;width:34px;height:34px;border-radius:50%;border:1px solid rgba(205,210,218,.3);background:rgba(255,255,255,.05);color:#cdd2da;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;flex:0 0 auto;transition:.15s">✕</button>
     </div>
     <div class="addr-wrap">
       <div class="addr-dots">
@@ -717,6 +718,44 @@ function showStep(n){
   $('step2').style.display=n===2?'block':'none';
   $('step3').style.display=n===3?'block':'none';
 }
+
+/* ── RESET TOTAL: limpa TODOS os campos e o estado, volta ao início ── */
+function resetTotalReserva(){
+  // 1) Limpar TODOS os campos do formulário (texto, email, tel, data, ficheiro)
+  document.querySelectorAll('#step1 input, #step2 input, #step3 input, input.inp, input.inp-dt, input[type="datetime-local"], select, textarea').forEach(function(el){
+    if (el.type === 'checkbox' || el.type === 'radio') { el.checked = false; }
+    else { el.value = ''; }
+  });
+  // 2) Repor variáveis de estado
+  placaO = null; placaD = null;
+  selectedCat = ''; selectedGrupo = '';
+  quote = {categoria:'',km:0,dur:'',total:0,base:0,portagens:0,tolls:[]};
+  // 3) Limpar o mapa (rota e marcadores)
+  try {
+    if (routeLayer && map) { map.removeLayer(routeLayer); routeLayer = null; }
+    if (mO && map) { map.removeLayer(mO); mO = null; }
+    if (mD && map) { map.removeLayer(mD); mD = null; }
+  } catch(_){}
+  // 4) Limpar seleção visual de categorias e grupo (classes 'sel'/'active')
+  document.querySelectorAll('.cat-card.sel, .cat-card.active, .grupo-opt.sel, .grupo-opt.active, .req-esp-btn.active').forEach(function(el){
+    el.classList.remove('sel','active');
+  });
+  // 5) Esconder o botão VER ROTA e fechar dropdowns
+  var vr = document.getElementById('btnVerRota'); if (vr) vr.classList.remove('show');
+  document.querySelectorAll('.nm-dropdown, .autocomplete-list').forEach(function(d){ d.innerHTML=''; d.classList.remove('open'); });
+  // 6) Voltar ao primeiro passo
+  showStep(1);
+  // 7) Desativar o botão OK (fica à espera de novo preenchimento)
+  var ok = document.getElementById('btnOk'); if (ok) ok.disabled = true;
+  window.scrollTo(0,0);
+}
+// Ligar o botão FECHAR ao reset total
+document.addEventListener('DOMContentLoaded', function(){
+  var b = document.getElementById('btnFecharReset');
+  if (b) b.addEventListener('click', function(){
+    if (confirm('Fechar e limpar todos os campos?')) resetTotalReserva();
+  });
+});
 
 /* ── STATUS ── */
 function setStatus(msg,el='statusMsg'){const e=$(el);if(e)e.innerHTML=msg;}

@@ -3427,7 +3427,34 @@
         document.getElementById('rmBtnVoltarFormulario').classList.remove('show');
         const shell = document.querySelector('.floating-shell');
         if (shell) shell.style.display = '';
+        // RESET TOTAL: limpar TODOS os campos do formulário
+        rmResetTotalHotel();
       });
+
+      /* ── RESET TOTAL do formulário do hotel: limpa TODOS os campos ── */
+      function rmResetTotalHotel(){
+        const panel = document.getElementById('tripPanel');
+        if (!panel) return;
+        // 1) Limpar todos os inputs/selects/textareas do painel
+        panel.querySelectorAll('input, select, textarea').forEach(function(el){
+          if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+          else el.value = '';
+        });
+        // 2) Limpar também os participantes extra (carrossel de partilha)
+        const extra = document.getElementById('rmParticipantesExtra');
+        if (extra) extra.innerHTML = '';
+        const carWrap = document.getElementById('rmCarrosselWrap');
+        if (carWrap) carWrap.style.display = 'none';
+        panel.classList.remove('rm-tem-participantes');
+        const mvWrap = document.getElementById('rmMesmoVeiculoWrap');
+        if (mvWrap) mvWrap.remove();
+        // 3) Limpar seleção de categorias/grupo (classes visuais)
+        panel.querySelectorAll('.cat-card.sel, .cat-card.active, .cat-card.selected, .grupo-opt.active, .req-esp-btn.active').forEach(function(el){
+          el.classList.remove('sel','active','selected');
+        });
+        // 4) Limpar dropdowns de autocomplete
+        panel.querySelectorAll('.nm-dropdown').forEach(function(d){ d.innerHTML=''; d.classList.remove('open'); });
+      }
     })();
   </script>
 
