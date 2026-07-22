@@ -1859,11 +1859,15 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
           // no log e o ecra dizia na mesma que o link tinha sido
           // enviado — impossivel perceber porque nao chegava nada.
           .then((nRes) => {
+            // O servico devolve os motivos em nRes.erros = [{canal, motivo}]
+            const motivos = (nRes?.erros || [])
+              .map((e) => `${e.canal}: ${e.motivo}`)
+              .join(" | ");
             console.log(
               `📩 [reserva-simples] ${c.nome} <${c.contacto || "sem contacto"}> ` +
+              `email=<${c.email || "vazio"}> ` +
               `sms:${nRes?.smsEnviado} email:${nRes?.emailEnviado}` +
-              (nRes?.smsErro   ? ` | erroSMS: ${nRes.smsErro}` : "") +
-              (nRes?.emailErro ? ` | erroEmail: ${nRes.emailErro}` : "")
+              (motivos ? ` || ${motivos}` : "")
             );
           })
           .catch((err) => console.warn("⚠️ [reserva-simples] falha ao notificar participante:", err?.message));
