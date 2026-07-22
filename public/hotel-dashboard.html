@@ -560,9 +560,14 @@
                cada um a receber o link de pagamento da sua parte.
                Sem isto ligado, o formulário funciona exactamente
                como sempre funcionou — uma pessoa, um destino. -->
-          <button type="button" id="btnConvidarMaisPessoas" style="display:inline-flex;align-items:center;gap:3px;background:transparent;border:1px solid #1cd68e;color:#1cd68e;font-size:11px;font-weight:900;letter-spacing:.02em;cursor:pointer;padding:3px 9px;border-radius:14px;text-align:center;width:auto;align-self:flex-start">
-            ＋ PARTICIPANTES
-          </button>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">
+            <button type="button" id="btnConvidarMaisPessoas" style="display:inline-flex;align-items:center;gap:3px;background:transparent;border:1px solid #1cd68e;color:#1cd68e;font-size:11px;font-weight:900;letter-spacing:.02em;cursor:pointer;padding:3px 9px;border-radius:14px;text-align:center;width:auto">
+              ＋ PARTICIPANTES
+            </button>
+            <button type="button" id="btnFecharResetTrip" title="Fechar e limpar tudo" style="display:inline-flex;align-items:center;gap:4px;background:transparent;border:1px solid rgba(255,90,90,.55);color:#ff5a5a;font-size:11px;font-weight:900;letter-spacing:.02em;cursor:pointer;padding:3px 12px;border-radius:14px;width:auto">
+              ✕ FECHAR
+            </button>
+          </div>
           <div id="rmCarrosselWrap" style="display:none;position:relative;margin-top:6px">
             <button type="button" id="rmCarrosselPrev" aria-label="Anterior" style="display:none;position:absolute;left:-6px;top:50%;transform:translateY(-50%);z-index:5;width:32px;height:32px;border-radius:50%;background:rgba(28,214,142,.92);border:none;color:#04120b;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);align-items:center;justify-content:center;line-height:1">‹</button>
             <div id="rmParticipantesExtra" class="rm-carrossel" style="display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding-bottom:4px;scroll-snap-type:x mandatory"></div>
@@ -3828,6 +3833,21 @@
         el.scrollIntoView(false);
       }
     }, 300);
+  });
+})();
+</script>
+
+
+<script>
+/* Botao FECHAR (ao lado de + PARTICIPANTES): reutiliza o mesmo caminho
+   do X do topo, que ja faz reset total + fecha (closeTripPanel). */
+(function(){
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('#btnFecharResetTrip');
+    if (!b) return;
+    e.preventDefault();
+    var x = document.getElementById('btnCloseTrip');
+    if (x) x.click();
   });
 })();
 </script>
