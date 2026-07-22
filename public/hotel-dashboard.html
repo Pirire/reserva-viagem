@@ -2583,6 +2583,47 @@
         transform: none;
       }
     }
+
+    /* ── REDUZIR campos e botões no telemóvel para caber tudo no ecrã ── */
+    @media (max-width: 640px) {
+      /* Campos de entrada mais compactos (partida, destino, nome, email, contacto) */
+      #tripPanel #rmStep1 .field,
+      #tripPanel #rmStep1 input.field,
+      #tripPanel #rmStep1 select {
+        min-height: 34px !important;
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+        font-size: 13px !important;
+      }
+      /* Data e hora mais compacta */
+      #tripPanel #inputDateTime {
+        min-height: 34px !important;
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+        font-size: 13px !important;
+      }
+      /* Menos espaço entre campos */
+      #tripPanel:not(.rm-tem-participantes) #rmStep1 { gap: 8px !important; }
+      /* Botões de validade (1h, 2h, ...) mais pequenos */
+      #tripPanel .rm-validade-btn,
+      #tripPanel .validade-opt,
+      #tripPanel [data-validade] {
+        padding: 6px 10px !important;
+        font-size: 11px !important;
+        min-height: 30px !important;
+      }
+      /* Botão ver rota mais pequeno */
+      #rmBtnVerRota {
+        padding: 6px 12px !important;
+        font-size: 11px !important;
+        min-height: 32px !important;
+      }
+      /* Painel com scroll para nunca cortar conteúdo */
+      #tripPanel .panel-body {
+        max-height: calc(100vh - 120px) !important;
+        overflow-y: auto !important;
+      }
+    }
     #tripPanel.panel {
       width: 100%;
       max-width: 100%;
