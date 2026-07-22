@@ -23,7 +23,7 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  <link rel="manifest" href="/manifest-index.json">
+  <link rel="manifest" href="/manifest-hotel.json">
   <meta name="theme-color" content="#050507">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -34,34 +34,20 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="RM Hotel">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>REALMETROPOLIS — A Minha Conta</title>
+  <title>REALMETROPOLIS — Hotel Dashboard</title>
 
   <!-- Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
 
   <!-- Estilos -->
-  <link rel="stylesheet" href="css/rm-dashboard.css?v=4">
+  <link rel="stylesheet" href="css/rm-dashboard.css?v=5">
 
   <!-- Dependências externas -->
   <script src="https://js.stripe.com/v3/"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-
-<!-- ═══ MODO CLIENTE ════════════════════════════════════════════
-     Esta página é o hotel-dashboard a servir o CLIENTE final. O
-     sinalizador abaixo tem de ser lido antes de qualquer script:
-       • rm-core.js usa-o para autenticar em /clientes/me em vez de
-         /admin/parceiros/me (um cliente não é parceiro e seria
-         expulso da própria conta);
-       • o CSS usa a classe para esconder o que é só do hotel
-         (estatísticas, classificações, relatório SLA).
-     Tudo o resto — reserva, partilha, mapa, pagamento — é igual. -->
-<script>
-  window.__RM_MODO_CLIENTE__ = true;
-  document.documentElement.classList.add('rm-modo-cliente');
-</script>
 
 <!-- ═══ MODO CONVIDADO — detecção precoce ═══════════════════════
      Tem de correr ANTES de qualquer outro script. Se o URL tiver
@@ -80,14 +66,6 @@
   })();
 </script>
 <style>
-  /* ── MODO CLIENTE: esconder o que pertence só ao hotel ── */
-  html.rm-modo-cliente #menuBtnEstatisticas,
-  html.rm-modo-cliente #menuBtnClassificacoes,
-  html.rm-modo-cliente #menuBtnSLA,
-  html.rm-modo-cliente #menuBtnViagensMapa {
-    display: none !important;
-  }
-
   /* Em modo convidado, esconder TUDO da app normal — menu, viagens,
      relatórios, seletor de tipo de viagem — mas manter o MAPA
      visível (para ver a rota/posição do motorista) e os popups do
