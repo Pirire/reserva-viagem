@@ -910,4 +910,14 @@
     .viagens-btn.tem-pendentes,
     .driver-card.oscilar,
     .motorista-eta-dot { animation: none !important; }
+
+    /* Formulario de PARTILHAR VIAGEM mais perto do cabecalho.
+       Estava centrado no ecra (top:50%), deixando um vazio grande
+       por cima. No telemovel encosta ao topo, logo abaixo do header. */
+    .share-sheet {
+      top: calc(var(--header-h) + 12px) !important;
+      transform: translateX(-50%) !important;
+      max-height: calc(100vh - var(--header-h) - 24px);
+      overflow-y: auto;
+    }
   }
