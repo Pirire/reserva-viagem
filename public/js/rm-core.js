@@ -665,10 +665,13 @@
   /* ── RESERVA PRIVADA ───────────────────────────────────────── */
   // Calcular distância via OSRM e preços para todas as categorias
   async function tentarCalcularPrecos() {
-    const pLat = els.inputPartida.dataset.lat;
-    const pLng = els.inputPartida.dataset.lng;
-    const dLat = els.inputDestino.dataset.lat;
-    const dLng = els.inputDestino.dataset.lng;
+    // NOTA: usar let (nao const). Se faltarem coordenadas, sao obtidas
+    // por geocodificacao e as variaveis TEM de ser actualizadas — caso
+    // contrario a rota seria pedida com "undefined" e o preco falhava.
+    let pLat = els.inputPartida.dataset.lat;
+    let pLng = els.inputPartida.dataset.lng;
+    let dLat = els.inputDestino.dataset.lat;
+    let dLng = els.inputDestino.dataset.lng;
 
     // Se faltam coordenadas, geocodificar os textos escritos
     if (!pLat || !pLng) {
@@ -678,6 +681,8 @@
       if (!geo.length) return;
       els.inputPartida.dataset.lat = geo[0].lat;
       els.inputPartida.dataset.lng = geo[0].lon;
+      pLat = geo[0].lat;
+      pLng = geo[0].lon;
     }
     if (!dLat || !dLng) {
       const txt = els.inputDestino.value.trim();
@@ -686,6 +691,8 @@
       if (!geo.length) return;
       els.inputDestino.dataset.lat = geo[0].lat;
       els.inputDestino.dataset.lng = geo[0].lon;
+      dLat = geo[0].lat;
+      dLng = geo[0].lon;
     }
 
     // Indicar que está a calcular (só o preço, sem apagar ícone/tempo/distância)
