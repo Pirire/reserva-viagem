@@ -234,6 +234,24 @@
   }
   .hamburger-dropdown .drop-btn:hover { background: rgba(255,255,255,.06); border-color: var(--line-strong); }
 
+  /* No telemovel, os botoes da barra de topo (SEGURANCA, POLITICA,
+     VIAGENS PENDENTES, RESERVA ATIVA) sao movidos para dentro deste
+     menu — nao cabiam na barra e ficavam por cima do seletor de
+     viagem. Aqui ganham o mesmo aspecto dos restantes itens. */
+  .hamburger-dropdown .soft-btn {
+    min-height: 42px; padding: 0 16px; border-radius: 12px;
+    border: 1px solid var(--line); background: transparent;
+    color: var(--silver); font-size: 13px; font-weight: 800;
+    cursor: pointer; text-align: left; width: 100%;
+    transition: .18s ease; white-space: nowrap;
+  }
+  .hamburger-dropdown .soft-btn:hover {
+    background: rgba(255,255,255,.06); border-color: var(--line-strong);
+    transform: none;
+  }
+  /* Um item escondido (ex.: RESERVA ATIVA) continua escondido aqui */
+  .hamburger-dropdown .soft-btn.hidden { display: none; }
+
   /* ── SELETOR DE MODO ────────────────────────────────────────── */
   .trip-type-wrap {
     position: fixed; top: calc(var(--header-h) + 14px);
@@ -6070,6 +6088,53 @@ function fecharLegalOverlay(){
 document.getElementById('legalOverlay')?.addEventListener('click', function(e){
   if (e.target.id === 'legalOverlay') fecharLegalOverlay();
 });
+</script>
+
+
+<script>
+/* ── Barra de topo no telemovel ──────────────────────────────────
+   Os botoes SEGURANCA / POLITICA / VIAGENS PENDENTES / RESERVA ATIVA
+   nao cabem na barra em ecras pequenos: a barra passa a coluna e eles
+   caiem por cima do seletor de viagem. Aqui sao MOVIDOS para dentro
+   do menu hamburguer que ja existe.
+
+   Move-se o proprio elemento (nao se criam copias), por isso os IDs
+   mantem-se unicos e tudo o que ja esta ligado a eles continua a
+   funcionar tal como estava. No desktop voltam ao sitio original. */
+(function () {
+  var LIMITE = 760;
+  var IDS = ['btnSecurityPanel', 'btnPolitica', 'btnViagensPendentes', 'btnReservaAtiva'];
+
+  function aplicar() {
+    var barra = document.querySelector('.top-actions');
+    var menu  = document.getElementById('hamburgerMenu');
+    var burger= document.getElementById('btnMenu');
+    if (!barra || !menu || !burger) return;
+
+    var noTelemovel = window.innerWidth <= LIMITE;
+
+    IDS.forEach(function (id) {
+      var b = document.getElementById(id);
+      if (!b) return;
+      if (noTelemovel) {
+        // para o menu, sempre acima dos itens que ja la estao
+        if (b.parentNode !== menu) menu.insertBefore(b, menu.firstChild);
+      } else {
+        // de volta a barra, sempre antes do botao do hamburguer
+        if (b.parentNode !== barra) barra.insertBefore(b, burger);
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', aplicar);
+  aplicar();
+
+  var t;
+  window.addEventListener('resize', function () {
+    clearTimeout(t);
+    t = setTimeout(aplicar, 150);
+  });
+})();
 </script>
 
 </body>
