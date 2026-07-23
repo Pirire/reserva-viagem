@@ -37,6 +37,29 @@ async function getStripe() {
 
 const router = Router();
 
+/* Canonicaliza o contacto para E.164 (+351912345678).
+   MOTIVO: o contacto chegava aqui so com .trim(), que limpa as pontas
+   mas deixa os espacos do MEIO. Um numero copiado e colado ("+45 20 73
+   08 43") seguia assim para a Twilio, que o recusava com o erro 21614
+   ("nao e um numero movel valido") — e o SMS desaparecia sem ninguem
+   dar por nada. Copia exacta do normContact do partilha.routes.js, que
+   por isso nunca teve este problema. */
+function normContact(raw) {
+  let s = String(raw || "").trim().replace(/\s+/g, "");
+  if (!s) return "";
+  if (s.startsWith("00")) s = "+" + s.slice(2);
+  s = s.replace(/[^\d+]/g, "");
+  const digits = s.replace(/[^\d]/g, "");
+  if (!digits) return "";
+  if (!s.startsWith("+")) {
+    if (digits.length === 9 && (digits.startsWith("9") || digits.startsWith("2"))) {
+      return "+351" + digits;
+    }
+    return "+" + digits;
+  }
+  return "+" + digits;
+}
+
 /* ── Auth helpers — movidos para src/utils/clienteAuth.js, para
    ficarem partilhados com partilha.routes.js (e qualquer outro
    ficheiro que precise), em vez de viverem só aqui, duplicados
@@ -94,7 +117,7 @@ router.post("/reserva", injetarCliente, async (req, res) => {
       clienteId:   req.clienteId  || null,
       nome:        String(nome).trim(),
       email:       String(email).toLowerCase().trim(),
-      contacto:    String(contacto || contato || "").trim(),
+      contacto:    normContact(contacto || contato),
       categoria:   String(categoria).trim(),
       partida:     String(partida).trim(),
       destino:     String(destino).trim(),
@@ -247,7 +270,7 @@ async function marcarPagaEEnviarConfirmacao(reserva, { provider, paymentIntentId
 
     const nRes = await notificarConvite({
       metodo: "ambos",
-      contacto: reserva.contacto || "",
+      contacto: normContact(reserva.contacto),
       email:    reserva.email    || null,
       smsBody,
       emailSubject: "Pagamento confirmado — REALMETROPOLIS",
