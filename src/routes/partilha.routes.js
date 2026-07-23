@@ -524,7 +524,23 @@ router.post("/criar", async (req, res) => {
         { expiresIn: "2h" }
       );
 
-      const link = `${publicBase}/${paginaOrigem}?invite=${encodeURIComponent(inviteToken)}&shareId=${encodeURIComponent(shareId)}`;
+      const linkLongo = `${publicBase}/${paginaOrigem}?invite=${encodeURIComponent(inviteToken)}&shareId=${encodeURIComponent(shareId)}`;
+      // Encurtar tambem o convite de partilha (BASE/v/XXXXX). O link
+      // longo e um JWT enorme — pesado e feio num SMS. Se o encurtador
+      // falhar, fica o longo: o hospede nunca fica sem link.
+      let link = linkLongo;
+      try {
+        const sl = await criarShortLink({
+          destino: linkLongo,
+          shareId,
+          inviteId,
+          expiraEm: Date.now() + 2 * 60 * 60 * 1000,
+          baseUrl: publicBase,
+        });
+        link = sl.url;
+      } catch (e) {
+        console.warn("⚠️ [shortlink/partilha] falhou, a usar link longo:", e?.message);
+      }
       console.log("🔗 LINK GERADO:", link);
       const smsBody =
         `De ${nomeOrganizador || "REALMETROPOLIS"}. Convite para partilhar uma viagem.\n` +

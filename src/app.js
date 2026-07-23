@@ -56,6 +56,13 @@ const UPLOADS_DIR = path.join(PUBLIC_DIR, "uploads");
 
 app.disable("x-powered-by");
 
+/* O Render coloca um proxy a frente da aplicacao. Sem isto, o Express
+   nao confia no cabecalho X-Forwarded-For e o rate-limiter ve todos os
+   pedidos como vindo do mesmo IP (o do proxy) — um so utilizador podia
+   esgotar o limite de todos. Tambem provocava o ValidationError no
+   arranque. O valor 1 = confiar apenas no primeiro proxy. */
+app.set("trust proxy", 1);
+
 /* ==============================
    CORS — CORRIGIDO
    origin:"*" + credentials:true é bloqueado pelos browsers.
