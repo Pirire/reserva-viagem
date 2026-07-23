@@ -1805,10 +1805,28 @@ router.post("/reserva-simples/criar", requireClienteOuParceiro, async (req, res)
         { expiresIn: "24h" }
       );
 
+      const linkConviteLongo = `${publicBase}/hotel-dashboard.html?invite=${encodeURIComponent(inviteToken)}&shareId=${encodeURIComponent(shareId)}&evt=1`;
+      // Encurtar tambem o convite inicial (BASE/v/XXXXX). O link longo
+      // e um JWT enorme — pesado e feio num SMS. Se o encurtador
+      // falhar, fica o longo: o hospede nunca fica sem link.
+      let linkConvite = linkConviteLongo;
+      try {
+        const sc = await criarShortLink({
+          destino: linkConviteLongo,
+          shareId,
+          inviteId,
+          expiraEm: validUntil ? validUntil.getTime() : (Date.now() + 24 * 60 * 60 * 1000),
+          baseUrl: publicBase,
+        });
+        linkConvite = sc.url;
+      } catch (e) {
+        console.warn("⚠️ [shortlink/convite] falhou, a usar link longo:", e?.message);
+      }
+
       criados.push({
         inviteId, token: inviteToken, nome: nomeP, contacto: contactoP, email: emailP,
         valor: valorP, codigo: `EVT-${inviteId}`, otp,
-        link: `${publicBase}/hotel-dashboard.html?invite=${encodeURIComponent(inviteToken)}&shareId=${encodeURIComponent(shareId)}&evt=1`,
+        link: linkConvite,
       });
     }
 
@@ -2044,7 +2062,20 @@ router.post("/evento/criar", async (req, res) => {
       // destino). Assim reutilizamos todo o fluxo visual da Partilha
       // (OTP → destino → mapa → rota → resumo → pagamento) sem
       // manter uma página paralela.
-      const link = `${publicBase}/hotel-dashboard.html?invite=${encodeURIComponent(inviteToken)}&shareId=${encodeURIComponent(eventoId)}&evt=1`;
+      const linkEventoLongo = `${publicBase}/hotel-dashboard.html?invite=${encodeURIComponent(inviteToken)}&shareId=${encodeURIComponent(eventoId)}&evt=1`;
+      let link = linkEventoLongo;
+      try {
+        const se = await criarShortLink({
+          destino: linkEventoLongo,
+          shareId: eventoId,
+          inviteId,
+          expiraEm: validUntil ? new Date(validUntil).getTime() : (Date.now() + 24 * 60 * 60 * 1000),
+          baseUrl: publicBase,
+        });
+        link = se.url;
+      } catch (e) {
+        console.warn("⚠️ [shortlink/evento] falhou, a usar link longo:", e?.message);
+      }
       console.log("🔗 LINK GERADO (evento):", link);
 
       const prazoTexto = validUntil
@@ -2496,7 +2527,15 @@ async function confirmarPagamentoEvento(shareId, inviteId, provider, ref, io, to
       emailSubject: "Reserva Flexível confirmada — chame o seu motorista quando estiver pronto",
       emailHtml,
     });
-    console.log(`📩 [evento/pago] ${invite.nome} — sms:${nRes.smsEnviado} email:${nRes.emailEnviado}`);
+    // Mostrar tambem os motivos (nRes.erros) — sem isto ve-se
+    // "email:false" sem saber porque.
+    const motivos = (nRes?.erros || []).map((e) => `${e.canal}: ${e.motivo}`).join(" | ");
+    console.log(
+      `📩 [evento/pago] ${invite.nome} <${contactoLimpo || "sem contacto"}> ` +
+      `email=<${invite.email || "vazio"}> ` +
+      `sms:${nRes.smsEnviado} email:${nRes.emailEnviado}` +
+      (motivos ? ` || ${motivos}` : "")
+    );
   } catch (errN) {
     console.warn(`⚠️ [evento/pago] notificação "estou pronto" falhou:`, errN?.message);
   }
