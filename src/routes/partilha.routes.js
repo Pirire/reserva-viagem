@@ -216,11 +216,27 @@ function parseDateTime(dtRaw) {
   return t;
 }
 
+// Antecedencia minima para aceitar uma reserva. O valor REAL e 60
+// minutos. Esteve muito tempo em 1 minuto, escrito no codigo, para
+// facilitar testes — e ficou la esquecido, com o risco de aceitar
+// reservas impossiveis de servir se algum hotel entrasse assim.
+//
+// Agora vem da variavel de ambiente MIN_ANTECEDENCIA_MIN, com 60 por
+// omissao: o valor seguro e o que se aplica sem ninguem fazer nada.
+// Para testar sem esperar, define-se MIN_ANTECEDENCIA_MIN=1 no Render
+// e repoe-se depois — sem tocar no codigo nem correr o risco de
+// commitar um valor de teste.
+const MIN_ANTECEDENCIA_MIN = (() => {
+  const v = Number(process.env.MIN_ANTECEDENCIA_MIN);
+  return Number.isFinite(v) && v > 0 ? v : 60;
+})();
+
+if (MIN_ANTECEDENCIA_MIN < 60) {
+  console.warn(`⚠️ [partilha] MIN_ANTECEDENCIA_MIN=${MIN_ANTECEDENCIA_MIN} min — abaixo do valor real (60). Modo de teste?`);
+}
+
 function requireMin1h(tMillis) {
-  // ⚠️⚠️⚠️ MODO DE TESTE — limite baixado de 1 HORA para 1 MINUTO ⚠️⚠️⚠️
-  // Para testar o despacho sem esperar 1 hora. REPOR ANTES DE PRODUÇÃO:
-  //   const min = Date.now() + 60 * 60 * 1000;   // <-- valor REAL (1 hora)
-  const min = Date.now() + 1 * 60 * 1000;         // <-- TESTE (1 minuto)
+  const min = Date.now() + MIN_ANTECEDENCIA_MIN * 60 * 1000;
   return tMillis >= min;
 }
 
