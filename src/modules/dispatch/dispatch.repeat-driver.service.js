@@ -31,9 +31,15 @@ function getDistanceKm(lat1, lng1, lat2, lng2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+// CORRECAO: lia Motorista.status ("Disponivel"), campo que nenhuma
+// rota escreve — o botao "Ficar Online" grava em Motorista.disponivel
+// (Boolean). Como o status nasce "Disponivel" por defeito e depois so
+// muda para "ativo"/"pendente"/"inativo" na aprovacao, esta funcao
+// devolvia SEMPRE false depois de o motorista ser aprovado, e a
+// oferta do ultimo motorista nunca chegava a ninguem. Mesma correcao
+// ja aplicada em dispatch.auto.service.js.
 function motoristaDisponivel(motorista) {
-  const status = String(motorista?.status || "").trim().toLowerCase();
-  return status === "disponível" || status === "disponivel";
+  return motorista?.disponivel === true;
 }
 
 export async function verificarOfertaUltimoMotorista(clienteId, origemAtual) {

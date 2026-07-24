@@ -12,15 +12,40 @@ console.log("✅ payments.routes.js carregado");
 /* =========================================================
    PAYPAL HELPERS (Node 18+ tem fetch global)
 ========================================================= */
+// Le a primeira env definida de entre varios nomes possiveis.
+// MOTIVO: o projeto acumulou dois nomes para a mesma coisa —
+// paypalClient.js usa PAYPAL_CLIENT_SECRET/PAYPAL_ENV e este
+// ficheiro usava PAYPAL_SECRET/PAYPAL_MODE. Consoante o que
+// estivesse definido no Render, um dos caminhos falhava; pior,
+// se PAYPAL_MODE nao existisse, este ficheiro assumia "sandbox"
+// e cobrava com dinheiro de brincar em producao.
+function envAny(...nomes) {
+  for (const n of nomes) {
+    const v = String(process.env[n] || "").trim();
+    if (v) return v;
+  }
+  return "";
+}
+
 function paypalBaseUrl() {
-  const mode = String(process.env.PAYPAL_MODE || "sandbox").toLowerCase();
-  return mode === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
+  const mode = envAny("PAYPAL_MODE", "PAYPAL_ENV").toLowerCase();
+  const live = mode === "live" || mode === "production";
+  return live ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 }
 
 function mustEnv(name) {
   const v = String(process.env[name] || "").trim();
   if (!v) throw new Error(`Missing env: ${name}`);
   return v;
+}
+
+// Aviso no arranque — um PayPal em sandbox sem ninguem dar por isso
+// e um erro caro e silencioso.
+if (!envAny("PAYPAL_MODE", "PAYPAL_ENV")) {
+  console.warn('⚠️ [payments] PAYPAL_MODE/PAYPAL_ENV nao definido — a usar SANDBOX (pagamentos NAO sao reais).');
+}
+if (!envAny("PAYPAL_WEBHOOK_ID")) {
+  console.warn('⚠️ [payments] PAYPAL_WEBHOOK_ID nao definido — o webhook vai RECUSAR todos os eventos.');
 }
 
 let cachedToken = { value: "", exp: 0 };
@@ -30,7 +55,8 @@ async function getPaypalAccessToken() {
   if (cachedToken.value && cachedToken.exp > now + 30_000) return cachedToken.value;
 
   const clientId = mustEnv("PAYPAL_CLIENT_ID");
-  const secret = mustEnv("PAYPAL_SECRET");
+  const secret = envAny("PAYPAL_SECRET", "PAYPAL_CLIENT_SECRET");
+  if (!secret) throw new Error("Missing env: PAYPAL_SECRET (ou PAYPAL_CLIENT_SECRET)");
 
   const auth = Buffer.from(`${clientId}:${secret}`).toString("base64");
   const r = await fetch(`${paypalBaseUrl()}/v1/oauth2/token`, {
@@ -105,7 +131,7 @@ router.get("/payments/health", (req, res) => {
     ok: true,
     paypalMode: String(process.env.PAYPAL_MODE || "sandbox"),
     hasPaypalClientId: Boolean(process.env.PAYPAL_CLIENT_ID),
-    hasPaypalSecret: Boolean(process.env.PAYPAL_SECRET),
+    hasPaypalSecret: Boolean(envAny("PAYPAL_SECRET", "PAYPAL_CLIENT_SECRET")),
     hasPaypalWebhookId: Boolean(process.env.PAYPAL_WEBHOOK_ID),
   });
 });
@@ -243,6 +269,54 @@ router.post("/payments/capture-order", async (req, res) => {
    WEBHOOK HANDLER (deve ser montado com express.raw no app.js)
    POST /api/payments/webhook
 ========================================================= */
+/* =========================================================
+   VERIFICACAO DA ASSINATURA DO WEBHOOK  (OBRIGATORIA)
+   ---------------------------------------------------------
+   Sem isto, o /payments/webhook aceitava QUALQUER pedido: bastava
+   enviar um JSON com um inviteId para marcar o convite como pago,
+   o que dispara finalizeSharedTrip() e despacha um motorista a
+   serio. Viagem real, sem pagamento nenhum.
+
+   A PayPal expoe /v1/notifications/verify-webhook-signature para
+   confirmar que o evento veio mesmo deles. Precisa do
+   PAYPAL_WEBHOOK_ID (consola PayPal → Webhooks).
+
+   FALHA FECHADA: se o webhook id nao estiver definido, ou a
+   verificacao nao devolver SUCCESS, o evento e RECUSADO. Preferimos
+   perder uma confirmacao (o /capture-order tambem marca como pago)
+   do que aceitar uma falsa.
+========================================================= */
+async function webhookAssinaturaValida(req, event) {
+  const webhookId = envAny("PAYPAL_WEBHOOK_ID");
+  if (!webhookId) return { ok: false, motivo: "PAYPAL_WEBHOOK_ID nao definido" };
+
+  const h = (nome) => String(req.headers[nome] || "");
+  const corpo = {
+    auth_algo:         h("paypal-auth-algo"),
+    cert_url:          h("paypal-cert-url"),
+    transmission_id:   h("paypal-transmission-id"),
+    transmission_sig:  h("paypal-transmission-sig"),
+    transmission_time: h("paypal-transmission-time"),
+    webhook_id:        webhookId,
+    webhook_event:     event,
+  };
+
+  if (!corpo.transmission_id || !corpo.transmission_sig || !corpo.cert_url) {
+    return { ok: false, motivo: "cabecalhos de assinatura em falta" };
+  }
+
+  try {
+    const r = await paypalRequest("/v1/notifications/verify-webhook-signature", {
+      method: "POST",
+      body: corpo,
+    });
+    const estado = String(r?.verification_status || "").toUpperCase();
+    return { ok: estado === "SUCCESS", motivo: estado || "sem verification_status" };
+  } catch (err) {
+    return { ok: false, motivo: err?.message || "erro ao verificar" };
+  }
+}
+
 async function markPaidFromCustomId(customIdRaw, info = {}, io = null) {
   const customId = String(customIdRaw || "").trim();
   // formato esperado: "share_invite:INV-xxxx" ou "reserva:RES-xxx"
@@ -293,6 +367,13 @@ router.post("/payments/webhook", async (req, res) => {
     } else {
       // fallback (dev) — quando não está raw
       event = body;
+    }
+
+    // ── PORTA FECHADA: so passa o que a PayPal assinou ──
+    const assinatura = await webhookAssinaturaValida(req, event);
+    if (!assinatura.ok) {
+      console.warn("🚫 [payments/webhook] evento RECUSADO —", assinatura.motivo);
+      return res.status(403).json({ ok: false, message: "Assinatura invalida." });
     }
 
     const eventType = String(event?.event_type || "");

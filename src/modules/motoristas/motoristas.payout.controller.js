@@ -27,7 +27,7 @@ export const obterPayoutDaViagemController = asyncHandler(async (req, res) => {
     });
   }
 
-  const payout = calcularPayoutMotorista(viagem);
+  const payout = await calcularPayoutMotorista(viagem);
 
   return res.status(200).json({
     success: true,
